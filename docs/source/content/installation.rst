@@ -9,16 +9,24 @@ Installation
 
 .. _sys-reqs:
 
-OpenSpliceAI package includes frameworks and libraries that are required to train and predict SpliceAI models. The pretrained OpenSpliceAI models are separated from the package and can be downloaded from `OpenSpliceAI ftp site <https://openspliceai.com/>`_.
+OpenSpliceAI package provides the essential frameworks and libraries needed to train your own custom OpenSpliceAI models and apply the pretrained / self-trained models to the task of your choice. 
 
-There are three ways that you can install OpenSpliceAI:
+The pretrained OpenSpliceAI models are separated from the package and can be downloaded from `OpenSpliceAI ftp site <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/>`_.
+   - `OpenSpliceAI-MANE  <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-mane/>`_
+   - `OpenSpliceAI-Mouse  <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-mouse/>`_
+   - `OpenSpliceAI-Honeybee  <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-honeybee/>`_
+   - `OpenSpliceAI-Thale-Cress  <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-arabidopsis/>`_
+   - `OpenSpliceAI-Zebrafish  <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/_spliceai-zebrafish/>`_
+   - `SpliceAI Keras implementation <https://github.com/Illumina/SpliceAI/>`_
+
+The following are the system requirements for OpenSpliceAI. There are three ways that you can install OpenSpliceAI:
 
 .. _install-through-pip:
 
 Install through pip
 -------------------------
 
-OpenSpliceAI is on `PyPi 3.12 <https://pypi.org/project/OpenSpliceAI/>`_ now. Check out all the releases `here <https://pypi.org/manage/project/OpenSpliceAI/releases/>`_. Pip automatically resolves and installs any dependencies required by OpenSpliceAI.
+OpenSpliceAI is on `PyPi <https://pypi.org/project/OpenSpliceAI/>`_ now. Check out all the releases `here <https://pypi.org/manage/project/OpenSpliceAI/releases/>`_. Pip automatically resolves and installs any dependencies required by OpenSpliceAI.
 
 .. code-block:: bash
    
