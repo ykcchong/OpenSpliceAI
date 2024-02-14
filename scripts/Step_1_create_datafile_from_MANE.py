@@ -97,14 +97,14 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict):
                         # Ensure the sites are within the sequence bounds
                         if 0 <= first_site < len(labels):
                             if gene.strand == '+':
-                                labels[first_site] = 1  # Mark donor site
+                                labels[first_site] = 2  # Mark donor site
                             elif gene.strand == '-':
-                                labels[len(labels) - first_site-2] = 2
+                                labels[len(labels) - first_site-2] = 1
                         if 0 < second_site - 1 < len(labels):
                             if gene.strand == '+':
-                                labels[second_site - 2] = 2
+                                labels[second_site - 2] = 1
                             elif gene.strand == '-':
-                                labels[len(labels) - second_site] = 1
+                                labels[len(labels) - second_site] = 2
                     # If the gene is on the reverse strand, reverse complement the sequence and reverse the labels
                     if gene.strand == '-':
                         gene_seq = gene_seq.reverse_complement()
@@ -124,7 +124,7 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict):
                     TX_END.append(str(gene.end))
                     SEQ.append(gene_seq)
                     LABEL.append(labels_str)
-            fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
+                fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
             check_and_count_motifs(gene_seq, labels, gene.strand)
         # gene_counter += 1
         # if gene_counter > GENE_COUNT:
@@ -174,10 +174,9 @@ def main():
     #     'chr22': 0, 'chrX': 0, 'chrY': 0
     # }
     TRAIN_CHROM_GROUP = {
-        'chr2': 0, 'chr4': 0, 
-        # 'chr6': 0, 'chr8': 0, 
+        'chr2': 0, 'chr4': 0, 'chr6': 0, 'chr8': 0, 
         'chr10': 0, 'chr11': 0, 'chr12': 0, 'chr13': 0,
-        # 'chr14': 0, 'chr15': 0, 'chr16': 0, 'chr17': 0, 
+        'chr14': 0, 'chr15': 0, 'chr16': 0, 'chr17': 0, 
         'chr18': 0, 'chr19': 0, 'chr20': 0, 'chr21': 0, 
         'chr22': 0, 'chrX': 0, 'chrY': 0
     }
@@ -187,7 +186,6 @@ def main():
     get_sequences_and_labels(db, fasta_file, output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP)
     get_sequences_and_labels(db, fasta_file, output_dir, type="test", chrom_dict=TEST_CHROM_GROUP)
     print_motif_counts()
-
 
 if __name__ == "__main__":
     main()
