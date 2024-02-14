@@ -41,10 +41,15 @@ def create_datapoints(seq, strand, tx_start, tx_end, label):
     # respectively. It then calls reformat_data and one_hot_encode
     # and returns X, Y which can be used by Keras models.
     # print("CL_max: ", CL_max)
-    main_seq = seq[CL_max // 2:-CL_max // 2]
-    # print("\tmain_seq: ", main_seq)
+    # main_seq = seq[CL_max // 2:-CL_max // 2]
+    # # print("\tmain_seq: ", main_seq)
     # print("\tmain_seq: ", len(main_seq))
-    seq = 'N' * (CL_max // 2) + main_seq + 'N' * (CL_max // 2)
+    seq = 'N' * (CL_max // 2) + seq + 'N' * (CL_max // 2)
+    # print("\tappended seq: ", len(seq))
+
+    # print("\tOriginal seq: ", len(seq))
+    # print("\tOriginal label: ", len(label)) 
+
     # print("\tseq: ", len(seq))
     seq = seq.upper().replace('A', '1').replace('C', '2')
     seq = seq.replace('G', '3').replace('T', '4').replace('N', '0')
@@ -60,7 +65,7 @@ def create_datapoints(seq, strand, tx_start, tx_end, label):
         Y0 = label_array[::-1]  # Reverse the label array for negative strand
     Y0 = [Y0]
     # print("\tX0.shape: ", X0.shape)
-    # print("\tY0.shape: ", Y0.shape)
+    # print("\tY0.shape: ", Y0[0].shape)
     Xd, Yd = reformat_data(X0, Y0)
     X, Y = one_hot_encode(Xd, Yd)
     return X, Y
@@ -78,20 +83,55 @@ def reformat_data(X0, Y0):
     # length SL corresponding to the splicing information of the nucleotides
     # of interest. The CL_max context nucleotides are such that they are
     # CL_max/2 on either side of the SL nucleotides of interest.
-    num_points = ceil_div(len(Y0), SL)  # Changed to directly use len(Y0)
+    # print("\tX0.shape: ", X0.shape)
+    # print("\tlen(Y0[0]): ", len(Y0[0]))
+    # print("\tSL: ", SL)
+    num_points = ceil_div(len(Y0[0]), SL)
+    # print("\tnum_points: ", num_points)
     Xd = np.zeros((num_points, SL+CL_max))
     Yd = [-np.ones((num_points, SL)) for t in range(1)]
+    # print("\tXd.shape: ", Xd.shape)
+    # print("\tlen(Yd[0]): ", len(Yd[0])) 
+
     X0 = np.pad(X0, [0, SL], 'constant', constant_values=0)
     Y0 = [np.pad(Y0[t], [0, SL], 'constant', constant_values=-1)
          for t in range(1)]
+
     for i in range(num_points):
-        start_index = SL*i
-        end_index = CL_max + SL*(i+1)
-        Xd[i] = X0[start_index:end_index]
+        # print("\tSL*i: ", SL*i, "\tCL_max+SL*(i+1): ", CL_max+SL*(i+1))
+        Xd[i] = X0[SL*i:CL_max+SL*(i+1)]
+
     for t in range(1):
         for i in range(num_points):
             Yd[t][i] = Y0[t][SL*i:SL*(i+1)]
+
     return Xd, Yd
+
+
+# def reformat_data(X0, Y0):
+#     # This function converts X0, Y0 of the create_datapoints function into
+#     # blocks such that the data is broken down into data points where the
+#     # input is a sequence of length SL+CL_max corresponding to SL nucleotides
+#     # of interest and CL_max context nucleotides, the output is a sequence of
+#     # length SL corresponding to the splicing information of the nucleotides
+#     # of interest. The CL_max context nucleotides are such that they are
+#     # CL_max/2 on either side of the SL nucleotides of interest.
+#     num_points = ceil_div(len(Y0), SL)  # Changed to directly use len(Y0)
+#     Xd = np.zeros((num_points, SL+CL_max))
+#     Yd = [-np.ones((num_points, SL)) for t in range(1)]
+#     X0 = np.pad(X0, [0, SL], 'constant', constant_values=0)
+#     Y0 = [np.pad(Y0[t], [0, SL], 'constant', constant_values=-1)
+#          for t in range(1)]
+    
+#     print("num_points: ", num_points)
+#     for i in range(num_points):
+#         start_index = SL*i
+#         end_index = CL_max + SL*(i+1)
+#         Xd[i] = X0[start_index:end_index]
+#     for t in range(1):
+#         for i in range(num_points):
+#             Yd[t][i] = Y0[t][SL*i:SL*(i+1)]
+#     return Xd, Yd
 
 
 def one_hot_encode(Xd, Yd):
@@ -145,143 +185,80 @@ def print_motif_counts():
 
 
 def main():
-    start_time = time.time()
     project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-MANE/"
     output_dir = f"{project_root}results/gene_sequences_and_labels/"
     os.makedirs(output_dir, exist_ok=True)
     
     # for type in ['test']:
     for type in ['train', 'test']:
+        print(("--- Processing %s ... ---" % type))
+        start_time = time.time()
         input_file = output_dir + f'datafile_{type}.h5'
         output_file = output_dir + f'dataset_{type}.h5'
-
-        # This is batch processing
-    #     with h5py.File(input_file, 'r') as h5f, h5py.File(output_file, 'w') as h5f2:
-    #         CHUNK_SIZE = 100  # Adjust based on your dataset size and available memory
-            
-    #         # Assuming SEQ, LABEL, and STRAND are required for motif checking
-    #         seq_data_size = h5f['SEQ'].shape[0]
-            
-    #         for i in range(0, seq_data_size, CHUNK_SIZE):
-    #             # Read SEQ, LABEL, and STRAND data in chunks
-    #             chunk = slice(i, min(i + CHUNK_SIZE, seq_data_size))
-    #             seq_chunk = h5f['SEQ'][chunk].astype('str')
-    #             label_chunk = h5f['LABEL'][chunk].astype('str')
-    #             label_chunk_int = [int(char) for char in label_chunk]
-    #             strand_chunk = h5f['STRAND'][chunk].astype('str')
-    #             print("seq_chunk.shape: ", seq_chunk.shape)
-    #             print("label_chunk.shape: ", label_chunk.shape)
-    #             print("strand_chunk.shape: ", strand_chunk.shape)
-    #             # Call check_and_count_motifs for each chunk
-    #         #     check_and_count_motifs(seq_chunk, label_chunk_int, strand_chunk)
-    #         # print_motif_counts()
-    #     print_motif_counts()
-
-
-    #     # print("SEQ.shape[0]: ", SEQ.shape[0])
-    #     # print("SEQ.shape[0]//CHUNK_SIZE: ", SEQ.shape[0]//CHUNK_SIZE)
-
-    #     # for i in range(SEQ.shape[0]//CHUNK_SIZE):
-    #     #     # Each dataset has CHUNK_SIZE genes
-            
-    #     #     if (i+1) == SEQ.shape[0]//CHUNK_SIZE:
-    #     #         NEW_CHUNK_SIZE = CHUNK_SIZE + SEQ.shape[0]%CHUNK_SIZE
-    #     #     else:
-    #     #         NEW_CHUNK_SIZE = CHUNK_SIZE
-    #     #     X_batch = []
-    #     #     Y_batch = [[] for t in range(1)]
-    #     #     for j in range(NEW_CHUNK_SIZE):
-    #     #         idx = i*CHUNK_SIZE + j
-    #     #         fixed_seq = replace_non_acgt_to_n(SEQ[idx])
-    #     #         X, Y = create_datapoints(fixed_seq, STRAND[idx],
-    #     #                                 TX_START[idx], TX_END[idx], LABEL[idx])
-    #     #         X_batch.extend(X)
-    #     #         for t in range(1):
-    #     #             Y_batch[t].extend(Y[t])
-    #     #     X_batch = np.asarray(X_batch).astype('int8')
-    #     #     print("X_batch.shape: ", X_batch.shape)
-    #     #     for t in range(1):
-    #     #         Y_batch[t] = np.asarray(Y_batch[t]).astype('int8')
-    #     #     print("len(Y_batch[0]): ", len(Y_batch[0]))
-    #     #     h5f2.create_dataset('X' + str(i), data=X_batch)
-    #     #     h5f2.create_dataset('Y' + str(i), data=Y_batch)
-
-    #         # for name in ['NAME', 'CHROM', 'STRAND', 'TX_START', 'TX_END', 'SEQ', 'LABEL']:
-    #         #     data_size = h5f[name].shape[0]
-    #         #     print(f"{name}.shape[0]: ", data_size)
-
-    #         #     for i in range(0, data_size, CHUNK_SIZE):
-    #         #         # Read data in chunks
-    #         #         chunk = slice(i, min(i + CHUNK_SIZE, data_size))
-    #         #         data_chunk = h5f[name][chunk]
-    #         #         if name in ['STRAND', 'TX_START', 'TX_END', 'SEQ', 'LABEL']:
-    #         #             data_chunk = data_chunk.astype('str')
-
-    #         #         # Process data here (e.g., checking motifs, creating datapoints)
-    #         #         # Example: check_and_count_motifs(data_chunk)
-    #         #         # This is where you would integrate processing functions like `check_and_count_motifs`
-    #         #         # and `create_datapoints` in a more memory-efficient manner.
-
-    #         #         # Example of how to write processed data back
-    #         #         # h5f2.create_dataset(f'{name}_{i//CHUNK_SIZE}', data=processed_data_chunk)
-    #         #         # Make sure to adjust the dataset creation to match your processing output
-
-    #         # Include processing that spans across different datasets within the file handling context to minimize memory usage
-
-    # print(("--- %s seconds ---" % (time.time() - start_time)))
-
-
         # This is normal all-in-one processing
         process_size = 0
         if type == 'train':
-            process_size = 3000
+            process_size = 4000
         elif type == 'test':
-            process_size = 1000
+            process_size = 2000
+        print("\tReading datafile.h5 ... ")
         h5f = h5py.File(input_file, 'r')
-        NAME = h5f['NAME'][:process_size]
-        CHROM = h5f['CHROM'][:process_size]
-        STRAND = h5f['STRAND'][:process_size]
-        TX_START = h5f['TX_START'][:process_size]
-        TX_END = h5f['TX_END'][:process_size]
-        SEQ = h5f['SEQ'][:process_size]
-        LABEL = h5f['LABEL'][:process_size]
+        STRAND = h5f['STRAND'][:]
+        TX_START = h5f['TX_START'][:]
+        TX_END = h5f['TX_END'][:]
+        SEQ = h5f['SEQ'][:]
+        LABEL = h5f['LABEL'][:]
+        print("STRAND.shape: ", STRAND.shape)
+        print("TX_START.shape: ", TX_START.shape)
+        print("TX_END.shape: ", TX_END.shape)
+        print("SEQ.shape: ", SEQ.shape)
+        print("LABEL.shape: ", LABEL.shape)
+        
+        # print("STRAND: ", STRAND)
+        # print("TX_START: ", TX_START)
+        # print("TX_END: ", TX_END)
+        # print("SEQ: ", SEQ)
+        # print("LABEL: ", LABEL)
         h5f.close()
 
+        print("\tCreating dataset.h5 ... ")
         h5f2 = h5py.File(output_file, 'w')
-        STRAND = STRAND.astype('str')
-        TX_START = TX_START.astype('str')
-        TX_END = TX_END.astype('str')
-        SEQ = SEQ.astype('str')
-        LABEL = LABEL.astype('str')
         CHUNK_SIZE = 100
-        print("SEQ.shape[0]: ", SEQ.shape[0])
-        # print("CHR.shape[0]: ", CHROM.shape[0])
-        print("STRAND.shape[0]: ", STRAND.shape[0])
-        print("TX_START.shape[0]: ", TX_START.shape[0])
-        print("TX_END.shape[0]: ", TX_END.shape[0])
-        print("LABEL.shape[0]: ", LABEL.shape[0])
+        sample_num = SEQ.shape[0]
+        print("sample_num: ", sample_num)
+        # print("STRAND.shape[0]: ", STRAND.shape[0])
+        # print("TX_START.shape[0]: ", TX_START.shape[0])
+        # print("TX_END.shape[0]: ", TX_END.shape[0])
+        # print("LABEL.shape[0]: ", LABEL.shape[0])
         # Check motif
-        for idx in range(SEQ.shape[0]):
-            label_int = [int(char) for char in LABEL[idx]]
-            # seq_decode = SEQ[idx].decode('ascii')
-            # strand_decode = STRAND[idx].decode('ascii')
-            check_and_count_motifs(SEQ[idx], label_int, STRAND[idx])
-        print_motif_counts()
-        print("SEQ.shape[0]: ", SEQ.shape[0])
-        print("SEQ.shape[0]//CHUNK_SIZE: ", SEQ.shape[0]//CHUNK_SIZE)
-        for i in range(SEQ.shape[0]//CHUNK_SIZE):
+        # for idx in range(sample_num):
+        #     label_decode = LABEL[idx].decode('ascii')
+        #     seq_decode = SEQ[idx].decode('ascii')
+        #     strand_decode = STRAND[idx].decode('ascii')
+
+        #     label_int = [int(char) for char in label_decode]
+        #     check_and_count_motifs(seq_decode, label_int, strand_decode)
+        # print_motif_counts()
+        # print("SEQ.shape[0]: ", SEQ.shape[0])
+        # print("SEQ.shape[0]//CHUNK_SIZE: ", SEQ.shape[0]//CHUNK_SIZE)
+        for i in range(sample_num//CHUNK_SIZE):
             # Each dataset has CHUNK_SIZE genes
-            if (i+1) == SEQ.shape[0]//CHUNK_SIZE:
-                NEW_CHUNK_SIZE = CHUNK_SIZE + SEQ.shape[0]%CHUNK_SIZE
+            if (i+1) == sample_num//CHUNK_SIZE:
+                NEW_CHUNK_SIZE = CHUNK_SIZE + sample_num%CHUNK_SIZE
             else:
                 NEW_CHUNK_SIZE = CHUNK_SIZE
             X_batch = []
             Y_batch = [[] for t in range(1)]
             for j in range(NEW_CHUNK_SIZE):
                 idx = i*CHUNK_SIZE + j
-                fixed_seq = replace_non_acgt_to_n(SEQ[idx])
-                X, Y = create_datapoints(fixed_seq, STRAND[idx],
-                                        TX_START[idx], TX_END[idx], LABEL[idx])
+                seq_decode = SEQ[idx].decode('ascii')
+                strand_decode = STRAND[idx].decode('ascii')
+                tx_start_decode = TX_START[idx].decode('ascii')
+                tx_end_decode = TX_END[idx].decode('ascii')
+                label_decode = LABEL[idx].decode('ascii')
+                fixed_seq = replace_non_acgt_to_n(seq_decode)
+                X, Y = create_datapoints(fixed_seq, strand_decode,
+                                        tx_start_decode, tx_end_decode, label_decode)
                 X_batch.extend(X)
                 for t in range(1):
                     Y_batch[t].extend(Y[t])
@@ -292,8 +269,56 @@ def main():
             print("len(Y_batch[0]): ", len(Y_batch[0]))
             h5f2.create_dataset('X' + str(i), data=X_batch)
             h5f2.create_dataset('Y' + str(i), data=Y_batch)
+            # break
         h5f2.close()
-    print(("--- %s seconds ---" % (time.time() - start_time)))
+        print(("--- %s seconds ---" % (time.time() - start_time)))
 
 if __name__ == "__main__":
     main()
+
+
+
+# print("SEQ.shape[0]: ", SEQ.shape[0])
+# print("SEQ.shape[0]//CHUNK_SIZE: ", SEQ.shape[0]//CHUNK_SIZE)
+
+# for i in range(SEQ.shape[0]//CHUNK_SIZE):
+#     # Each dataset has CHUNK_SIZE genes
+    
+#     if (i+1) == SEQ.shape[0]//CHUNK_SIZE:
+#         NEW_CHUNK_SIZE = CHUNK_SIZE + SEQ.shape[0]%CHUNK_SIZE
+#     else:
+#         NEW_CHUNK_SIZE = CHUNK_SIZE
+
+#     print("NEW_CHUNK_SIZE: ", NEW_CHUNK_SIZE)
+
+#     X_batch = []
+#     Y_batch = [[] for t in range(1)]
+
+#     for j in range(NEW_CHUNK_SIZE):
+
+#         idx = i*CHUNK_SIZE + j
+
+#         X, Y = create_datapoints(SEQ[idx], STRAND[idx],
+#                                  TX_START[idx], TX_END[idx],
+#                                  JN_START[idx], JN_END[idx])
+
+#         print("X.shape: ", X.shape)
+#         print("len(Y[0]): ", len(Y[0]))
+#         print("\n\n")
+
+#         X_batch.extend(X)
+#         for t in range(1):
+#             Y_batch[t].extend(Y[t])
+
+#     X_batch = np.asarray(X_batch).astype('int8')
+#     print("X_batch.shape: ", X_batch.shape)
+#     for t in range(1):
+#         Y_batch[t] = np.asarray(Y_batch[t]).astype('int8')
+#     print("len(Y_batch[0]): ", len(Y_batch[0]))
+
+#     h5f2.create_dataset('X' + str(i), data=X_batch)
+#     h5f2.create_dataset('Y' + str(i), data=Y_batch)
+
+# h5f2.close()
+
+# print(("--- %s seconds ---" % (time.time() - start_time)))
