@@ -16,15 +16,28 @@ def get_hyperparameters(sequence_length, N_GPUS):
     Returns the hyperparameters based on the input sequence length.
     """
     if sequence_length == 80:
-        return {'W': np.array([11] * 4), 'AR': np.array([1] * 4), 'BATCH_SIZE': 18 * N_GPUS}
+        W = np.asarray([11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1])
+        BATCH_SIZE = 18*N_GPUS
     elif sequence_length == 400:
-        return {'W': np.array([11] * 8), 'AR': np.array([1] * 4 + [4] * 4), 'BATCH_SIZE': 18 * N_GPUS}
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
+        BATCH_SIZE = 18*N_GPUS
     elif sequence_length == 2000:
-        return {'W': np.array([11] * 8 + [21] * 4), 'AR': np.array([1] * 4 + [4] * 4 + [10] * 4), 'BATCH_SIZE': 12 * N_GPUS}
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10])
+        BATCH_SIZE = 12*N_GPUS
     elif sequence_length == 10000:
-        return {'W': np.array([11] * 8 + [21] * 4 + [41] * 4), 'AR': np.array([1] * 4 + [4] * 4 + [10] * 4 + [25] * 4), 'BATCH_SIZE': 6 * N_GPUS}
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21, 41, 41, 41, 41])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10, 25, 25, 25, 25])
+        BATCH_SIZE = 6*N_GPUS
     else:
         raise ValueError("Invalid sequence length.")
+    return {'W': W, 'AR': AR, 'BATCH_SIZE': BATCH_SIZE}
 
 
 def setup_environment():
@@ -61,15 +74,20 @@ def train_and_validate(model_m, sequence_length, project_root, SL, CL, N_GPUS, B
     """
     h5f_dir = f"{project_root}results/gene_sequences_and_labels/"
     h5f = h5py.File(f'{h5f_dir}dataset_train.h5', 'r')
-    idx_all = np.random.permutation(len(list(h5f.keys())) // 2)
-    idx_train, idx_valid = np.split(idx_all, [int(0.9 * len(idx_all))])
-    EPOCH_NUM = 15 * len(idx_train)
+    num_idx = len(list(h5f.keys()))//2
+    idx_all = np.random.permutation(num_idx)
+    idx_train = idx_all[:int(0.9*num_idx)]
+    idx_valid = idx_all[int(0.9*num_idx):]#int(0.2*num_idx)]
+    print("Number of training datasets: ", len(idx_train))
+    print("Number of validation datasets: ", len(idx_valid))
+    EPOCH_NUM = 10*len(idx_train)
     experiment = f"SpliceAI_{SL}chunk_{sequence_length}flank_MANE_exp"
     output_dir = f'{project_root}results/{experiment}/{sys.argv[2]}/'
     os.makedirs(output_dir, exist_ok=True)
     files = {name: open(f'{output_dir}{name}_results.txt', 'w') for name in ['training', 'training_loss', 'validation', 'validation_loss']}
     start_time = time.time()
     for epoch_num in range(EPOCH_NUM):
+        print("Epoch number: ", epoch_num)
         idx = np.random.choice(idx_train)
         X = h5f['X' + str(idx)][:]
         Y = h5f['Y' + str(idx)][:]
@@ -78,6 +96,11 @@ def train_and_validate(model_m, sequence_length, project_root, SL, CL, N_GPUS, B
         Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS) 
         # print("Xc.shape: ", Xc)
         # print("Yc.shape: ", Yc[0])
+
+        # unique, counts = np.unique(Xc, return_counts=True)
+        # unique, counts = np.unique([Yc], return_counts=True)
+        # print("unique: ", unique)
+        # print("counts: ", counts)
         # print("Xc.shape: ", Xc.shape)
         # print("Yc.shape: ", len(Yc[0]))
         history = model_m.fit(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
@@ -104,6 +127,7 @@ def train_and_validate(model_m, sequence_length, project_root, SL, CL, N_GPUS, B
                 # After predicting with the validation set
                 # val_loss, val_metrics = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
                 val_loss = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+                print(f"val_loss: {val_loss}")
                 files["validation_loss"].write(f'{val_loss}\n')
                 if not isinstance(Yp, list):
                     Yp = [Yp]
@@ -137,6 +161,7 @@ def train_and_validate(model_m, sequence_length, project_root, SL, CL, N_GPUS, B
                 Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
                 # After predicting with the training set
                 train_loss = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+                print(f"train_loss: {train_loss}")
                 files["training_loss"].write(f'{train_loss}\n')
                 if not isinstance(Yp, list):
                     Yp = [Yp]
@@ -208,7 +233,7 @@ if __name__ == "__main__":
 
 # from constants import * 
 
-# assert int(sys.argv[1]) in [80, 400, 2000, 10000]
+# assert sequence_length in [80, 400, 2000, 10000]
 
 # ###############################################################################
 # # Model parameter definition
@@ -220,28 +245,28 @@ if __name__ == "__main__":
 # # L: Number of convolution kernels
 # # W: Convolution window size in each residual unit
 # # AR: Atrous rate in each residual unit
-# if int(sys.argv[1]) == 80:
+# if sequence_length == 80:
 #     W = np.asarray([11, 11, 11, 11])
 #     AR = np.asarray([1, 1, 1, 1])
 #     BATCH_SIZE = 18*N_GPUS
-# elif int(sys.argv[1]) == 400:
+# elif sequence_length == 400:
 #     W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
 #     AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
 #     BATCH_SIZE = 18*N_GPUS
-# elif int(sys.argv[1]) == 2000:
+# elif sequence_length == 2000:
 #     W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
 #                     21, 21, 21, 21])
 #     AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
 #                      10, 10, 10, 10])
 #     BATCH_SIZE = 12*N_GPUS
-# elif int(sys.argv[1]) == 10000:
+# elif sequence_length == 10000:
 #     W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
 #                     21, 21, 21, 21, 41, 41, 41, 41])
 #     AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
 #                      10, 10, 10, 10, 25, 25, 25, 25])
 #     BATCH_SIZE = 6*N_GPUS
 # CL = 2 * np.sum(AR*(W-1))
-# assert CL <= CL_max and CL == int(sys.argv[1])
+# assert CL <= CL_max and CL == sequence_length
 # print("\033[1mContext nucleotides: %d\033[0m" % (CL))
 # print("\033[1mSequence length (output): %d\033[0m" % (SL))
 

@@ -4,6 +4,7 @@ from Bio import SeqIO
 from Bio.Seq import MutableSeq
 import numpy as np
 import h5py
+import time
 
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
@@ -31,21 +32,21 @@ def check_and_count_motifs(seq, labels, strand):
         if label in [1, 2]:  # Check only labeled positions
             if strand == '+':  # For forward strand
                 motif = str(seq[i:i+2]) if i > 0 else ""  # Extract preceding 2-base motif
-                if label == 1:
+                if label == 2:
                     if motif not in donor_motif_counts:
                         donor_motif_counts[motif] = 0
                     donor_motif_counts[motif] += 1
-                elif label == 2:
+                elif label == 1:
                     if motif not in acceptor_motif_counts:
                         acceptor_motif_counts[motif] = 0
                     acceptor_motif_counts[motif] += 1
             elif strand == '-':  # For reverse strand, after adjustment
                 motif = str(seq[i:i+2]) if i < len(seq) - 1 else ""  # Extract following 2-base motif
-                if label == 1:
+                if label == 2:
                     if motif not in donor_motif_counts:
                         donor_motif_counts[motif] = 0
                     donor_motif_counts[motif] += 1    
-                elif label == 2:
+                elif label == 1:
                     if motif not in acceptor_motif_counts:
                         acceptor_motif_counts[motif] = 0
                     acceptor_motif_counts[motif] += 1
@@ -57,11 +58,9 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict):
     and label donor and acceptor sites correctly based on strand orientation.
     """
     seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
-    GENE_COUNT = 10
-    gene_counter = 0
     fw_stats = open(f"{output_dir}stats.txt", "w")
-    NAME = []      # Gene symbol
-    CHROM = []     # Chromosome number
+    NAME = []      # Gene Name
+    CHROM = []     # Chromosome
     STRAND = []    # Strand in which the gene lies (+ or -)
     TX_START = []  # Position where transcription starts
     TX_END = []    # Position where transcription ends
@@ -82,13 +81,10 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict):
                 if transcript.end - transcript.start + 1 > max_len:
                    max_trans = transcript
                    max_len = transcript.end - transcript.start + 1
-            # for transcript in transcripts:
             exons = list(db.children(max_trans, featuretype='exon', order_by='start'))
             if len(exons) > 1:
-                # if gene.seqid in chrom_dict and chrom_dict[gene.seqid] < GENE_COUNT:
                 if gene.seqid in chrom_dict:
                     chrom_dict[gene.seqid] += 1
-                    # For each exon in a transcript
                     for i in range(len(exons) - 1):
                         # Donor site is one base after the end of the current exon
                         first_site = exons[i].end - gene.start + 1  # Adjusted for python indexing
@@ -99,22 +95,14 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict):
                             if gene.strand == '+':
                                 labels[first_site] = 2  # Mark donor site
                             elif gene.strand == '-':
-                                labels[len(labels) - first_site-2] = 1
+                                labels[len(labels) - first_site-2] = 1  # Mark acceptor site
                         if 0 < second_site - 1 < len(labels):
                             if gene.strand == '+':
-                                labels[second_site - 2] = 1
+                                labels[second_site - 2] = 1  # Mark acceptor site
                             elif gene.strand == '-':
-                                labels[len(labels) - second_site] = 2
-                    # If the gene is on the reverse strand, reverse complement the sequence and reverse the labels
+                                labels[len(labels) - second_site] = 2   # Mark donor site
                     if gene.strand == '-':
-                        gene_seq = gene_seq.reverse_complement()
-                        # labels = labels[::-1]  # Reverse the labels to match the reversed sequence
-                    if gene.strand == '-':
-                        seq_num = 0
-                    elif gene.strand == '+':
-                        seq_num = 1
-                    # Output sequence and labels
-                    output_path = os.path.join(output_dir, f"{gene_id}.fasta")
+                        gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
                     gene_seq = str(gene_seq.upper())
                     labels_str = ''.join(str(num) for num in labels)
                     NAME.append(gene_id)
@@ -126,9 +114,6 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict):
                     LABEL.append(labels_str)
                 fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
             check_and_count_motifs(gene_seq, labels, gene.strand)
-        # gene_counter += 1
-        # if gene_counter > GENE_COUNT:
-        #     break
     fw_stats.close()
     dt = h5py.string_dtype(encoding='utf-8')
     h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
@@ -183,9 +168,14 @@ def main():
     TEST_CHROM_GROUP = {
         'chr1': 0, 'chr3': 0, 'chr5': 0, 'chr7': 0, 'chr9': 0
     }
+
+    print("--- Processing ... ---")
+    start_time = time.time()
     get_sequences_and_labels(db, fasta_file, output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP)
     get_sequences_and_labels(db, fasta_file, output_dir, type="test", chrom_dict=TEST_CHROM_GROUP)
     print_motif_counts()
+    print(("--- %s seconds ---" % (time.time() - start_time)))
+
 
 if __name__ == "__main__":
     main()

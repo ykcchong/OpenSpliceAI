@@ -18,9 +18,11 @@ for type in ['train', 'test']:
         print(("Keys: %s" % list(f.keys())))
         a_group_key = list(f.keys())[0]
         print(("a_group_key: ", a_group_key))
-
-        # Get the data
-        data = list(f[a_group_key])
-        # print(("data: ", data))
-        print(("data: ", len(data)))
-        print(("data: ", data[0].shape))
+        for key in f.keys():
+            # print(key)
+            # Get the data
+            print(f[key])
+            # data = list(f[a_group_key])
+            # # print(("data: ", data))
+            # print(("data: ", len(data)))
+            # print(("data: ", data[1].shape))
