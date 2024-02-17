@@ -143,7 +143,7 @@ def main():
         print(("--- Processing %s ... ---" % type))
         start_time = time.time()
         input_file = output_dir + f'datafile_{type}.h5'
-        output_file = output_dir + f'dataset_{type}.h5'
+        output_file = output_dir + f'dataset_full_{type}.h5'
         print("\tReading datafile.h5 ... ")
         h5f = h5py.File(input_file, 'r')
         STRAND = h5f['STRAND'][:]
@@ -172,14 +172,14 @@ def main():
         # print_motif_counts()
         
         # Create dataset
+        X_batch = []
+        Y_batch = [[] for t in range(1)]
         for i in range(seq_num//CHUNK_SIZE):
             # Each dataset has CHUNK_SIZE genes
             if (i+1) == seq_num//CHUNK_SIZE:
                 NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
             else:
                 NEW_CHUNK_SIZE = CHUNK_SIZE
-            X_batch = []
-            Y_batch = [[] for t in range(1)]
             for j in range(NEW_CHUNK_SIZE):
                 idx = i*CHUNK_SIZE + j
                 seq_decode = SEQ[idx].decode('ascii')
@@ -192,14 +192,14 @@ def main():
                 X_batch.extend(X)
                 for t in range(1):
                     Y_batch[t].extend(Y[t])
-            X_batch = np.asarray(X_batch).astype('int8')
-            print("X_batch.shape: ", X_batch.shape)
-            for t in range(1):
-                Y_batch[t] = np.asarray(Y_batch[t]).astype('int8')
-            print("len(Y_batch[0]): ", len(Y_batch[0]))
-            h5f2.create_dataset('X' + str(i), data=X_batch)
-            h5f2.create_dataset('Y' + str(i), data=Y_batch)
-            # break
+        X_batch = np.asarray(X_batch).astype('int8')
+        print("X_batch.shape: ", X_batch.shape)
+        for t in range(1):
+            Y_batch[t] = np.asarray(Y_batch[t]).astype('int8')
+        print("len(Y_batch[0]): ", len(Y_batch[0]))
+        h5f2.create_dataset('X' + str(i), data=X_batch)
+        h5f2.create_dataset('Y' + str(i), data=Y_batch)
+        # break
         h5f2.close()
         print("--- %s seconds ---" % (time.time() - start_time))
 
