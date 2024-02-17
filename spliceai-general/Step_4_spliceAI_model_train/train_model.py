@@ -91,106 +91,107 @@ def train_and_validate(model_m, sequence_length, project_root, SL, CL, N_GPUS, B
         idx = np.random.choice(idx_train)
         X = h5f['X' + str(idx)][:]
         Y = h5f['Y' + str(idx)][:]
-        # print("X.shape: ", X.shape)
-        # print("Y.shape: ", len(Y[0]))
-        Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS) 
-        # print("Xc.shape: ", Xc)
-        # print("Yc.shape: ", Yc[0])
+        print("X.shape: ", X.shape)
+        print("Y.shape: ", len(Y[0]))
+        
+    #     Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS) 
+    #     # print("Xc.shape: ", Xc)
+    #     # print("Yc.shape: ", Yc[0])
 
-        # unique, counts = np.unique(Xc, return_counts=True)
-        # unique, counts = np.unique([Yc], return_counts=True)
-        # print("unique: ", unique)
-        # print("counts: ", counts)
-        # print("Xc.shape: ", Xc.shape)
-        # print("Yc.shape: ", len(Yc[0]))
-        history = model_m.fit(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
-        # # NEW: Capture the loss value from the last batch of the current epoch
-        # current_loss = history.history['loss'][-1]  # Assuming 'loss' is the key for training loss
-        # # NEW: Write the current epoch number and loss to the training results file
-        # training_loss_results_file.write(f'{current_loss}\n')
-        # # training_results_file.flush()  # Ensure the written content is saved to the file
-        if (epoch_num+1) % len(idx_train) == 0:
-            print("--------------------------------------------------------------")
-            ########################################
-            # Validation set metrics
-            ########################################
-            print("\n\033[1mValidation set metrics:\033[0m")
-            Y_true_1 = [[] for t in range(1)]
-            Y_true_2 = [[] for t in range(1)]
-            Y_pred_1 = [[] for t in range(1)]
-            Y_pred_2 = [[] for t in range(1)]
-            for idx in idx_valid:
-                X = h5f['X' + str(idx)][:]
-                Y = h5f['Y' + str(idx)][:]
-                Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS)
-                Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
-                # After predicting with the validation set
-                # val_loss, val_metrics = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
-                val_loss = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
-                print(f"val_loss: {val_loss}")
-                files["validation_loss"].write(f'{val_loss}\n')
-                if not isinstance(Yp, list):
-                    Yp = [Yp]
-                for t in range(1):
-                    is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
-                    Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
-                    Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
-                    Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
-                    Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
-            print("epoch_num: ", epoch_num)
-            print("\n\033[1mAcceptor:\033[0m")
-            for t in range(1):
-                print_topl_statistics(np.asarray(Y_true_1[t]),
-                                    np.asarray(Y_pred_1[t]), files["validation"], type='acceptor')
-            print("\n\033[1mDonor:\033[0m")
-            for t in range(1):
-                print_topl_statistics(np.asarray(Y_true_2[t]),
-                                    np.asarray(Y_pred_2[t]), files["validation"], type='donor')
-            ########################################
-            # Training set metrics
-            ########################################
-            print("\n\033[1mTraining set metrics:\033[0m")
-            Y_true_1 = [[] for t in range(1)]
-            Y_true_2 = [[] for t in range(1)]
-            Y_pred_1 = [[] for t in range(1)]
-            Y_pred_2 = [[] for t in range(1)]
-            for idx in idx_train[:len(idx_valid)]:
-                X = h5f['X' + str(idx)][:]
-                Y = h5f['Y' + str(idx)][:]
-                Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS)
-                Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
-                # After predicting with the training set
-                train_loss = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
-                print(f"train_loss: {train_loss}")
-                files["training_loss"].write(f'{train_loss}\n')
-                if not isinstance(Yp, list):
-                    Yp = [Yp]
-                for t in range(1):
-                    is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
-                    Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
-                    Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
-                    Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
-                    Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
-            print("\n\033[1mAcceptor:\033[0m")
-            for t in range(1):
-                print_topl_statistics(np.asarray(Y_true_1[t]),
-                                    np.asarray(Y_pred_1[t]), files["training"], type='acceptor')
-            print("\n\033[1mDonor:\033[0m")
-            for t in range(1):
-                print_topl_statistics(np.asarray(Y_true_2[t]),
-                                    np.asarray(Y_pred_2[t]), files["training"], type='donor')
-            print("Learning rate: %.5f" % (kb.get_value(model_m.optimizer.lr)))
-            print("--- %s seconds ---" % (time.time() - start_time))
-            start_time = time.time()
-            print("--------------------------------------------------------------")
-            model_m.save(f'{output_dir}/Models/SpliceAI' + sys.argv[1]
-                    + '_c' + '_' + experiment + '.h5')
-            if (epoch_num+1) >= 6*len(idx_train):
-                # Learning rate decay
-                kb.set_value(model_m.optimizer.lr,
-                            0.5*kb.get_value(model_m.optimizer.lr))
-    for file in files.values():
-        file.close()
+    #     # unique, counts = np.unique(Xc, return_counts=True)
+    #     # unique, counts = np.unique([Yc], return_counts=True)
+    #     # print("unique: ", unique)
+    #     # print("counts: ", counts)
+    #     # print("Xc.shape: ", Xc.shape)
+    #     # print("Yc.shape: ", len(Yc[0]))
+    #     history = model_m.fit(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+    #     # # NEW: Capture the loss value from the last batch of the current epoch
+    #     # current_loss = history.history['loss'][-1]  # Assuming 'loss' is the key for training loss
+    #     # # NEW: Write the current epoch number and loss to the training results file
+    #     # training_loss_results_file.write(f'{current_loss}\n')
+    #     # # training_results_file.flush()  # Ensure the written content is saved to the file
+    #     if (epoch_num+1) % len(idx_train) == 0:
+    #         print("--------------------------------------------------------------")
+    #         ########################################
+    #         # Validation set metrics
+    #         ########################################
+    #         print("\n\033[1mValidation set metrics:\033[0m")
+    #         Y_true_1 = [[] for t in range(1)]
+    #         Y_true_2 = [[] for t in range(1)]
+    #         Y_pred_1 = [[] for t in range(1)]
+    #         Y_pred_2 = [[] for t in range(1)]
+    #         for idx in idx_valid:
+    #             X = h5f['X' + str(idx)][:]
+    #             Y = h5f['Y' + str(idx)][:]
+    #             Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS)
+    #             Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
+    #             # After predicting with the validation set
+    #             # val_loss, val_metrics = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+    #             val_loss = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+    #             print(f"val_loss: {val_loss}")
+    #             files["validation_loss"].write(f'{val_loss}\n')
+    #             if not isinstance(Yp, list):
+    #                 Yp = [Yp]
+    #             for t in range(1):
+    #                 is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
+    #                 Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
+    #                 Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
+    #                 Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
+    #                 Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
+    #         print("epoch_num: ", epoch_num)
+    #         print("\n\033[1mAcceptor:\033[0m")
+    #         for t in range(1):
+    #             print_topl_statistics(np.asarray(Y_true_1[t]),
+    #                                 np.asarray(Y_pred_1[t]), files["validation"], type='acceptor')
+    #         print("\n\033[1mDonor:\033[0m")
+    #         for t in range(1):
+    #             print_topl_statistics(np.asarray(Y_true_2[t]),
+    #                                 np.asarray(Y_pred_2[t]), files["validation"], type='donor')
+    #         ########################################
+    #         # Training set metrics
+    #         ########################################
+    #         print("\n\033[1mTraining set metrics:\033[0m")
+    #         Y_true_1 = [[] for t in range(1)]
+    #         Y_true_2 = [[] for t in range(1)]
+    #         Y_pred_1 = [[] for t in range(1)]
+    #         Y_pred_2 = [[] for t in range(1)]
+    #         for idx in idx_train[:len(idx_valid)]:
+    #             X = h5f['X' + str(idx)][:]
+    #             Y = h5f['Y' + str(idx)][:]
+    #             Xc, Yc = clip_datapoints(X, Y, CL, N_GPUS)
+    #             Yp = model_m.predict(Xc, batch_size=BATCH_SIZE)
+    #             # After predicting with the training set
+    #             train_loss = model_m.evaluate(Xc, Yc, batch_size=BATCH_SIZE, verbose=0)
+    #             print(f"train_loss: {train_loss}")
+    #             files["training_loss"].write(f'{train_loss}\n')
+    #             if not isinstance(Yp, list):
+    #                 Yp = [Yp]
+    #             for t in range(1):
+    #                 is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
+    #                 Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
+    #                 Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
+    #                 Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
+    #                 Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
+    #         print("\n\033[1mAcceptor:\033[0m")
+    #         for t in range(1):
+    #             print_topl_statistics(np.asarray(Y_true_1[t]),
+    #                                 np.asarray(Y_pred_1[t]), files["training"], type='acceptor')
+    #         print("\n\033[1mDonor:\033[0m")
+    #         for t in range(1):
+    #             print_topl_statistics(np.asarray(Y_true_2[t]),
+    #                                 np.asarray(Y_pred_2[t]), files["training"], type='donor')
+    #         print("Learning rate: %.5f" % (kb.get_value(model_m.optimizer.lr)))
+    #         print("--- %s seconds ---" % (time.time() - start_time))
+    #         start_time = time.time()
+    #         print("--------------------------------------------------------------")
+    #         model_m.save(f'{output_dir}/Models/SpliceAI' + sys.argv[1]
+    #                 + '_c' + '_' + experiment + '.h5')
+    #         if (epoch_num+1) >= 6*len(idx_train):
+    #             # Learning rate decay
+    #             kb.set_value(model_m.optimizer.lr,
+    #                         0.5*kb.get_value(model_m.optimizer.lr))
+    # for file in files.values():
+    #     file.close()
     h5f.close()
 
 
