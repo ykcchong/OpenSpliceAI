@@ -142,7 +142,7 @@ def main():
     # 2. let user provide their genome fasta path
     # 3. let user provide their genome gff path
     # 4. let user provide the chromosome group for training and testing
-    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-MANE/"
+    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
     fasta_file = f"{project_root}data/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.fna"
     ###########################
     # Mane annotation
