@@ -137,6 +137,11 @@ def print_motif_counts():
 
 
 def main():
+    # To-do: 
+    # 1. add argument, and remove hard-coded paths
+    # 2. let user provide their genome fasta path
+    # 3. let user provide their genome gff path
+    # 4. let user provide the chromosome group for training and testing
     project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-MANE/"
     fasta_file = f"{project_root}data/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.fna"
     ###########################
@@ -147,7 +152,7 @@ def main():
     # # RefSeq annotation
     # ###########################
     # gff_file = f"{project_root}data/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.gff"
-    output_dir = f"{project_root}results/gene_sequences_and_labels/"
+    output_dir = f"{project_root}results/train_test_dataset_MANE/"
     os.makedirs(output_dir, exist_ok=True)
     db_file = f'{gff_file}_db'  # Replace with your database file path
     db = create_or_load_db(gff_file, db_file)

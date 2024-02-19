@@ -2,7 +2,7 @@ import h5py
 import os
 
 project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-MANE/"
-output_dir = f"{project_root}results/gene_sequences_and_labels/"
+output_dir = f"{project_root}results/train_test_dataset_MANE/"
 os.makedirs(output_dir, exist_ok=True)
 
 # for type in ['test']:

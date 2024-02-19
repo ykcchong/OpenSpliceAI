@@ -180,16 +180,23 @@ def get_accuracy(y_prob, y_true):
 
 def model_fn(DNAs, labels, model, criterion):
     """Forward a batch through the model."""
-    outs = model(DNAs)
-    # outs = torch.flatten(outs)
-    # print("outs: ", outs.size())
-    # print("outs: ", outs)
-    # print("labels: ", labels.size())
     # print("DNAs: ", DNAs.size())
+    outs = model(DNAs)
+    # # outs = torch.flatten(outs)
+    # print("outs: ", outs.size())
+    # # print("outs: ", outs.shape)
+    # print("labels: ", labels.size())
+    # # print("DNAs: ", DNAs.size())
 
     # labels = labels.sum(axis=1)
     # print("labels: ", labels.size())
 
+    # print("outs.reshape(-1, 3): ", outs.reshape(-1, 3).shape)
+    # print("labels.argmax(dim=-1).view(-1): ", labels.argmax(dim=-1).view(-1))
+    # loss = criterion(outs.reshape(-1, 3), labels.argmax(dim=-1).view(-1))
+    outs = outs.permute(0, 2, 1)
+    # print("outs: ", outs.size())
+    # print("labels: ", labels.size())
     loss = categorical_crossentropy_2d(labels, outs, criterion)
     # print("loss    : ", loss)
     # print("accuracy: ", accuracy)
@@ -240,15 +247,15 @@ def categorical_crossentropy_2d(y_true, y_pred, criterion):
     # print("y_pred[:, 2, :]: ", y_pred[:, 2, :])
 
     # # This is focal loss
-    gamma = 2
-    return - torch.mean(y_true[:, 0, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 0, :]), gamma ), torch.log(y_pred[:, 0, :]+1e-10) )
-                        + SEQ_WEIGHT * y_true[:, 1, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 1, :]), gamma ), torch.log(y_pred[:, 1, :]+1e-10) )
-                        + SEQ_WEIGHT * y_true[:, 2, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 2, :]), gamma ), torch.log(y_pred[:, 2, :]+1e-10) ))
+    # gamma = 2
+    # return - torch.mean(y_true[:, 0, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 0, :]), gamma ), torch.log(y_pred[:, 0, :]+1e-10) )
+    #                     + SEQ_WEIGHT * y_true[:, 1, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 1, :]), gamma ), torch.log(y_pred[:, 1, :]+1e-10) )
+    #                     + SEQ_WEIGHT * y_true[:, 2, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 2, :]), gamma ), torch.log(y_pred[:, 2, :]+1e-10) ))
 
-    # # This is cross entropy loss
-    # return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
-    #                     + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
-    #                     + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))
+    # This is cross entropy loss
+    return - torch.mean(y_true[:, :, 0]*torch.log(y_pred[:, :, 0]+1e-10)
+                        + y_true[:, :, 1]*torch.log(y_pred[:, :, 1]+1e-10)
+                        + y_true[:, :, 2]*torch.log(y_pred[:, :, 2]+1e-10))
 
 
 # def create_datapoints(seq, strand):

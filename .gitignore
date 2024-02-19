@@ -2,6 +2,7 @@ data/
 results/
 paper/
 .DS_Store
+spliceai-toolkit/Step_4_spliceAI_model_train/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
