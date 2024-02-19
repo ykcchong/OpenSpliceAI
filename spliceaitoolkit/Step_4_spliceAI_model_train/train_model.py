@@ -72,7 +72,7 @@ def train_and_validate(model_m, sequence_length, project_root, SL, CL, N_GPUS, B
     """
     Train and validate the model.
     """
-    h5f_dir = f"{project_root}results/gene_sequences_and_labels/"
+    h5f_dir = f"{project_root}results/train_test_dataset_SpliceAI/"
     h5f = h5py.File(f'{h5f_dir}dataset_train.h5', 'r')
     num_idx = len(list(h5f.keys()))//2
     idx_all = np.random.permutation(num_idx)
@@ -282,7 +282,7 @@ if __name__ == "__main__":
 # ###############################################################################
 # # h5f = h5py.File(data_dir + 'dataset_test_0.h5', 'r')
 # project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-MANE/"
-# output_dir = f"{project_root}results/gene_sequences_and_labels/"
+# output_dir = f"{project_root}results/train_test_dataset_MANE/"
 # h5f = h5py.File(f'{output_dir}dataset_train.h5', 'r')
 # num_idx = len(list(h5f.keys()))//2
 # idx_all = np.random.permutation(num_idx)

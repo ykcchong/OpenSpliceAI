@@ -32,18 +32,24 @@ def clip_datapoints(X, Y, CL, N_GPUS):
     # print("\trem: ", rem)
     # print("\tclip: ", clip)
     if rem != 0 and clip != 0:
-        return X[:-rem, clip:-clip], [Y[t][:-rem] for t in range(1)]
+        return X[:-rem, :, clip:-clip], Y[:-rem]
+        # return X[:-rem, :, clip:-clip], [Y[t][:-rem] for t in range(1)]
     elif rem == 0 and clip != 0:
-        return X[:, clip:-clip], [Y[t] for t in range(1)]
+        return X[:, :, clip:-clip], Y
+        # return X[:, :, clip:-clip], [Y[t] for t in range(1)]
     elif rem != 0 and clip == 0:
-        return X[:-rem], [Y[t][:-rem] for t in range(1)]
+        return X[:-rem], Y[:-rem]
+        # return X[:-rem], [Y[t][:-rem] for t in range(1)]
     else:
-        return X, [Y[t] for t in range(1)]
+        return X, Y
+        # return X, [Y[t] for t in range(1)]
 
 
-def print_topl_statistics(y_true, y_pred, file_handle, type='acceptor'):
+def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=False):
     # Prints the following information: top-kL statistics for k=0.5,1,2,4,
     # auprc, thresholds for k=0.5,1,2,4, number of true splice sites.
+    # print("Y_true: ", y_true)
+    # print("Y_pred: ", y_pred)
     idx_true = np.nonzero(y_true == 1)[0]
     # print(("idx_true: ", idx_true))
     argsorted_y_pred = np.argsort(y_pred)
@@ -54,27 +60,38 @@ def print_topl_statistics(y_true, y_pred, file_handle, type='acceptor'):
     threshold = []
     for top_length in [0.5, 1, 2, 4]:
 
+        num_elements = int(top_length * len(idx_true))
+        if num_elements > len(y_pred):  # Check to prevent out-of-bounds access
+            print(f"Warning: Requested top_length {top_length} with {len(idx_true)} true elements exceeds y_pred size of {len(y_pred)}. Adjusting to fit.")
+            num_elements = len(y_pred)  # Adjust num_elements to prevent out-of-bounds error
+
         idx_pred = argsorted_y_pred[-int(top_length*len(idx_true)):]
         # print(("idx_pred: ", idx_pred))
         
         # print(("np.size(np.intersect1d(idx_true, idx_pred)): ", np.size(np.intersect1d(idx_true, idx_pred))))
         # print(("float(min(len(idx_pred), len(idx_true))): ", float(min(len(idx_pred), len(idx_true)))))
         topkl_accuracy += [np.size(np.intersect1d(idx_true, idx_pred)) \
-                  / float(min(len(idx_pred), len(idx_true)))]
-        threshold += [sorted_y_pred[-int(top_length*len(idx_true))]]
+                  / float(min(len(idx_pred), len(idx_true))+1e-10)]
+        # print(("idx_true: ", idx_true))
+        threshold += [sorted_y_pred[-num_elements]]
+        # print("threshold: ", threshold)
 
     auprc = average_precision_score(y_true, y_pred)
 
-    print((("%s\t%.4f\t\033[91m%.4f\t\033[0m%.4f\t%.4f\t\033[94m%.4f\t\033[0m"
-          + "%.4f\t%.4f\t%.4f\t%.4f\t%d") % (type,
-          topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
-          topkl_accuracy[3], auprc, threshold[0], threshold[1],
-          threshold[2], threshold[3], len(idx_true))))
+    if print_top_k:
+        print(f"\n\033[1m{type}:\033[0m")
+        print((("%s\t%.4f\t\033[91m%.4f\t\033[0m%.4f\t%.4f\t\033[94m%.4f\t\033[0m"
+            + "%.4f\t%.4f\t%.4f\t%.4f\t%d") % (type,
+            topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
+            topkl_accuracy[3], auprc, threshold[0], threshold[1],
+            threshold[2], threshold[3], len(idx_true))))
     
-
-    file_handle.write((("%s\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t"
+    with open(file, 'a') as f:
+        f.write((("%s\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t"
           + "%.4f\t%.4f\t%.4f\t%.4f\t%d\n") % (type,
           topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
           topkl_accuracy[3], auprc, threshold[0], threshold[1],
           threshold[2], threshold[3], len(idx_true))))
+
+    return topkl_accuracy[1], auprc
 

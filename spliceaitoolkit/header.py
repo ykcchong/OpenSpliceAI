@@ -1,0 +1,11 @@
+__author__ = "Kuan-Hao Chao"
+__contact__ = "kuanhao.chao@gmail.com"
+__copyright__ = "Copyright 2024, Kuan-Hao Chao, Alan Mao"
+__credits__ = ["Kuan-Hao Chao", "Alan Mao"]
+__date__ = "2024/02/18"
+__deprecated__ = False
+__email__ =  "kuanhao.chao@gmail.com"
+__license__ = "GPL-3.0"
+__maintainer__ = "developer"
+__status__ = "Kuan-Hao Chao"
+__version__ = "0.0.1"

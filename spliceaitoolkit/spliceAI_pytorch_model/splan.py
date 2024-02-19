@@ -15,8 +15,10 @@ class ResidualUnit(Module):
         self.conv2 = Conv1d(l, l, w, dilation=ar, padding=(w-1)*ar//2, groups=self.C)
 
     def forward(self, x, y):
-        x1 = self.relu(self.batchnorm1(self.conv1(x)))
-        x2 = self.relu(self.batchnorm2(self.conv2(x1)))
+        # x1 = self.relu(self.batchnorm1(self.conv1(x)))
+        # x2 = self.relu(self.batchnorm2(self.conv2(x1)))
+        x1 = self.conv1(self.relu(self.batchnorm1(x)))
+        x2 = self.conv1(self.relu(self.batchnorm1(x1)))
         return x + x2, y
 
 
@@ -53,7 +55,7 @@ class SPLAN(Module):
         if (len(W)+1) % 4 != 0:
             self.residual_blocks.append(Skip(L))
         # Determine cropping size based on context length calculation
-        self.crop = Cropping1D((self.flanking_size, self.flanking_size))  # Adjust this based on your specific needs
+        self.crop = Cropping1D((self.flanking_size//2, self.flanking_size//2))  # Adjust this based on your specific needs
         self.last_cov = Conv1d(L, 3, 1)
         self.softmax = Softmax(dim=1)
 
@@ -61,11 +63,51 @@ class SPLAN(Module):
         x, skip = self.skip1(self.conv1(x), 0)
         for m in self.residual_blocks:
             x, skip = m(x, skip)
-
+        # print("Shape of skip: ", skip.shape)
         x = self.crop(skip)  # Apply cropping here
+        # print("Shape after cropping: ", x.shape)
         #######################################
         # predicting pb for every bp
         #######################################
         x = self.last_cov(x)
         x = self.softmax(x)
         return x
+    
+    
+# def SpliceAI(L, W, AR):
+#     # L: Number of convolution kernels
+#     # W: Convolution window size in each residual unit
+#     # AR: Atrous rate in each residual unit
+
+#     assert len(W) == len(AR)
+
+#     CL = 2 * np.sum(AR*(W-1))
+
+#     input0 = Input(shape=(None, 4))
+#     conv = Conv1D(L, 1)(input0)
+#     skip = Conv1D(L, 1)(conv)
+
+#     for i in range(len(W)):
+#         conv = ResidualUnit(L, W[i], AR[i])(conv)
+        
+#         if (((i+1) % 4 == 0) or ((i+1) == len(W))):
+#             # Skip connections to the output after every 4 residual units
+#             dense = Conv1D(L, 1)(conv)
+#             skip = add([skip, dense])
+
+#     # skip = Cropping1D(CL/2)(skip)
+
+#     # Calculate cropping amount, ensuring it's an integer
+#     cropping_amount = int(np.round(CL / 2))
+#     # Use a tuple with the calculated amount for both the beginning and end
+#     skip = Cropping1D((cropping_amount, cropping_amount))(skip)
+
+#     output0 = [[] for t in range(1)]
+
+#     for t in range(1):
+#         output0[t] = Conv1D(3, 1, activation='softmax')(skip)
+    
+#     model = Model(inputs=input0, outputs=output0)
+
+#     return model
+
