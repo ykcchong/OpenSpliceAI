@@ -136,7 +136,7 @@ def print_motif_counts():
 
 
 def main():
-    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-MANE/"
+    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
     output_dir = f"{project_root}results/train_test_dataset_MANE/"
     os.makedirs(output_dir, exist_ok=True)
     for type in ['train', 'test']:
