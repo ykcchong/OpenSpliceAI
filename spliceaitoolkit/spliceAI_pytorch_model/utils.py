@@ -93,5 +93,4 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
           topkl_accuracy[3], auprc, threshold[0], threshold[1],
           threshold[2], threshold[3], len(idx_true))))
 
-    return topkl_accuracy[1], auprc
-
+    # return topkl_accuracy[1], auprc
