@@ -197,7 +197,7 @@ def model_fn(DNAs, labels, model, criterion):
     outs = outs.permute(0, 2, 1)
     # print("outs: ", outs.size())
     # print("labels: ", labels.size())
-    loss = categorical_crossentropy_2d(labels, outs, criterion)
+    loss = categorical_crossentropy_2d(labels, outs)
     # print("loss    : ", loss)
     # print("accuracy: ", accuracy)
     return loss, outs
@@ -214,7 +214,7 @@ def weighted_binary_cross_entropy(output, target, weights=None):
 
     return torch.neg(torch.mean(loss))
 
-def categorical_crossentropy_2d(y_true, y_pred, criterion):
+def categorical_crossentropy_2d(y_true, y_pred):
     # print("y_true: ", y_true)
     # print("y_pred: ", y_pred)
     
