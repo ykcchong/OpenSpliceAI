@@ -1,4 +1,5 @@
 data/
+wandb/
 results/
 paper/
 .DS_Store

@@ -184,8 +184,6 @@ def model_fn(DNAs, labels, model, criterion):
     outs = model(DNAs)
     # # outs = torch.flatten(outs)
     # print("outs: ", outs.size())
-    # # print("outs: ", outs.shape)
-    # print("labels: ", labels.size())
     # # print("DNAs: ", DNAs.size())
 
     # labels = labels.sum(axis=1)
@@ -194,12 +192,10 @@ def model_fn(DNAs, labels, model, criterion):
     # print("outs.reshape(-1, 3): ", outs.reshape(-1, 3).shape)
     # print("labels.argmax(dim=-1).view(-1): ", labels.argmax(dim=-1).view(-1))
     # loss = criterion(outs.reshape(-1, 3), labels.argmax(dim=-1).view(-1))
-    outs = outs.permute(0, 2, 1)
-    # print("outs: ", outs.size())
-    # print("labels: ", labels.size())
+    # outs = outs.permute(0, 2, 1)
+    # print("outs: ", outs.shape)
+    # print("labels: ", labels.shape)
     loss = categorical_crossentropy_2d(labels, outs)
-    # print("loss    : ", loss)
-    # print("accuracy: ", accuracy)
     return loss, outs
 
 
@@ -215,47 +211,11 @@ def weighted_binary_cross_entropy(output, target, weights=None):
     return torch.neg(torch.mean(loss))
 
 def categorical_crossentropy_2d(y_true, y_pred):
-    # print("y_true: ", y_true)
-    # print("y_pred: ", y_pred)
-    
-    ########################################
-    # splice / nonsplice classifier
-    ########################################
-    # # weights = torch.FloatTensor([1.0, 4.0]) 
-    # weights = torch.FloatTensor([1.0, 20.0]) 
-    # return weighted_binary_cross_entropy(y_pred, y_true, weights), get_accuracy(y_pred, y_true)
-    
-    ########################################
-    # splice / nonsplice classifier
-    ########################################
-    SEQ_WEIGHT = 20
-    # IMBALANCE_WEIGHT = 1
-    # WEIGHT = SEQ_WEIGHT * IMBALANCE_WEIGHT
-
-    # prod = output[:,0]*target
-    # return -prod[prod<0].sum()
-    # print("y_true: ", y_true)
-    # print("y_pred: ", y_pred)
-    # print("Loss: ", - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
-    #                     + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
-    #                     + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10)))
-    # print("y_true[:, 0, :]: ", y_true[:, 0, :])
-    # print("y_pred[:, 0, :]: ", y_pred[:, 0, :])
-    # print("y_true[:, 1, :]: ", y_true[:, 1, :])
-    # print("y_pred[:, 1, :]: ", y_pred[:, 1, :])
-    # print("y_true[:, 2, :]: ", y_true[:, 2, :])
-    # print("y_pred[:, 2, :]: ", y_pred[:, 2, :])
-
-    # # This is focal loss
-    # gamma = 2
-    # return - torch.mean(y_true[:, 0, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 0, :]), gamma ), torch.log(y_pred[:, 0, :]+1e-10) )
-    #                     + SEQ_WEIGHT * y_true[:, 1, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 1, :]), gamma ), torch.log(y_pred[:, 1, :]+1e-10) )
-    #                     + SEQ_WEIGHT * y_true[:, 2, :] * torch.mul( torch.pow( torch.sub(1, y_pred[:, 2, :]), gamma ), torch.log(y_pred[:, 2, :]+1e-10) ))
-
-    # This is cross entropy loss
-    return - torch.mean(y_true[:, :, 0]*torch.log(y_pred[:, :, 0]+1e-10)
-                        + y_true[:, :, 1]*torch.log(y_pred[:, :, 1]+1e-10)
-                        + y_true[:, :, 2]*torch.log(y_pred[:, :, 2]+1e-10))
+    # print("y_true: ", y_true.shape)
+    # print("y_pred: ", y_pred.shape)
+    return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
+                        + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
+                        + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))
 
 
 # def create_datapoints(seq, strand):
