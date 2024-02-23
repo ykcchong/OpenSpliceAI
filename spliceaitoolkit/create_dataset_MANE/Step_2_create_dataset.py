@@ -143,7 +143,7 @@ def main():
         print(("--- Processing %s ... ---" % type))
         start_time = time.time()
         input_file = output_dir + f'datafile_{type}.h5'
-        output_file = output_dir + f'dataset_{type}.h5'
+        output_file = output_dir + f'dataset_{type}_500.h5'
         print("\tReading datafile.h5 ... ")
         h5f = h5py.File(input_file, 'r')
         STRAND = h5f['STRAND'][:]
@@ -172,6 +172,8 @@ def main():
         # print_motif_counts()
         
         # Create dataset
+        COUNTER_LIMIT = 15
+        counter = 0
         for i in range(seq_num//CHUNK_SIZE):
             # Each dataset has CHUNK_SIZE genes
             if (i+1) == seq_num//CHUNK_SIZE:
@@ -200,7 +202,9 @@ def main():
             print("len(Y_batch[0]): ", len(Y_batch[0]))
             h5f2.create_dataset('X' + str(i), data=X_batch)
             h5f2.create_dataset('Y' + str(i), data=Y_batch)
-            break
+            counter += 1
+            if counter == COUNTER_LIMIT:
+                break
         h5f2.close()
         print("--- %s seconds ---" % (time.time() - start_time))
 

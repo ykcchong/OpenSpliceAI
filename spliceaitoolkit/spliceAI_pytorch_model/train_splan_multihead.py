@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader, SubsetRandomSampler, random_split
 from tqdm import tqdm
 import platform
-import spliceai
+import spliceai_multihead 
 from splan_utils import *
 from splan_constant import *
 from tqdm import tqdm
@@ -29,13 +29,8 @@ def setup_device():
 
 def initialize_paths(chunk_size, flanking_size, exp_num, target):
     """Initialize project directories and create them if they don't exist."""
-    ####################################
     # Modify the model verson here!!
-    ####################################
-    MODEL_VERSION = f"{target}_splan_{chunk_size}chunk_{flanking_size}flank_spliceai_architecture"
-    ####################################
-    # Modify the model verson here!!
-    ####################################
+    MODEL_VERSION = f"{target}_splan_{chunk_size}chunk_{flanking_size}flank_spliceai_multihead"
     project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
     data_dir = f"{project_root}results/{target}/"
     model_train_outdir = f"{project_root}results/model_train_outdir/{MODEL_VERSION}/{exp_num}/"
@@ -80,10 +75,11 @@ def initialize_model_and_optim(device, flanking_size):
         AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
                         10, 10, 10, 10, 25, 25, 25, 25])
         BATCH_SIZE = 6*N_GPUS
+    # BATCH_SIZE = 10
     CL = 2 * np.sum(AR*(W-1))
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
-    model = spliceai.SpliceAI(L, W, AR).to(device)
+    model = spliceai_multihead.SpliceAI(L, W, AR).to(device)
     # criterion = nn.BCELoss()
     # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
@@ -287,7 +283,7 @@ def main():
     # target = "train_test_dataset_SpliceAI27"
     target = "train_test_dataset_MANE"
     # target = f"train_test_dataset_{training_target}"
-    data_dir, model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(500, flanking_size, exp_num, target)
+    data_dir, model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(5000, flanking_size, exp_num, target)
     print("* data_dir: ", data_dir)
     print("* model_output_base: ", model_output_base)
     print("* log_output_train_base: ", log_output_train_base)
@@ -297,7 +293,9 @@ def main():
     # testing_dataset = f"{data_dir}dataset_test_0.h5"
     training_dataset = f"{data_dir}dataset_train_500.h5"
     testing_dataset = f"{data_dir}dataset_test_500.h5"
-    
+
+    print("* training_dataset: ", training_dataset)
+    print("* testing_dataset: ", testing_dataset)
     train_h5f = h5py.File(training_dataset, 'r')
     test_h5f = h5py.File(testing_dataset, 'r')
     batch_num = len(train_h5f.keys()) // 2
@@ -306,6 +304,8 @@ def main():
     idxs = np.random.permutation(batch_num)
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
+    print("train_idxs: ", train_idxs)
+    print("val_idxs: ", val_idxs)
 
     # train_h5f = h5py.File(training_dataset, 'r')
     # test_h5f = h5py.File(testing_dataset, 'r')

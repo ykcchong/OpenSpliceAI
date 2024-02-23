@@ -48,8 +48,6 @@ def clip_datapoints(X, Y, CL, N_GPUS):
 def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=False):
     # Prints the following information: top-kL statistics for k=0.5,1,2,4,
     # auprc, thresholds for k=0.5,1,2,4, number of true splice sites.
-    # print("Y_true: ", y_true)
-    # print("Y_pred: ", y_pred)
     idx_true = np.nonzero(y_true == 1)[0]
     # print(("idx_true: ", idx_true))
     argsorted_y_pred = np.argsort(y_pred)
@@ -80,17 +78,15 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
 
     if print_top_k:
         print(f"\n\033[1m{type}:\033[0m")
-        print((("%s\t%.4f\t\033[91m%.4f\t\033[0m%.4f\t%.4f\t\033[94m%.4f\t\033[0m"
-            + "%.4f\t%.4f\t%.4f\t%.4f\t%d") % (type,
-            topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
+        print((("%.4f\t\033[91m%.4f\t\033[0m%.4f\t%.4f\t\033[94m%.4f\t\033[0m"
+            + "%.4f\t%.4f\t%.4f\t%.4f\t%d") % (topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
             topkl_accuracy[3], auprc, threshold[0], threshold[1],
             threshold[2], threshold[3], len(idx_true))))
     
     with open(file, 'a') as f:
-        f.write((("%s\t%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t"
-          + "%.4f\t%.4f\t%.4f\t%.4f\t%d\n") % (type,
-          topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
+        f.write((("%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t"
+          + "%.4f\t%.4f\t%.4f\t%.4f\t%d\n") % (topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
           topkl_accuracy[3], auprc, threshold[0], threshold[1],
           threshold[2], threshold[3], len(idx_true))))
 
-    # return topkl_accuracy[1], auprc
+    return topkl_accuracy[1], auprc
