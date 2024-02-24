@@ -30,7 +30,7 @@ def setup_device():
 def initialize_paths(chunk_size, flanking_size, exp_num, target):
     """Initialize project directories and create them if they don't exist."""
     # Modify the model verson here!!
-    MODEL_VERSION = f"{target}_splan_{chunk_size}chunk_{flanking_size}flank_spliceai_multihead"
+    MODEL_VERSION = f"{target}_splan_{chunk_size}chunk_{flanking_size}flank_spliceai_multihead_positional_encoding"
     project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
     data_dir = f"{project_root}results/{target}/"
     model_train_outdir = f"{project_root}results/model_train_outdir/{MODEL_VERSION}/{exp_num}/"
