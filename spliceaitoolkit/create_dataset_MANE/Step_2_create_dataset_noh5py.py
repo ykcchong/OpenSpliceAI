@@ -2,11 +2,13 @@ import h5py
 import numpy as np
 import sys, os
 import time
+import argparse
 # from utils import *
 from math import ceil
 from constants import *
 import torch
 from torch.utils.data import Dataset, DataLoader
+
 
 # One-hot encoding of the inputs: 
 # 0 is for padding, 
@@ -186,12 +188,14 @@ class SpliceAIDataset(Dataset):
     
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--project-root', '-p', type=str)
+    args = parser.parse_args()
     # project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
-    project_root = "/home/kchao10/data_ssalzbe1/khchao/"
-    output_dir = f"{project_root}data/train_test_dataset_MANE/"
+    project_root = args.project_root
+    output_dir = f"{project_root}train_test_dataset_MANE/"
     os.makedirs(output_dir, exist_ok=True)
     for data_type in ['train', 'test']:
-
         # data_type = 'test'
         print(("--- Processing %s ... ---" % data_type))
         start_time = time.time()
