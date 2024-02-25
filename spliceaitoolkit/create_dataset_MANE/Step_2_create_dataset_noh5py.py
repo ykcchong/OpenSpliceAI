@@ -166,8 +166,8 @@ class SpliceAIDataset(Dataset):
             self.X_data.extend(X)
             self.Y_data.extend(Y[0])
             counter += 1
-            # if counter > 10:
-            #     break
+            if counter > 200:
+                break
         # self.X_data = torch.tensor((np.asarray(self.X_data)))#.asdata_type('int8')
         # self.Y_data = torch.tensor((np.asarray(self.Y_data)))#.asdata_type('int8')
         print("self.X_data.shape: ", len(self.X_data))
@@ -186,8 +186,9 @@ class SpliceAIDataset(Dataset):
     
 
 def main():
-    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
-    output_dir = f"{project_root}results/train_test_dataset_MANE/"
+    # project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
+    project_root = "/home/kchao10/data_ssalzbe1/khchao/"
+    output_dir = f"{project_root}data/train_test_dataset_MANE/"
     os.makedirs(output_dir, exist_ok=True)
     for data_type in ['train', 'test']:
 

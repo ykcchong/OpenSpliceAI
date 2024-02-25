@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
 import numpy as np
-import h5py
+# import h5py
 import sys
 import time
 
