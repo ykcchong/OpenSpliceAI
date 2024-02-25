@@ -1,4 +1,4 @@
-from torch.nn import Module, BatchNorm1d, LazyBatchNorm1d, ReLU, LeakyReLU, Conv1d, LazyConv1d, ModuleList, Softmax, Sigmoid, Flatten, Dropout2d, Linear
+from torch.nn import Module, BatchNorm1d, ReLU, LeakyReLU, Conv1d, ModuleList, Softmax, Sigmoid, Flatten, Dropout2d, Linear
 import numpy as np
 
 CARDINALITY_ITEM = 16
