@@ -14,7 +14,7 @@ from splan_constant import *
 # import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-# import wandb
+import wandb
 
 from torch.utils.data import Dataset
 from utils import clip_datapoints, print_topl_statistics
@@ -28,16 +28,15 @@ def setup_device():
     return torch.device(device_str)
 
 
-def initialize_paths(chunk_size, flanking_size, exp_num, training_target):
+def initialize_paths(project_root, project_name, chunk_size, flanking_size, exp_num, training_target, sequence_length):
     """Initialize project directories and create them if they don't exist."""
     ####################################
     # Modify the model verson here!!
     ####################################
-    MODEL_VERSION = f"{training_target}_splan_{chunk_size}chunk_{flanking_size}flank_spliceai_architecture"
+    MODEL_VERSION = f"{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}"
     ####################################
     # Modify the model verson here!!
     ####################################
-    project_root = "/home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/spliceaitoolkit/"
     model_train_outdir = f"{project_root}results/model_train_outdir/{MODEL_VERSION}/{exp_num}/"
     model_output_base = f"{model_train_outdir}models/"
     log_output_base = f"{model_train_outdir}LOG/"
@@ -181,13 +180,13 @@ def valid_epoch(model, dataloader, criterion, device, params, metric_files, run_
                     f.write(f"{acceptor_auprc}\n")
                 elif k == "auprc_donor":
                     f.write(f"{donor_auprc}\n")
-        # wandb.log({
-        #     f'{run_mode}/loss': loss.item(),
-        #     f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-        #     f'{run_mode}/topk_donor': donor_topkl_accuracy,
-        #     f'{run_mode}/auprc_acceptor': acceptor_auprc,
-        #     f'{run_mode}/auprc_donor': donor_auprc,
-        # })
+        wandb.log({
+            f'{run_mode}/loss': loss.item(),
+            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
+            f'{run_mode}/topk_donor': donor_topkl_accuracy,
+            f'{run_mode}/auprc_acceptor': acceptor_auprc,
+            f'{run_mode}/auprc_donor': donor_auprc,
+        })
         print("***************************************\n\n")
 
 
@@ -258,13 +257,13 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, device, para
                     f.write(f"{acceptor_auprc}\n")
                 elif k == "auprc_donor":
                     f.write(f"{donor_auprc}\n")
-        # wandb.log({
-        #     f'{run_mode}/loss': loss.item(),
-        #     f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-        #     f'{run_mode}/topk_donor': donor_topkl_accuracy,
-        #     f'{run_mode}/auprc_acceptor': acceptor_auprc,
-        #     f'{run_mode}/auprc_donor': donor_auprc,
-        # })
+        wandb.log({
+            f'{run_mode}/loss': loss.item(),
+            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
+            f'{run_mode}/topk_donor': donor_topkl_accuracy,
+            f'{run_mode}/auprc_acceptor': acceptor_auprc,
+            f'{run_mode}/auprc_donor': donor_auprc,
+        })
         print("***************************************\n\n")
 
 
@@ -273,6 +272,8 @@ def main():
     # os.environ['WANDB_MODE'] = 'disabled'
     parser = argparse.ArgumentParser()
     parser.add_argument('--disable-wandb', '-d', action='store_true', default=False)
+    parser.add_argument('--project-root', '-p', type=str)
+    parser.add_argument('--project-name', '-s', type=str)
     parser.add_argument('--flanking-size', '-f', type=int, default=80)
     parser.add_argument('--exp-num', '-e', type=str, default=0)
     parser.add_argument('--training-target', '-t', type=str, default="SpliceAI")
@@ -280,22 +281,24 @@ def main():
     parser.add_argument('--test-dataset', '-test', type=str)
     parser.add_argument('--dataset-name', '-dname', type=str)
     args = parser.parse_args()
-
     print("args: ", args, file=sys.stderr)
+    project_root = args.project_root
+    project_name = args.project_name
+    sequence_length = 5000
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
     training_target = args.training_target
     assert int(flanking_size) in [80, 400, 2000, 10000]
     assert training_target in ["MANE", "SpliceAI"]
-    # if args.disable_wandb:
-    #     os.environ['WANDB_MODE'] = 'disabled'
-    # wandb.init(project=f'{training_target}_5000_{flanking_size}_{exp_num}', reinit=True)
+    if args.disable_wandb:
+        os.environ['WANDB_MODE'] = 'disabled'
+    wandb.init(project=f'{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
     # target = "train_test_dataset_SpliceAI27"
     # target = "train_test_dataset_MANE"
     dataset_name = args.dataset_name
-    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(5000, flanking_size, exp_num, training_target)
+    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(project_root, project_name, sequence_length, flanking_size, exp_num, training_target, sequence_length)
     print("* model_output_base: ", model_output_base, file=sys.stderr)
     print("* log_output_train_base: ", log_output_train_base, file=sys.stderr)
     print("* log_output_val_base: ", log_output_val_base, file=sys.stderr)
