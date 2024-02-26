@@ -279,7 +279,6 @@ def main():
     parser.add_argument('--training-target', '-t', type=str, default="SpliceAI")
     parser.add_argument('--train-dataset', '-train', type=str)
     parser.add_argument('--test-dataset', '-test', type=str)
-    parser.add_argument('--dataset-name', '-dname', type=str)
     args = parser.parse_args()
     print("args: ", args, file=sys.stderr)
     project_root = args.project_root
@@ -297,7 +296,6 @@ def main():
     print("device: ", device, file=sys.stderr)
     # target = "train_test_dataset_SpliceAI27"
     # target = "train_test_dataset_MANE"
-    dataset_name = args.dataset_name
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(project_root, project_name, sequence_length, flanking_size, exp_num, training_target, sequence_length)
     print("* model_output_base: ", model_output_base, file=sys.stderr)
     print("* log_output_train_base: ", log_output_train_base, file=sys.stderr)
