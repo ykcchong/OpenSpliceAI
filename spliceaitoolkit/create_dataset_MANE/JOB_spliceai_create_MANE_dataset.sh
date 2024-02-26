@@ -21,10 +21,12 @@ ml
 
 conda activate /home/kchao10/miniconda3/envs/spliceai
 
-
 # Check if the Python interpreter picks up packages from both the system and the Conda environment
 which python
 python -c "import sys; print(sys.path)"
 
-
-python Step_2_create_dataset_noh5py.py 2> dataset_creation.log
+python Step_2_create_dataset_noh5py.py \
+--train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/datafile_train.h5 \
+--test-dataset  /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/datafile_test.h5 \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/ \
+> dataset_creation.log 2> dataset_creation_error.log

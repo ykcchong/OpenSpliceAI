@@ -5,6 +5,7 @@ from Bio.Seq import MutableSeq
 import numpy as np
 import h5py
 import time
+import argparse
 
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
@@ -142,27 +143,17 @@ def main():
     # 2. let user provide their genome fasta path
     # 3. let user provide their genome gff path
     # 4. let user provide the chromosome group for training and testing
-    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
-    fasta_file = f"{project_root}data/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.fna"
-    ###########################
-    # Mane annotation
-    ###########################
-    gff_file = f"{project_root}data/MANE/MANE.GRCh38.v1.3.refseq_genomic.gff"
-    # ###########################
-    # # RefSeq annotation
-    # ###########################
-    # gff_file = f"{project_root}data/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.gff"
-    output_dir = f"{project_root}results/train_test_dataset_MANE/"
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--genome-fasta', '-g', type=str)
+    parser.add_argument('--annotation-gff', '-a', type=str)
+    parser.add_argument('--output-dir', '-o', type=str)
+    args = parser.parse_args()
+    fasta_file = args.genome_fasta
+    gff_file = args.annotation_gff
+    output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
     db_file = f'{gff_file}_db'  # Replace with your database file path
     db = create_or_load_db(gff_file, db_file)
-    # TRAIN_CHROM_GROUP = {
-    #     'chr2': 0, 'chr4': 0, 'chr6': 0, 'chr8': 0, 
-    #     'chr10': 0, 'chr11': 0, 'chr12': 0, 'chr13': 0,
-    #     'chr14': 0, 'chr15': 0, 'chr16': 0, 'chr17': 0, 
-    #     'chr18': 0, 'chr19': 0, 'chr20': 0, 'chr21': 0, 
-    #     'chr22': 0, 'chrX': 0, 'chrY': 0
-    # }
     TRAIN_CHROM_GROUP = {
         'chr2': 0, 'chr4': 0, 'chr6': 0, 'chr8': 0, 
         'chr10': 0, 'chr11': 0, 'chr12': 0, 'chr13': 0,
@@ -173,7 +164,6 @@ def main():
     TEST_CHROM_GROUP = {
         'chr1': 0, 'chr3': 0, 'chr5': 0, 'chr7': 0, 'chr9': 0
     }
-
     print("--- Processing ... ---")
     start_time = time.time()
     get_sequences_and_labels(db, fasta_file, output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP)
