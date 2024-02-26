@@ -9,6 +9,7 @@ import h5py
 import os
 import keras.backend as kb
 import tensorflow as tf
+from spliceai_multihead import *
 from spliceai import *
 from utils import *
 from multi_gpu import *
@@ -25,9 +26,9 @@ parser.add_argument('--output', '-p', type=str)
 parser.add_argument('--project-name', '-s', type=str)
 parser.add_argument('--flanking-size', '-f', type=int, default=80)
 parser.add_argument('--exp-num', '-e', type=str, default=0)
-parser.add_argument('--training-target', '-t', type=str, default="SpliceAI")
 parser.add_argument('--train-dataset', '-train', type=str)
 parser.add_argument('--test-dataset', '-test', type=str)
+parser.add_argument('--model-type', '-m', type=str, default="SpliceAI")
 args = parser.parse_args()
 
 disable_wandb = args.disable_wandb
@@ -35,15 +36,16 @@ output = args.output
 project_name = args.project_name
 flanking_size = args.flanking_size
 exp_num = args.exp_num
-training_target = args.training_target
 train_dataset = args.train_dataset
 test_dataset = args.test_dataset
+model_type = args.model_type
 output_dir = f'{output}{project_name}/'
 os.makedirs(output_dir, exist_ok=True)
 
 if disable_wandb:
     os.environ['WANDB_MODE'] = 'disabled'
-wandb.init(project=f'{project_name}_{training_target}_{SL}_{flanking_size}_{exp_num}', reinit=True)
+wandb.init(project=f'{project_name}_{model_type}_{SL}_{flanking_size}_{exp_num}', reinit=True)
+
 ###############################################################################
 # End of getting parameters from the command line
 ###############################################################################
@@ -79,7 +81,11 @@ CL = 2 * np.sum(AR*(W-1))
 # assert CL <= CL_max and CL == int(flanking_size)
 print ("\033[1mContext nucleotides: %d\033[0m" % (CL))
 print ("\033[1mSequence length (output): %d\033[0m" % (SL))
-model = SpliceAI(L, W, AR)
+if model_type == "SpliceAI":
+    model = SpliceAI(L, W, AR)
+elif model_type == "SpliceAI_Multihead":
+    BATCH_SIZE = 4
+    model = SpliceAI_Multihead(L, W, AR)
 model.summary()
 # model = make_parallel(model, N_GPUS)
 model.compile(loss=categorical_crossentropy_2d, optimizer='adam')
@@ -88,9 +94,9 @@ print(f'output: {output}')
 print(f'project_name: {project_name}')
 print(f'flanking_size: {flanking_size}')
 print(f'exp_num: {exp_num}')
-print(f'training_target: {training_target}')
 print(f'train_dataset: {train_dataset}')
 print(f'test_dataset: {test_dataset}')
+print(f'model_type: {model_type}')
 ###############################################################################
 # Training and validation
 ###############################################################################
@@ -99,10 +105,10 @@ h5f = h5py.File(train_dataset, 'r')
 
 num_idx = len(h5f.keys())//2
 idx_all = np.random.permutation(num_idx)
-idx_train = idx_all[:int(0.3*num_idx)]
-idx_valid = idx_all[int(0.3*num_idx):int(0.4*num_idx)]
-# idx_train = idx_all[:int(0.2*num_idx)]
+# idx_train = idx_all[:int(0.3*num_idx)]
 # idx_valid = idx_all[int(0.3*num_idx):int(0.4*num_idx)]
+idx_train = idx_all[:int(0.02*num_idx)]
+idx_valid = idx_all[int(0.02*num_idx):int(0.03*num_idx)]
 print(f'idx_all: {idx_all}')
 print(f'idx_train: {idx_train}')
 print(f'idx_valid: {idx_valid}')
@@ -221,7 +227,7 @@ for epoch_num in range(EPOCH_NUM):
         start_time = time.time()
         print ("--------------------------------------------------------------")
         model.save(f'{output_dir}Models/SpliceAI_' + str(flanking_size)
-                   + '_g' + str(exp_num) + '_' + epoch_num +'.h5')
+                   + '_g' + str(exp_num) + '_' + str(epoch_num) +'.h5')
         if (epoch_num+1) >= 6*len(idx_train):
             kb.set_value(model.optimizer.lr,
                          0.5*kb.get_value(model.optimizer.lr))

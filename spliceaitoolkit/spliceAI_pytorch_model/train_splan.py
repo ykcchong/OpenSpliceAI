@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader, SubsetRandomSampler, random_split
+from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
 import spliceai
@@ -15,8 +15,6 @@ import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 import wandb
-
-from torch.utils.data import Dataset
 from utils import clip_datapoints, print_topl_statistics
 
 RANDOM_SEED = 42
@@ -82,6 +80,7 @@ def initialize_model_and_optim(device, flanking_size):
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     model = spliceai.SpliceAI(L, W, AR).to(device)
+    print(model, file=sys.stderr)
     # criterion = nn.BCELoss()
     # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
@@ -131,7 +130,6 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
         print(f"Shard {i}/{len(shuffled_idxs)}")
         loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
         pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
-
         for batch in pbar:
             DNAs, labels = batch[0].to(device), batch[1].to(device)
             # print("\n\tDNAs.shape: ", DNAs.shape)
@@ -273,7 +271,6 @@ def main():
     parser.add_argument('--training-target', '-t', type=str, default="SpliceAI")
     parser.add_argument('--train-dataset', '-train', type=str)
     parser.add_argument('--test-dataset', '-test', type=str)
-    parser.add_argument('--dataset-name', '-dname', type=str)
     args = parser.parse_args()
     print("args: ", args, file=sys.stderr)
     project_root = args.project_root
@@ -289,9 +286,6 @@ def main():
     wandb.init(project=f'{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
-    # target = "train_test_dataset_SpliceAI27"
-    # target = "train_test_dataset_MANE"
-    dataset_name = args.dataset_name
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(project_root, project_name, sequence_length, flanking_size, exp_num, training_target, sequence_length)
     print("* model_output_base: ", model_output_base, file=sys.stderr)
     print("* log_output_train_base: ", log_output_train_base, file=sys.stderr)
@@ -310,7 +304,12 @@ def main():
     idxs = np.random.permutation(batch_num)
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
+    # train_idxs = idxs[:int(0.3*batch_num)]
+    # val_idxs = idxs[int(0.3*batch_num):int(0.4*batch_num)]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    print("train_idxs: ", train_idxs, file=sys.stderr)
+    print("val_idxs: ", val_idxs, file=sys.stderr)
+    print("test_idxs: ", test_idxs, file=sys.stderr)
     model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size)
     train_metric_files = {
         'topk_donor': f'{log_output_train_base}/donor_topk.txt',
