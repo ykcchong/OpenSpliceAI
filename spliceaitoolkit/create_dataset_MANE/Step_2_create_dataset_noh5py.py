@@ -94,53 +94,6 @@ def one_hot_encode(Xd, Yd):
     return IN_MAP[Xd.astype('int8')], \
            [OUT_MAP[Yd[t].astype('int8')] for t in range(1)]
 
-    # return IN_MAP[Xd.asdata_type('int8')], \
-    #        [OUT_MAP[Yd[t].asdata_type('int8')] for t in range(1)]
-
-donor_motif_counts = {}  # Initialize counts
-acceptor_motif_counts = {}  # Initialize counts
-
-def check_and_count_motifs(seq, labels, strand):
-    """
-    Check sequences for donor and acceptor motifs based on labels and strand,
-    and return their counts in a dictionary.
-    """    
-    global donor_motif_counts, acceptor_motif_counts
-    for i, label in enumerate(labels):
-        if label in [1, 2]:  # Check only labeled positions
-            if strand == '+':  # For forward strand
-                motif = str(seq[i:i+2]) if i > 0 else ""  # Extract preceding 2-base motif
-                if label == 2:
-                    if motif not in donor_motif_counts:
-                        donor_motif_counts[motif] = 0
-                    donor_motif_counts[motif] += 1
-                elif label == 1:
-                    if motif not in acceptor_motif_counts:
-                        acceptor_motif_counts[motif] = 0
-                    acceptor_motif_counts[motif] += 1
-            elif strand == '-':  # For reverse strand, after adjustment
-                motif = str(seq[i:i+2]) if i < len(seq) - 1 else ""  # Extract following 2-base motif
-                if label == 2:
-                    if motif not in donor_motif_counts:
-                        donor_motif_counts[motif] = 0
-                    donor_motif_counts[motif] += 1    
-                elif label == 1:
-                    if motif not in acceptor_motif_counts:
-                        acceptor_motif_counts[motif] = 0
-                    acceptor_motif_counts[motif] += 1
-                    
-
-def print_motif_counts():
-    global donor_motif_counts, acceptor_motif_counts
-    print("Donor motifs:")
-    for motif, count in donor_motif_counts.items():
-        print(f"{motif}: {count}")
-    print("\nAcceptor motifs:")
-    for motif, count in acceptor_motif_counts.items():
-        print(f"{motif}: {count}")
-    print("\nTotal donor motifs: ", sum(donor_motif_counts.values()))
-    print("Total acceptor motifs: ", sum(acceptor_motif_counts.values()))
-
 
 class SpliceAIDataset(Dataset):
     def __init__(self, h5_file):
@@ -155,25 +108,25 @@ class SpliceAIDataset(Dataset):
         # Assuming create_datapoints and replace_non_acgt_to_n are defined elsewhere
         self.X_data = []
         self.Y_data = []
-        counter = 0
-        print("len(self.SEQ): ", len(self.SEQ))
+        # counter = 0
+        print("len(self.SEQ): ", len(self.SEQ), file=sys.stderr)
         for idx in range(len(self.SEQ)):
             seq_decode = self.SEQ[idx].decode('ascii')
             strand_decode = self.STRAND[idx].decode('ascii')
             label_decode = self.LABEL[idx].decode('ascii')
             fixed_seq = replace_non_acgt_to_n(seq_decode)
             X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)
-            print("X_tensor.shape: ", X.shape)
-            print("Y_tensor.shape: ", Y[0].shape)
+            print("X_tensor.shape: ", X.shape, file=sys.stderr)
+            print("Y_tensor.shape: ", Y[0].shape, file=sys.stderr)
             self.X_data.extend(X)
             self.Y_data.extend(Y[0])
-            counter += 1
-            if counter > 200:
-                break
+            # counter += 1
+            # if counter > 200:
+            #     break
         # self.X_data = torch.tensor((np.asarray(self.X_data)))#.asdata_type('int8')
         # self.Y_data = torch.tensor((np.asarray(self.Y_data)))#.asdata_type('int8')
-        print("self.X_data.shape: ", len(self.X_data))
-        print("self.Y_data.shape: ", len(self.Y_data))
+        print("\tself.X_data.shape: ", len(self.X_data), file=sys.stderr)
+        print("\tself.Y_data.shape: ", len(self.Y_data), file=sys.stderr)
         # # print("X_data: ", self.X_data)
         # # print("Y_data: ", self.Y_data)
         
@@ -189,29 +142,31 @@ class SpliceAIDataset(Dataset):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--project-root', '-p', type=str)
+    # parser.add_argument('--training-target', '-t', type=str, default="MANE")
+    parser.add_argument('--train-dataset', '-train', type=str)
+    parser.add_argument('--test-dataset', '-test', type=str)
+    parser.add_argument('--output-dir', '-o', type=str)
     args = parser.parse_args()
-    # project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
-    project_root = args.project_root
-    output_dir = f"{project_root}train_test_dataset_MANE/"
+    train_dataset = args.train_dataset
+    test_dataset = args.test_dataset
+    output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
     for data_type in ['train', 'test']:
-        # data_type = 'test'
         print(("--- Processing %s ... ---" % data_type))
         start_time = time.time()
-        input_file = output_dir + f'datafile_{data_type}.h5'
-        # output_file = output_dir + f'dataset_{data_type}_500.h5'
+        if data_type == 'train':
+            input_file = train_dataset
+        elif data_type == 'test':
+            input_file = test_dataset
         print("\tReading datafile.h5 ... ")
-
         dataset = SpliceAIDataset(input_file)
         # Save dataset
-        torch.save(dataset, f'{output_dir}dataset_{data_type}_pytorch.pth')
-
+        torch.save(dataset, f'{output_dir}dataset_full_{data_type}_pytorch.pth')
         dataloader = DataLoader(dataset, batch_size=100, shuffle=True)
         print("dataloader: ", dataloader)
         for X_batch, Y_batch in dataloader:
-            print("Batch X shape:", X_batch.shape)
-            print("Batch Y shape:", Y_batch.shape)
+            print("Batch X shape:", X_batch.shape, file=sys.stderr)
+            print("Batch Y shape:", Y_batch.shape, file=sys.stderr)
         print("--- %s seconds ---" % (time.time() - start_time))
 
 

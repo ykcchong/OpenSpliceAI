@@ -10,11 +10,9 @@ import platform
 import spliceai
 from splan_utils import *
 from splan_constant import *
-# from tqdm import tqdm
-# import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-import wandb
+# import wandb
 
 from torch.utils.data import Dataset
 from utils import clip_datapoints, print_topl_statistics
@@ -105,19 +103,6 @@ def threshold_predictions(y_probs, threshold=0.5):
     return (y_probs > threshold).astype(int)
 
 
-def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
-    X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
-    Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
-    # print("\n\tX.shape: ", X.shape)
-    # print("\tY.shape: ", Y.shape)
-    X = torch.tensor(X, dtype=torch.float32)
-    Y = torch.tensor(Y, dtype=torch.float32)
-    ds = TensorDataset(X, Y)
-    # print("\rds: ", ds)
-    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
-    # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
-
-
 def valid_epoch(model, dataloader, criterion, device, params, metric_files, run_mode):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
@@ -126,8 +111,6 @@ def valid_epoch(model, dataloader, criterion, device, params, metric_files, run_
     batch_ylabel = []
     batch_ypred = []
     print_dict = {}
-    # print("dataloader: ", dataloader, file=sys.stderr)
-    counter = 0
     for X_batch, Y_batch in dataloader:
         # print("\tBatch X shape:", X_batch.shape, file=sys.stderr)
         # print("\tBatch Y shape:", Y_batch.shape, file=sys.stderr)
@@ -146,13 +129,10 @@ def valid_epoch(model, dataloader, criterion, device, params, metric_files, run_
         loss = categorical_crossentropy_2d(labels, yp)
         # loss = criterion(labels, yp)  # Permuting to [batch_size, sequence_length, num_classes]
         running_loss += loss.item()
-        # print("loss: ", loss.item())
+        print("loss: ", loss.item())
         batch_ylabel.append(labels.detach().cpu())
         batch_ypred.append(yp.detach().cpu())
         print_dict["loss"] = loss.item()
-        # counter += 1
-        # if counter > 2:
-        #     break
     batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
@@ -171,7 +151,7 @@ def valid_epoch(model, dataloader, criterion, device, params, metric_files, run_
         for k, v in metric_files.items():
             with open(v, 'a') as f:
                 if k == "loss":
-                    f.write(f"{running_loss}\n")
+                    f.write(f"{running_loss / len(dataloader)}\n")
                 elif k == "topk_acceptor":
                     f.write(f"{acceptor_topkl_accuracy}\n")
                 elif k == "topk_donor":
@@ -180,13 +160,13 @@ def valid_epoch(model, dataloader, criterion, device, params, metric_files, run_
                     f.write(f"{acceptor_auprc}\n")
                 elif k == "auprc_donor":
                     f.write(f"{donor_auprc}\n")
-        wandb.log({
-            f'{run_mode}/loss': loss.item(),
-            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-            f'{run_mode}/topk_donor': donor_topkl_accuracy,
-            f'{run_mode}/auprc_acceptor': acceptor_auprc,
-            f'{run_mode}/auprc_donor': donor_auprc,
-        })
+        # wandb.log({
+        #     f'{run_mode}/loss': running_loss / len(dataloader),
+        #     f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
+        #     f'{run_mode}/topk_donor': donor_topkl_accuracy,
+        #     f'{run_mode}/auprc_acceptor': acceptor_auprc,
+        #     f'{run_mode}/auprc_donor': donor_auprc,
+        # })
         print("***************************************\n\n")
 
 
@@ -198,8 +178,6 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, device, para
     batch_ylabel = []
     batch_ypred = []
     print_dict = {}
-
-    # print("dataloader: ", dataloader, file=sys.stderr)
     counter = 0
     for X_batch, Y_batch in dataloader:
         # print("\tBatch X shape:", X_batch.shape, file=sys.stderr)
@@ -225,10 +203,6 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, device, para
         batch_ylabel.append(labels.detach().cpu())
         batch_ypred.append(yp.detach().cpu())
         print_dict["loss"] = loss.item()
-        # counter += 1
-        # if counter > 2:
-        #     break
-
     batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
@@ -248,7 +222,7 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, device, para
         for k, v in metric_files.items():
             with open(v, 'a') as f:
                 if k == "loss":
-                    f.write(f"{running_loss}\n")
+                    f.write(f"{running_loss/len(dataloader)}\n")
                 elif k == "topk_acceptor":
                     f.write(f"{acceptor_topkl_accuracy}\n")
                 elif k == "topk_donor":
@@ -257,13 +231,13 @@ def train_epoch(model, dataloader, criterion, optimizer, scheduler, device, para
                     f.write(f"{acceptor_auprc}\n")
                 elif k == "auprc_donor":
                     f.write(f"{donor_auprc}\n")
-        wandb.log({
-            f'{run_mode}/loss': loss.item(),
-            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-            f'{run_mode}/topk_donor': donor_topkl_accuracy,
-            f'{run_mode}/auprc_acceptor': acceptor_auprc,
-            f'{run_mode}/auprc_donor': donor_auprc,
-        })
+        # wandb.log({
+        #     f'{run_mode}/loss': running_loss/len(dataloader),
+        #     f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
+        #     f'{run_mode}/topk_donor': donor_topkl_accuracy,
+        #     f'{run_mode}/auprc_acceptor': acceptor_auprc,
+        #     f'{run_mode}/auprc_donor': donor_auprc,
+        # })
         print("***************************************\n\n")
 
 
@@ -279,6 +253,7 @@ def main():
     parser.add_argument('--training-target', '-t', type=str, default="SpliceAI")
     parser.add_argument('--train-dataset', '-train', type=str)
     parser.add_argument('--test-dataset', '-test', type=str)
+    parser.add_argument('--dataset-shuffle', '-shuffle', action='store_true', default=False)
     args = parser.parse_args()
     print("args: ", args, file=sys.stderr)
     project_root = args.project_root
@@ -289,13 +264,11 @@ def main():
     training_target = args.training_target
     assert int(flanking_size) in [80, 400, 2000, 10000]
     assert training_target in ["MANE", "SpliceAI"]
-    if args.disable_wandb:
-        os.environ['WANDB_MODE'] = 'disabled'
-    wandb.init(project=f'{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
+    # if args.disable_wandb:
+    #     os.environ['WANDB_MODE'] = 'disabled'
+    # wandb.init(project=f'{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
-    # target = "train_test_dataset_SpliceAI27"
-    # target = "train_test_dataset_MANE"
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(project_root, project_name, sequence_length, flanking_size, exp_num, training_target, sequence_length)
     print("* model_output_base: ", model_output_base, file=sys.stderr)
     print("* log_output_train_base: ", log_output_train_base, file=sys.stderr)
@@ -309,8 +282,17 @@ def main():
     # Load training and testing dataset
     ##########################################
     train_loaded_dataset = torch.load(training_dataset)
-    test_loaded_dataset = torch.load(testing_dataset)
-    
+    # Assuming train_loaded_dataset is your dataset object
+    total_train_samples = len(train_loaded_dataset)
+    train_size = int(0.9 * total_train_samples)
+    val_size = total_train_samples - train_size
+    # Splitting the training dataset
+    train_dataset, val_dataset = random_split(train_loaded_dataset, [train_size, val_size])
+    test_dataset = torch.load(testing_dataset)
+    print("train_dataset: ", len(train_dataset))
+    print("val_dataset: ", len(val_dataset))
+    print("test_dataset: ", len(test_dataset))
+
     ##########################################
     # Model initialization
     ##########################################
@@ -337,8 +319,9 @@ def main():
         'loss': f'{log_output_test_base}/loss.txt'
     }
 
-    train_dataloader = DataLoader(train_loaded_dataset, batch_size=params['BATCH_SIZE'], shuffle=False)
-    test_dataloader = DataLoader(test_loaded_dataset, batch_size=params['BATCH_SIZE'], shuffle=False)
+    train_dataloader = DataLoader(train_dataset, batch_size=params['BATCH_SIZE'], shuffle=args.dataset_shuffle)
+    val_dataloader = DataLoader(val_dataset, batch_size=params['BATCH_SIZE'], shuffle=args.dataset_shuffle)
+    test_dataloader = DataLoader(test_dataset, batch_size=params['BATCH_SIZE'], shuffle=args.dataset_shuffle)
 
     print("train_dataloader: ", len(train_dataloader))
     print("test_dataloader: ", len(test_dataloader))
@@ -348,7 +331,7 @@ def main():
         print(f">> Epoch {epoch + 1}")
         start_time = time.time()
         train_epoch(model, train_dataloader, criterion, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
-        valid_epoch(model, train_dataloader, criterion, device, params, valid_metric_files, run_mode="validation")
+        valid_epoch(model, val_dataloader, criterion, device, params, valid_metric_files, run_mode="validation")
         valid_epoch(model, test_dataloader, criterion, device, params, test_metric_files, run_mode="test")
         torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         print("--- %s seconds ---" % (time.time() - start_time))
