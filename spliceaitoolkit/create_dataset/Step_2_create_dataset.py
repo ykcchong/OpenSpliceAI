@@ -5,6 +5,7 @@ import time
 # from utils import *
 from math import ceil
 from constants import *
+import argparse
 
 # One-hot encoding of the inputs: 
 # 0 is for padding, 
@@ -136,14 +137,22 @@ def print_motif_counts():
 
 
 def main():
-    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
-    output_dir = f"{project_root}results/train_test_dataset_MANE/"
+    parser = argparse.ArgumentParser()
+    # parser.add_argument('--training-target', '-t', type=str, default="MANE")
+    parser.add_argument('--train-dataset', '-train', type=str)
+    parser.add_argument('--test-dataset', '-test', type=str)
+    parser.add_argument('--output-dir', '-o', type=str)
+    args = parser.parse_args()
+    output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=True)
     for type in ['train', 'test']:
         print(("--- Processing %s ... ---" % type))
         start_time = time.time()
-        input_file = output_dir + f'datafile_{type}.h5'
-        output_file = output_dir + f'dataset_{type}_500.h5'
+        if type == 'train':
+            input_file = args.train_dataset
+        elif type == 'test':
+            input_file = args.test_dataset
+        output_file = f"{os.path.dirname(input_file)}/dataset_{type}.h5"
         print("\tReading datafile.h5 ... ")
         h5f = h5py.File(input_file, 'r')
         STRAND = h5f['STRAND'][:]
@@ -172,8 +181,6 @@ def main():
         # print_motif_counts()
         
         # Create dataset
-        COUNTER_LIMIT = 15
-        counter = 0
         for i in range(seq_num//CHUNK_SIZE):
             # Each dataset has CHUNK_SIZE genes
             if (i+1) == seq_num//CHUNK_SIZE:
@@ -202,9 +209,6 @@ def main():
             print("len(Y_batch[0]): ", len(Y_batch[0]))
             h5f2.create_dataset('X' + str(i), data=X_batch)
             h5f2.create_dataset('Y' + str(i), data=Y_batch)
-            counter += 1
-            if counter == COUNTER_LIMIT:
-                break
         h5f2.close()
         print("--- %s seconds ---" % (time.time() - start_time))
 
