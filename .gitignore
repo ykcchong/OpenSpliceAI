@@ -19,6 +19,7 @@ spliceaitoolkit/spliceAI_pytorch_model/spliceai/
 __pycache__/
 *.py[cod]
 *$py.class
+spliceai_goals.pdf
 
 # C extensions
 *.so
