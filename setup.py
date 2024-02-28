@@ -6,7 +6,7 @@ long_description = (this_directory / "./README.md").read_text()
 setuptools.setup(
 	name="spliceai-toolkit",
 	version="0.0.1",
-	author="Kuan-Hao Chao, Alan Mao",
+	author="Kuan-Hao Chao",
 	author_email="kh.chao@cs.jhu.edu",
 	description="A splice site preditction toolkit",
 	url="https://github.com/Kuanhao-Chao/spliceAI-toolkit",

@@ -9,6 +9,7 @@ from tqdm import tqdm
 import platform
 import spliceai
 import DNATransformerConformer
+import DNALocalTransformer
 from splan_utils import *
 from splan_constant import *
 from tqdm import tqdm
@@ -94,6 +95,17 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
         dropout = 0.1 # dropout rate
         kernel_size = 33  # Kernel size for the convolutional layers in the Conformer blocks
         model = DNATransformerConformer.DNATransformerConformer(ninp=ninp, nhead=nhead, nhid=nhid, nconformers=nconformers, dropout=dropout, kernel_size=kernel_size).to(device)
+    elif model_arch == "DNALocalTransformer":
+        # Model parameters setup
+        BATCH_SIZE = 8
+        CL = 0
+        embed_size = 512
+        num_layers = 2
+        heads = 8
+        forward_expansion = 4
+        dropout = 0.1
+        # Example model instantiation
+        model = DNALocalTransformer.DNALocalTransformer(embed_size, num_layers, heads, device, forward_expansion, dropout).to(device)
     print(model, file=sys.stderr)
     # criterion = nn.BCELoss()
     # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
@@ -228,6 +240,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             optimizer.zero_grad()
             yp = model(DNAs)
             loss = categorical_crossentropy_2d(labels, yp)
+            # print("loss: ", loss.item())
             # loss = criterion(labels, yp)  # Permuting to [batch_size, sequence_length, num_classes]
             loss.backward()
             optimizer.step()
@@ -327,8 +340,8 @@ def main():
     # train_idxs = idxs[:int(0.9 * batch_num)]
     # val_idxs = idxs[int(0.9 * batch_num):]
     # test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    train_idxs = idxs[:int(0.5*batch_num)]
-    val_idxs = idxs[int(0.5*batch_num):int(0.6*batch_num)]
+    train_idxs = idxs[:int(0.1*batch_num)]
+    val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
     test_idxs = np.arange(len(test_h5f.keys()) // 10)
     print("train_idxs: ", train_idxs, file=sys.stderr)
     print("val_idxs: ", val_idxs, file=sys.stderr)
