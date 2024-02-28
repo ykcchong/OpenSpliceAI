@@ -80,6 +80,7 @@ class DNATransformerConformer(nn.Module):
             src = conformer(src)
         output = self.decoder(src)
         output = output.permute(0, 2, 1)  # Adjust shape to (batch_size, nucleotide_types, sequence_length)
+        output = F.softmax(output, dim=1)
         return output
 
 

@@ -213,6 +213,8 @@ def weighted_binary_cross_entropy(output, target, weights=None):
 def categorical_crossentropy_2d(y_true, y_pred):
     # print("y_true: ", y_true.shape)
     # print("y_pred: ", y_pred.shape)
+    # print("y_true: ", y_true)
+    # print("y_pred: ", y_pred)
     return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
                         + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
                         + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))

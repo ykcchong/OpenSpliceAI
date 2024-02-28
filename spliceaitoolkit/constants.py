@@ -6,11 +6,9 @@ CL_max=10000
 SL=5000
 # Sequence length of SpliceAIs (SL+CL will be the input length and
 # SL will be the output length)
+#############################
+# Global variable definition
+############################## 
+EPOCH_NUM = 10
 
-splice_table='canonical_dataset.txt'
-ref_genome='/Users/chaokuan-hao/Documents/Projects/ref_genome/homo_sapiens/hg19/hg19.fa'
-# Input details
 
-data_dir='./'
-sequence='canonical_sequence.txt'
-# Output details
