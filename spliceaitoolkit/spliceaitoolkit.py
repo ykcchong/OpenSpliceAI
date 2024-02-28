@@ -33,7 +33,7 @@ def parse_args(arglist):
     parser = argparse.ArgumentParser(description='SpliceAI toolkit to retrain your own splice site predictor')
 
     # Create a parent subparser to house the common subcommands.
-    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create_data, train, eval, predict')
+    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict')
     
     # Create subparsers for each of the subcommands.
     parser_create_data = subparsers.add_parser('create-data', help='Create dataset for your genome for SpliceAI model training')
@@ -52,17 +52,20 @@ def parse_args(arglist):
     parser_train.add_argument('--training-target', '-t', type=str, default="SpliceAI")
     parser_train.add_argument('--train-dataset', '-train', type=str)
     parser_train.add_argument('--test-dataset', '-test', type=str)
+    parser_train.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_train.add_argument('--model', '-m', default="SpliceAI", type=str)
-    args = parser_train.parse_args()
-
 
     parser_eval = subparsers.add_parser('eval', help='Evaluate the SpliceAI model')
     parser_predict = subparsers.add_parser('predict', help='Predict using the SpliceAI model')
 
-    ###################################
-    # END for the LiftOn params
-    ###################################
-    args = parser.parse_args(arglist)
+    # ###################################
+    # # END for the LiftOn params
+    # ###################################
+    # Parse the arguments using the main parser object
+    if arglist is not None:
+        args = parser.parse_args(arglist)
+    else:
+        args = parser.parse_args()
     return args
 
 def main(arglist=None):
@@ -83,6 +86,7 @@ Deep learning framework to train your own SpliceAI model
     print(banner, file=sys.stderr)
     print(f"{__VERSION__}\n", file=sys.stderr)
     args = parse_args(arglist)
+    print(args)
 
     if args.command == 'create-data':
         os.makedirs(args.output_dir, exist_ok=True)
@@ -165,7 +169,7 @@ Deep learning framework to train your own SpliceAI model
         print("--- %s seconds ---" % (time.time() - start_time))
 
     elif args.command == 'train':
-        train.train_epoch(args)
+        train.train(args)
     
     # elif args.command == 'eval':
     #     pass

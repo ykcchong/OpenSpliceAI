@@ -1,4 +1,35 @@
+########################################
+# Creating zebra_fish dataset
+########################################
 spliceai-toolkit create-data \
---genome-fasta  /Users/chaokuan-hao/Documents/Projects/ref_genome/homo_sapiens/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.fna \
---annotation-gff /Users/chaokuan-hao/Documents/Projects/ref_genome/homo_sapiens/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.gff \
---output-dir ./tmp/
+--genome-fasta /Users/chaokuan-hao/Documents/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.fna \
+--annotation-gff /Users/chaokuan-hao/Documents/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.gff \
+--output-dir ./zebra_fish/ \
+--parse-type maximum
+
+# ########################################
+# # Creating bee dataset
+# ########################################
+# spliceai-toolkit create-data \
+# --genome-fasta /Users/chaokuan-hao/Documents/ref_genome/bee/HAv3.1_genomic.fna \
+# --annotation-gff /Users/chaokuan-hao/Documents/ref_genome/bee/HAv3.1_genomic.gff \
+# --output-dir ./bee/ \
+# --parse-type maximum
+
+# ########################################
+# # Creating arabadopsis dataset
+# ########################################
+# spliceai-toolkit create-data \
+# --genome-fasta  /Users/chaokuan-hao/Documents/ref_genome/arabadop/TAIR10.fna \
+# --annotation-gff /Users/chaokuan-hao/Documents/ref_genome/arabadop/TAIR10.gff \
+# --output-dir ./arabadop/ \
+# --parse-type maximum
+
+# ########################################
+# # Creating RefSeq dataset
+# ########################################
+# spliceai-toolkit create-data \
+# --genome-fasta  /Users/chaokuan-hao/Documents/Projects/ref_genome/homo_sapiens/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.fna \
+# --annotation-gff /Users/chaokuan-hao/Documents/Projects/ref_genome/homo_sapiens/NCBI_Refseq_chr_fixed/GCF_000001405.40_GRCh38.p14_genomic.gff \
+# --output-dir ./RefSeq/ \ 
+# --parse-type maximum
