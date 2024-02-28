@@ -4,7 +4,7 @@ import sys, os
 import time
 # from utils import *
 from math import ceil
-from ..constants import *
+from spliceaitoolkit.constants import *
 import argparse
 
 # One-hot encoding of the inputs: 
