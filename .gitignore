@@ -12,6 +12,7 @@ spliceaitoolkit/spliceAI_pytorch_model/JOB_spliceai_train_dataloader_version.sh
 __pycache__/
 *.py[cod]
 *$py.class
+spliceai_goals.pdf
 
 # C extensions
 *.so
