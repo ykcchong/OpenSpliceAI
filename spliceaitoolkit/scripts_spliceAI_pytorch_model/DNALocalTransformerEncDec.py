@@ -74,12 +74,8 @@ class DNALocalTransformer(nn.Module):
             window += pos_embeddings
             # Process the window with the transformer encoder
             encoded_window = self.transformer_encoder(window.permute(1, 0, 2))  # Shape: [window_size, batch_size, embed_size]
-            encoded_window = encoded_window.permute(1, 0, 2)  # Back to [batch_size, window_size, embed_size]
-
-            # decoded_window = self.transformer_decoder(encoded_window, encoded_window)  # Self-attention
-            # decoded_window = decoded_window.permute(1, 0, 2)  # Back to [batch_size, window_size, embed_size]
-            # # Apply the output layer
-            # window_output = self.output_layer(decoded_window)  # Shape: [batch_size, window_size, 3]
+            decoded_window = self.transformer_decoder(encoded_window, encoded_window)  # Self-attention
+            decoded_window = decoded_window.permute(1, 0, 2)  # Back to [batch_size, window_size, embed_size]
 
             # Apply the output layer
             window_output = self.output_layer(encoded_window)  # Shape: [batch_size, window_size, 3]

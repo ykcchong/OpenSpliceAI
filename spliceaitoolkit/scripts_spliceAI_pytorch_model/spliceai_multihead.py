@@ -32,15 +32,18 @@ class ResidualUnit(nn.Module):
     def __init__(self, l, w, ar):
         super().__init__()
         self.batchnorm1 = nn.BatchNorm1d(l)
-        self.relu = nn.LeakyReLU(0.1)
+        self.batchnorm2 = nn.BatchNorm1d(l)
+        self.relu1 = nn.LeakyReLU(0.1)
+        self.relu2 = nn.LeakyReLU(0.1)
         self.conv1 = nn.Conv1d(l, l, w, dilation=ar, padding=(w-1)*ar//2)
         self.conv2 = nn.Conv1d(l, l, w, dilation=ar, padding=(w-1)*ar//2)
 
     def forward(self, x):
         residual = x
-        out = self.relu(self.batchnorm1(self.conv1(x)))
-        out = self.conv2(self.relu(self.batchnorm1(out)))
+        out = self.conv1(self.relu1(self.batchnorm1(x)))
+        out = self.conv2(self.relu2(self.batchnorm2(out)))
         return residual + out
+
 
 class Cropping1D(nn.Module):
     def __init__(self, cropping):
@@ -49,6 +52,73 @@ class Cropping1D(nn.Module):
 
     def forward(self, x):
         return x[:, :, self.cropping[0]:-self.cropping[1]] if self.cropping[1] > 0 else x[:, :, self.cropping[0]:]
+
+
+class SpliceAI_Multihead(nn.Module):
+    def __init__(self, L, W, AR):
+        super(SpliceAI_Multihead, self).__init__()
+        self.initial_conv = nn.Conv1d(4, L, 1)
+        self.residual_units = nn.ModuleList([ResidualUnit(L, W[i], AR[i]) for i in range(len(W))])
+
+        self.num_heads = 4  # Ensure embedding dimension (L) is divisible by num_heads
+        self.attention = nn.MultiheadAttention(embed_dim=L, num_heads=self.num_heads, batch_first=True)
+        self.dropout = nn.Dropout(0.1)
+        self.layer_norm1 = nn.LayerNorm([L])  # Adjust dimension if necessary
+        self.layer_norm2 = nn.LayerNorm([L])  # Adjust dimension if necessary
+
+        self.positional_encoding = PositionalEncoding(L)
+        self.final_conv = nn.Conv1d(L, 3, 1)
+        self.CL = 2 * np.sum(AR * (W - 1))
+        self.crop = Cropping1D((self.CL//2, self.CL//2))
+
+    def forward(self, x):
+        x = self.initial_conv(x)
+        for ru in self.residual_units:
+            x = ru(x)
+        x = x.permute(0, 2, 1)  # Change shape to (batch_size, seq_len, channels) for attention
+        
+        # Apply positional encoding correctly.
+        pos_encoded = self.positional_encoding(x)
+        x = x + pos_encoded  # Add positional encoding
+        x = self.layer_norm1(x)  # Apply normalization before attention
+
+        x, _ = self.attention(x, x, x)
+        x = self.dropout(x)
+        x = self.layer_norm2(x)  # Apply normalization after attention
+        x = x.permute(0, 2, 1)  # Permute back to (batch_size, channels, seq_len)
+
+        out = self.final_conv(x)
+        return F.softmax(out, dim=1)  # Consider returning logits during training for numerical stability
+
+# # Model parameters setup
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# L = 32
+# W = np.asarray([11, 11, 11, 11])
+# AR = np.asarray([1, 1, 1, 1])
+# # Example model instantiation
+# model = SpliceAI_Multihead(L, W, AR)
+# print("model: ", model)
+
+# batch_size = 10
+# sequence_length = 5000
+# nucleotide_types = 4
+# # Generate a random input sequence
+# input_sequence = torch.randint(high=nucleotide_types, size=(batch_size, sequence_length, nucleotide_types)).float()
+# # input_sequence = F.one_hot(input_sequence.argmax(dim=-1), num_classes=nucleotide_types).float()
+# input_sequence = input_sequence.permute(0, 2, 1)  # Adjust shape to (batch_size, nucleotide_types, sequence_length)
+
+# print("input_sequence: ", input_sequence.shape)
+# # Feed the input sequence into the model
+# output = model(input_sequence)
+
+# output.shape
+# print("output: ", output.shape)
+
+# Note: The forward method currently concatenates the processed windows without handling overlaps correctly.
+# You'll need to implement a method to properly aggregate these overlapping windows into a continuous sequence output.
+
+
 
 # class SpliceAI(nn.Module):
 #     def __init__(self, L, W, AR):
@@ -84,40 +154,3 @@ class Cropping1D(nn.Module):
 #         return F.softmax(out, dim=1)  # Consider returning logits during training
 
 
-class SpliceAI(nn.Module):
-    def __init__(self, L, W, AR):
-        super(SpliceAI, self).__init__()
-        self.initial_conv = nn.Conv1d(4, L, 1)
-        self.residual_units = nn.ModuleList([ResidualUnit(L, W[i], AR[i]) for i in range(len(W))])
-
-        self.num_heads = 4  # Ensure embedding dimension (L) is divisible by num_heads
-        self.attention = nn.MultiheadAttention(embed_dim=L, num_heads=self.num_heads, batch_first=True)
-        self.dropout = nn.Dropout(0.1)
-        self.layer_norm1 = nn.LayerNorm([L])  # Adjust dimension if necessary
-        self.layer_norm2 = nn.LayerNorm([L])  # Adjust dimension if necessary
-
-        self.positional_encoding = PositionalEncoding(L)
-        self.final_conv = nn.Conv1d(L, 3, 1)
-        self.CL = 2 * np.sum(AR * (W - 1))
-        self.crop = Cropping1D((self.CL//2, self.CL//2))
-
-    def forward(self, x):
-        x = self.initial_conv(x)
-        for ru in self.residual_units:
-            x = ru(x)
-        x = self.crop(x)
-
-        x = x.permute(0, 2, 1)  # Change shape to (batch_size, seq_len, channels) for attention
-        
-        # Apply positional encoding correctly.
-        pos_encoded = self.positional_encoding(x)
-        x = x + pos_encoded  # Add positional encoding
-        x = self.layer_norm1(x)  # Apply normalization before attention
-
-        x, _ = self.attention(x, x, x)
-        x = self.dropout(x)
-        x = self.layer_norm2(x)  # Apply normalization after attention
-        x = x.permute(0, 2, 1)  # Permute back to (batch_size, channels, seq_len)
-
-        out = self.final_conv(x)
-        return F.softmax(out, dim=1)  # Consider returning logits during training for numerical stability

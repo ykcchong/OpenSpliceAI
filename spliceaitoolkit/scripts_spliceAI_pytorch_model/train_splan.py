@@ -8,8 +8,10 @@ from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
 import spliceai
+import spliceai_multihead
 import DNATransformerConformer
 import DNALocalTransformer
+import DNALocalTransformerEncDec
 from splan_utils import *
 from splan_constant import *
 from tqdm import tqdm
@@ -83,6 +85,10 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     if model_arch == "SpliceAI":
         model = spliceai.SpliceAI(L, W, AR).to(device)
+    elif model_arch == "SpliceAI_Multihead":
+        BATCH_SIZE = 8
+        CL = 0
+        model = spliceai_multihead.SpliceAI_Multihead(L, W, AR).to(device)
     elif model_arch == "DNATransformerConformer":
         # Setting batch size to 10 for transformer-based model
         BATCH_SIZE = 8
@@ -96,6 +102,17 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
         kernel_size = 33  # Kernel size for the convolutional layers in the Conformer blocks
         model = DNATransformerConformer.DNATransformerConformer(ninp=ninp, nhead=nhead, nhid=nhid, nconformers=nconformers, dropout=dropout, kernel_size=kernel_size).to(device)
     elif model_arch == "DNALocalTransformer":
+        # Model parameters setup
+        BATCH_SIZE = 8
+        CL = 0
+        embed_size = 512
+        num_layers = 2
+        heads = 8
+        forward_expansion = 4
+        dropout = 0.1
+        # Example model instantiation
+        model = DNALocalTransformer.DNALocalTransformer(embed_size, num_layers, heads, device, forward_expansion, dropout).to(device)
+    elif model_arch == "DNALocalTransformerEncDec":
         # Model parameters setup
         BATCH_SIZE = 8
         CL = 0
@@ -315,10 +332,10 @@ def main():
     training_target = args.training_target
     model_arch = args.model
     assert int(flanking_size) in [80, 400, 2000, 10000]
-    assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
+    # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
-    wandb.init(project=f'{model_arch}_{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
+    wandb.init(project=f'{project_name}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(project_root, project_name, sequence_length, flanking_size, exp_num, training_target, sequence_length, model_arch)
@@ -337,12 +354,12 @@ def main():
     print("batch_num: ", batch_num, file=sys.stderr)
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     idxs = np.random.permutation(batch_num)
-    # train_idxs = idxs[:int(0.9 * batch_num)]
-    # val_idxs = idxs[int(0.9 * batch_num):]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    train_idxs = idxs[:int(0.1*batch_num)]
-    val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
-    test_idxs = np.arange(len(test_h5f.keys()) // 10)
+    train_idxs = idxs[:int(0.9 * batch_num)]
+    val_idxs = idxs[int(0.9 * batch_num):]
+    test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    # train_idxs = idxs[:int(0.1*batch_num)]
+    # val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
+    # test_idxs = np.arange(len(test_h5f.keys()) // 10)
     print("train_idxs: ", train_idxs, file=sys.stderr)
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
