@@ -191,8 +191,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--project-root', '-p', type=str)
     args = parser.parse_args()
-    # project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
-    project_root = args.project_root
+    project_root = "/Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/"
+    # project_root = args.project_root
     output_dir = f"{project_root}train_test_dataset_/"
     os.makedirs(output_dir, exist_ok=True)
     for data_type in ['train', 'test']:
