@@ -15,11 +15,18 @@ experiments/SpliceAI_train_code/model_train_outdir/
 spliceaitoolkit/spliceAI_pytorch_model/JOB_spliceai_train_dataloader_version.sh
 spliceaitoolkit/spliceAI_pytorch_model/spliceai/bin/
 spliceaitoolkit/spliceAI_pytorch_model/spliceai/
+
+
+spliceai_goals.pdf
+test/
+train_data/
+
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-spliceai_goals.pdf
 
 # C extensions
 *.so
