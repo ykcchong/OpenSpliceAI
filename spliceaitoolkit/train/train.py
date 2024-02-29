@@ -7,7 +7,6 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
-import spliceai
 from spliceaitoolkit.train.spliceai import *
 from spliceaitoolkit.train.utils import *
 from spliceaitoolkit.constants import *
