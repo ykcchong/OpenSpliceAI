@@ -11,9 +11,9 @@
 
 # Load system modules
 ml purge
-module load gcc/9.3.0
-module load cuda/11.1.0
-module load anaconda
+# module load gcc/9.3.0
+# module load cuda/11.1.0
+# module load anaconda
 
 source activate /home/kchao10/miniconda3/envs/pytorch_cuda
 
@@ -22,7 +22,7 @@ which python
 python -c "import sys; print(sys.path)"
 
 
-python train_splan.py --flanking-size 2000 \
+python train_splan.py --flanking-size 10000 \
 --exp-num full_dataset_h5py_version \
 --training-target SpliceAI27 \
 --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_SpliceAI27/dataset_train.h5 \
@@ -30,6 +30,4 @@ python train_splan.py --flanking-size 2000 \
 --project-root /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/ \
 --project-name SpliceAI_Human_Genocode_hg19 \
 --model SpliceAI \
-> train_splan_Genocode_hg19_2000.log 2> train_splan_Genocode_hg19_2000_error.log
-
-# --dataset-shuffle \
+> train_splan_Genocode_hg19_10000_2.log 2> train_splan_Genocode_hg19_10000_2_error.log
