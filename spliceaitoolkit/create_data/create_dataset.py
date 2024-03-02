@@ -136,23 +136,14 @@ def print_motif_counts():
     print("Total acceptor motifs: ", sum(acceptor_motif_counts.values()))
 
 
-def main():
-    parser = argparse.ArgumentParser()
-    # parser.add_argument('--training-target', '-t', type=str, default="MANE")
-    parser.add_argument('--train-dataset', '-train', type=str)
-    parser.add_argument('--test-dataset', '-test', type=str)
-    parser.add_argument('--output-dir', '-o', type=str)
-    args = parser.parse_args()
-    output_dir = args.output_dir
-    os.makedirs(output_dir, exist_ok=True)
+def create_dataset(args):
+    print("--- Step 2: Creating dataset.h5 ... ---")
+    start_time = time.time()
     for type in ['train', 'test']:
-        print(("--- Processing %s ... ---" % type))
-        start_time = time.time()
-        if type == 'train':
-            input_file = args.train_dataset
-        elif type == 'test':
-            input_file = args.test_dataset
-        output_file = f"{os.path.dirname(input_file)}/dataset_{type}.h5"
+        print(("\tProcessing %s ..." % type))
+        input_file = f"{args.output_dir}/datafile_{type}.h5"
+        output_file = f"{args.output_dir}/dataset_{type}.h5"
+        # output_file = f"{os.path.dirname(input_file)}/dataset_{type}.h5"
         print("\tReading datafile.h5 ... ")
         h5f = h5py.File(input_file, 'r')
         STRAND = h5f['STRAND'][:]
@@ -162,7 +153,6 @@ def main():
         LABEL = h5f['LABEL'][:]
         h5f.close()
 
-        print("\tCreating dataset.h5 ... ")
         h5f2 = h5py.File(output_file, 'w')
         CHUNK_SIZE = 100
         seq_num = SEQ.shape[0]
@@ -179,7 +169,7 @@ def main():
         #     label_int = [int(char) for char in label_decode]
         #     check_and_count_motifs(seq_decode, label_int, strand_decode)
         # print_motif_counts()
-        
+
         # Create dataset
         for i in range(seq_num//CHUNK_SIZE):
             # Each dataset has CHUNK_SIZE genes
@@ -196,8 +186,8 @@ def main():
                 tx_start_decode = TX_START[idx].decode('ascii')
                 tx_end_decode = TX_END[idx].decode('ascii')
                 label_decode = LABEL[idx].decode('ascii')
-                fixed_seq = replace_non_acgt_to_n(seq_decode)
-                X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)                
+                fixed_seq = create_dataset.replace_non_acgt_to_n(seq_decode)
+                X, Y = create_dataset.create_datapoints(fixed_seq, strand_decode, label_decode)                
                 X_batch.extend(X)
                 for t in range(1):
                     Y_batch[t].extend(Y[t])
@@ -210,7 +200,84 @@ def main():
             h5f2.create_dataset('X' + str(i), data=X_batch)
             h5f2.create_dataset('Y' + str(i), data=Y_batch)
         h5f2.close()
-        print("--- %s seconds ---" % (time.time() - start_time))
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+
+# def main():
+#     parser = argparse.ArgumentParser()
+#     # parser.add_argument('--training-target', '-t', type=str, default="MANE")
+#     parser.add_argument('--train-dataset', '-train', type=str)
+#     parser.add_argument('--test-dataset', '-test', type=str)
+#     parser.add_argument('--output-dir', '-o', type=str)
+#     args = parser.parse_args()
+#     output_dir = args.output_dir
+#     os.makedirs(output_dir, exist_ok=True)
+#     for type in ['train', 'test']:
+#         print(("--- Processing %s ... ---" % type))
+#         start_time = time.time()
+#         if type == 'train':
+#             input_file = args.train_dataset
+#         elif type == 'test':
+#             input_file = args.test_dataset
+#         output_file = f"{os.path.dirname(input_file)}/dataset_{type}.h5"
+#         print("\tReading datafile.h5 ... ")
+#         h5f = h5py.File(input_file, 'r')
+#         STRAND = h5f['STRAND'][:]
+#         TX_START = h5f['TX_START'][:]
+#         TX_END = h5f['TX_END'][:]
+#         SEQ = h5f['SEQ'][:]
+#         LABEL = h5f['LABEL'][:]
+#         h5f.close()
+
+#         print("\tCreating dataset.h5 ... ")
+#         h5f2 = h5py.File(output_file, 'w')
+#         CHUNK_SIZE = 100
+#         seq_num = SEQ.shape[0]
+#         print("seq_num: ", seq_num)
+#         print("STRAND.shape[0]: ", STRAND.shape[0])
+#         print("TX_START.shape[0]: ", TX_START.shape[0])
+#         print("TX_END.shape[0]: ", TX_END.shape[0])
+#         print("LABEL.shape[0]: ", LABEL.shape[0])
+#         # # Check motif
+#         # for idx in range(seq_num):
+#         #     label_decode = LABEL[idx].decode('ascii')
+#         #     seq_decode = SEQ[idx].decode('ascii')
+#         #     strand_decode = STRAND[idx].decode('ascii')
+#         #     label_int = [int(char) for char in label_decode]
+#         #     check_and_count_motifs(seq_decode, label_int, strand_decode)
+#         # print_motif_counts()
+        
+#         # Create dataset
+#         for i in range(seq_num//CHUNK_SIZE):
+#             # Each dataset has CHUNK_SIZE genes
+#             if (i+1) == seq_num//CHUNK_SIZE:
+#                 NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
+#             else:
+#                 NEW_CHUNK_SIZE = CHUNK_SIZE
+#             X_batch = []
+#             Y_batch = [[] for t in range(1)]
+#             for j in range(NEW_CHUNK_SIZE):
+#                 idx = i*CHUNK_SIZE + j
+#                 seq_decode = SEQ[idx].decode('ascii')
+#                 strand_decode = STRAND[idx].decode('ascii')
+#                 tx_start_decode = TX_START[idx].decode('ascii')
+#                 tx_end_decode = TX_END[idx].decode('ascii')
+#                 label_decode = LABEL[idx].decode('ascii')
+#                 fixed_seq = replace_non_acgt_to_n(seq_decode)
+#                 X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)                
+#                 X_batch.extend(X)
+#                 for t in range(1):
+#                     Y_batch[t].extend(Y[t])
+#             X_batch = np.asarray(X_batch).astype('int8')
+#             print("X_batch.shape: ", X_batch.shape)
+            
+#             for t in range(1):
+#                 Y_batch[t] = np.asarray(Y_batch[t]).astype('int8')
+#             print("len(Y_batch[0]): ", len(Y_batch[0]))
+#             h5f2.create_dataset('X' + str(i), data=X_batch)
+#             h5f2.create_dataset('Y' + str(i), data=Y_batch)
+#         h5f2.close()
+#         print("--- %s seconds ---" % (time.time() - start_time))
 
 
 # if __name__ == "__main__":

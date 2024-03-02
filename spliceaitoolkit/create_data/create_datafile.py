@@ -147,44 +147,17 @@ def print_motif_counts():
     for motif, count in acceptor_motif_counts.items():
         print(f"{motif}: {count}")
 
-
-# def main():
-#     # To-do: 
-#     # 1. add argument, and remove hard-coded paths
-#     # 2. let user provide their genome fasta path
-#     # 3. let user provide their genome gff path
-#     # 4. let user provide the chromosome group for training and testing
-#     parser = argparse.ArgumentParser()
-#     parser.add_argument('--genome-fasta', '-g', type=str)
-#     parser.add_argument('--annotation-gff', '-a', type=str)
-#     parser.add_argument('--output-dir', '-o', type=str)
-#     parser.add_argument('--parse-type', '-train', type=str)
-#     args = parser.parse_args()
-#     fasta_file = args.genome_fasta
-#     gff_file = args.annotation_gff
-#     output_dir = args.output_dir
-#     parse_type = args.parse_type
-#     assert parse_type in ['maximum', 'all_isoforms']
-#     os.makedirs(output_dir, exist_ok=True)
-#     db_file = f'{gff_file}_db'  # Replace with your database file path
-#     db = create_or_load_db(gff_file, db_file)
-#     TRAIN_CHROM_GROUP = {
-#         'chr2': 0, 'chr4': 0, 'chr6': 0, 'chr8': 0, 
-#         'chr10': 0, 'chr11': 0, 'chr12': 0, 'chr13': 0,
-#         'chr14': 0, 'chr15': 0, 'chr16': 0, 'chr17': 0, 
-#         'chr18': 0, 'chr19': 0, 'chr20': 0, 'chr21': 0, 
-#         'chr22': 0, 'chrX': 0, 'chrY': 0
-#     }
-#     TEST_CHROM_GROUP = {
-#         'chr1': 0, 'chr3': 0, 'chr5': 0, 'chr7': 0, 'chr9': 0
-#     }
-#     print("--- Processing ... ---")
-#     start_time = time.time()
-#     get_sequences_and_labels(db, fasta_file, output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=parse_type)
-#     get_sequences_and_labels(db, fasta_file, output_dir, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=parse_type)
-#     print_motif_counts()
-#     print(("--- %s seconds ---" % (time.time() - start_time)))
-
-
-# if __name__ == "__main__":
-#     main()
+def create_datafile(args):
+    os.makedirs(args.output_dir, exist_ok=True)
+    db = create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
+    # Find all distinct chromosomes and split them
+    all_chromosomes = get_all_chromosomes(db)
+    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = split_chromosomes(all_chromosomes, method='random')  # Or any other method you prefer
+    print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
+    print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
+    print("--- Step 1: Creating datafile.h5 ... ---")
+    start_time = time.time()
+    get_sequences_and_labels(db, args.genome_fasta, args.output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type)
+    get_sequences_and_labels(db, args.genome_fasta, args.output_dir, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type)
+    print_motif_counts()
+    print("--- %s seconds ---" % (time.time() - start_time))
