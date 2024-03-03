@@ -1,5 +1,6 @@
 *.out
 *.log
+*.h5
 data/
 wandb/
 results/

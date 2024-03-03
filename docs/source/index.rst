@@ -38,16 +38,12 @@
 
 .. _main:
 
-SpliceAI-toolkit's tutorial
-*************************
-
-
 .. raw:: html
 
     <embed>
         <div class="sidebar-logo-container" style="padding-bottom:-10px">
-            <img class="sidebar-logo only-light" src="_static/LiftOn_color.png" alt="Light Logo">
-            <img class="sidebar-logo only-dark" src="_static/LiftOn_white.png" alt="Dark Logo">
+            <img class="sidebar-logo only-light" src="_static/SpliceAI-toolkit_black.png" alt="Light Logo">
+            <img class="sidebar-logo only-dark" src="_static/SpliceAI-toolkit_white.png" alt="Dark Logo">
         </div>
     </embed>
 
@@ -64,7 +60,7 @@ SpliceAI-toolkit's tutorial
     :target: https://github.com/Kuanhao-Chao/lifton/releases
 
 .. image:: https://img.shields.io/badge/platform-macOS_/Linux-green.svg
-    :target: https://github.com/Kuanhao-Chao/lifton/releases
+    :target: https://github.com/Kuanhao-Chao/spliceAI-toolkit/releases
 
 .. image:: https://colab.research.google.com/assets/colab-badge.svg
     :target: https://colab.research.google.com/github/Kuanhao-Chao/lifton/blob/main/notebook/lifton_example.ipynb
@@ -83,61 +79,40 @@ SpliceAI-toolkit's tutorial
 
 | 
 
-.. What is LiftOn?
-.. ==================
 
-SpliceAI-toolkit
-.. LiftOn is a homology-based lift-over tool designed to accurately map annotations in GFF or GTF between assemblies. It is built upon the fantastic `Liftoff <https://academic.oup.com/bioinformatics/article/37/12/1639/6035128?login=true>`_ (credits to `Dr. Alaina Shumate <https://scholar.google.com/citations?user=N3tXk7QAAAAJ&hl=en>`_) and `miniprot <https://academic.oup.com/bioinformatics/article/39/1/btad014/6989621>`_ (credits to `Dr. Heng Li <http://liheng.org>`_), and employs a two-step  :ref:`protein maximization algorithm <protein-maximization_algorithm>` to improve the protein-coding gene lift-over process.
-
-
-.. lift-over annotator that takes `Liftoff <https://academic.oup.com/bioinformatics/article/37/12/1639/6035128?login=true>`_ and `miniprot <https://academic.oup.com/bioinformatics/article/39/1/btad014/6989621>`_ GFF files as input. It accurately generates gene annotations, with a particular focus on protein-coding genes. LiftOn takes consensus from both sources and generates optimal annotations that outperform both `Liftoff <https://academic.oup.com/bioinformatics/article/37/12/1639/6035128?login=true>`_ and `miniprot <https://academic.oup.com/bioinformatics/article/39/1/btad014/6989621>`_!
+The SpliceAI-toolkit is a flexible framework designed for easy retraining of the SpliceAI model with new datasets. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the SpliceAI-toolkit is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
 Why SpliceAI-toolkit❓
 =======================
 
-1. **Easy-to-retrain framework**: 
-2. **Pretrained on new dataset**: 
-3. **Pretrained on various species**: 
+1. **Easy-to-retrain framework**: Transitioning from the outdated Python 2.7, along with older versions of TensorFlow and Keras, the SpliceAI-toolkit is built on Python 3.7 and leverages the powerful PyTorch library. This simplifies the retraining process significantly. Say goodbye to compatibility issues and hello to efficiency — retrain your models with just two simple commands.
+2. **Pretrained on new dataset**: SpliceAI is great, but SpliceAI-toolkit makes it even better! Pretrained with the latest MANE annotations (released in 2022), it ensures your research is powered by the most accurate and up-to-date genomic information available.
+3. **Pretrained on various species**:  Concerned that the SpliceAI model does not generalize to your study species because you are not studying humans? No problem! The SpliceAI-toolkit is released with models pretrained on various species, including human MANE, mouse, thale cress, honey bee, and zebrafish.
+4. **Predict the impact of genetic variants on splicing**: Similar to SpliceAI, the SpliceAI-toolkit can take genetic variants in VCF format and predict the impact of these variants on splicing with any of the pretrained models.
 
-SpliceAI-toolkit is free, it's open source, it's easy to install , and it's in Python!
+SpliceAI-toolkit is open-source, free, and combines the ease of Python with the power of PyTorch for accurate splicing predictions.
 
 |
 
 Who is it for❓
 ====================================
 
-.. 1. If you have sequenced and assembled a new genome and need to annotate it, LiftOn is the ideal choice for generating annotations.
-.. 2. If you want to do comparative genomics analysis, run liftOn to lift-over and compare annotations!
-.. 3. If you wish to utilize the finest CHM13 annotation, you can run LiftOn! We have also pre-generated the `T2T_CHM13_LiftOn.gff3 <ftp://ftp.ccb.jhu.edu/pub/LiftOn/human_refseq/lifton.gff3>`_ file for your convenience.
-
+1. If you want to study splicing in humans, just use the newly pretrained human SpliceAI-MANE! Better annotation, better results!
+2. If you want to do splicing research in other species, the SpliceAI-toolkit has you covered! It comes with models pretrained on various species! And you can easily train your own SpliceAI with your own genome & annotation data.
+3. If you are interested in predicting the impact of genetic variants on splicing, SpliceAI-toolkit is the perfect tool for you!
 
 |
 
 What does SpliceAI-toolkit do❓
 ====================================
 
-.. LiftOn takes GFF files from Liftoff and miniprot and reference protein sequences in a FASTA file, and generates a new annotation file in GFF format. 
-.. LiftOn works on the same and closely-related species. 
-.. <!-- We also tested LiftOn by lifting-over annotations from human to mouse, and it also does pretty good job to find the optimal protein annotations. However, there are false positives or -->
+* The spliceai-toolkit :code:`create-data` command takes a genome and annotation file as input and generates a dataset for training and testing your SpliceAI model.
 
-.. LiftOn is designed for individuals who would like to annotate a new assembly, referred to as target **Genome** :math:`T`.
+* The spliceai-toolkit :code:`train` command uses the created dataset to train your own SpliceAI model.
 
-.. The first step is to select a well-annotated genome along with its annotation, denoted as reference **Genome** :math:`R` and **Annotation** :math:`R_A`. 
+* The spliceai-toolkit :code:`predict` command takes a random gene sequence and predicts the score of each position, determining whether it is a donor, acceptor, or neither.
 
-.. LiftOn employs a two-step  :ref:`protein maximization algorithm <protein-maximization_algorithm>` (PM algorithm). 
-
-.. 1. The first module is the *chaining algorithm*. It starts by extracting protein sequences annotated by Liftoff and miniprot. LiftOn then aligns these sequences to full-length reference proteins. For each gene locus, LiftOn compares each section of the protein alignments from Liftoff and miniprot, chaining together the best combinations.
-.. 2. The second module is the *open-reading frame search (ORF search) algorithm*. In the case of truncated protein-coding transcripts, this algorithm examines alternative frames to identify the ORF that produces the longest match with the reference protein.
-
-.. * **Input**: 
-..     1. target **Genome** :math:`T` in FASTA 
-..     2. reference **Genome** :math:`R` in FASTA  
-..     3. reference **Annotation** :math:`R_A` in GFF3  
-.. * **Output**: 
-..     1. LiftOn annotation file in GFF3
-..     2. Protein sequence identities & mutation types
-..     3. Features with extra copies
-..     4. Unmapped features
+* The spliceai-toolkit :code:`variant` command takes a VCF file and predicts the impact of genetic variants on splicing.
 
 
 |
@@ -149,14 +124,11 @@ Cite us
 
 .. raw:: html
     
-    <p>Chao, Kua-Hao, Jakob M. Heinz, Celine Hoh, Alan Mao, Alaina Shumate, Mihaela Perte, aand Steven L. Salzberg. <i>"Combining DNA and protein alignments to improve genome annotation with LiftOn."</i> <b>bioRxiv</b>.
+    <p>Chao, Kua-Hao, Alan Mao, Anqi Liu, Mihaela Pertea, and Steven L. Salzberg. <i>"SpliceAI-toolkit"</i> <b>bioRxiv</b>.
     <a href="https://doi.org/10.1093/bioinformatics/btaa1016" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
 
-    <p>Shumate, Alaina, and Steven L. Salzberg. <i>"Liftoff: accurate mapping of gene annotations."</i> <b>Bioinformatics</b> 37.12 (2021): 1639-1643.
-    
-    <a href="https://doi.org/10.1093/bioinformatics/btaa1016" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg>
-    </a>
-    </p>
+    <p>Jaganathan, K., Panagiotopoulou, S.K., McRae, J.F., Darbandi, S.F., Knowles, D., Li, Y.I., Kosmicki, J.A., Arbelaez, J., Cui, W., Schwartz, G.B. and Chow, E.D.<i>"Predicting splicing from primary sequence with deep learning"</i> <b>Cell</b>.
+    <a href="https://doi.org/10.1016/j.cell.2018.12.015" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
 
 
 |
@@ -165,59 +137,44 @@ User support
 ============
 Please go through the :ref:`documentation <table-of-contents>` below first. If you have questions about using the package, a bug report, or a feature request, please use the GitHub issue tracker here:
 
-https://github.com/Kuanhao-Chao/LiftOn/issues
+https://github.com/Kuanhao-Chao/spliceAI-toolkit/issues
 
 |
 
 Key contributors
 ================
 
-LiftOn was designed and developed by `Kuan-Hao Chao <https://khchao.com/>`_.  This documentation was written by `Kuan-Hao Chao <https://khchao.com/>`_ and `Alan Man <https://github.com/am12>`_. The LiftOn logo was designed by `Alan Man <https://github.com/am12>`_.
+SpliceAI-toolkit was designed and developed by `Kuan-Hao Chao <https://khchao.com/>`_.  This documentation was written by `Kuan-Hao Chao <https://khchao.com/>`_. The LiftOn logo was designed by `Kuan-Hao Chao <https://khchao.com/>`_.
 
 |
 
 .. _table-of-contents:
 
-.. Table of contents
-.. ==================
+Table of contents
+==================
 
-.. .. toctree::
-..     :maxdepth: 2
+.. toctree::
+    :maxdepth: 2
     
-..     content/installation
-..     content/quickstart
+    content/installation
 
-.. .. toctree::
-..     :caption: Examples
-..     :maxdepth: 2
+.. toctree::
+    :caption: Examples
+    :maxdepth: 2
+
+    content/pretrained_models/index
+
+    content/changelog
+    content/license
+    content/contact
     
-..     content/same_species_liftover/index
-..     content/close_species_liftover/index
-..     content/distant_species_liftover/index
+    .. content/quickstart    
+    .. content/output_explanation
+    .. content/behind_scenes
+    .. content/how_to_page
+    .. content/function_manual
 
 
-.. .. toctree::
-..     :caption: Info
-..     :maxdepth: 2
-    
-..     content/output_explanation
-..     content/behind_scenes
-..     content/how_to_page
-..     content/function_manual
-..     content/changelog
-..     content/license
-..     content/contact
-
-|
-
-
-LiftOn's limitation
-==================================
-LiftOn's *chaining algorithm* currently only utilizes miniprot alignment results to fix the Liftoff annotation. However, it can be extended to chain together multiple protein-based annotation files or aasembled RNA-Seq transcripts. 
-
-DNA- and protein-based methods still have some limitations. We are developing a module to merge the LiftOn annotation with the released curated annotations to generate better annotations.
-
-The LiftOn *chaining algorithm* now does not support multi-threading. This functionality stands as our next targeted feature on the development horizon!
 
 |
 |

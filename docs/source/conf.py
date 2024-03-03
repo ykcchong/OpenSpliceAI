@@ -74,7 +74,7 @@ html_theme = 'furo'
 
 # html_logo = "./_static/logo.png"
 html_theme_options = {
-    "announcement": "LiftOn: a tool to improve annotations for protein-coding genes during the lift-over process.",
+    "announcement": "SpliceAI-Toolkit: A Comprehensive Framework for Cross-Species Splicing Prediction and Variant Impact Analysis",
     
     "display_version": True,
     "logo_only": True,
@@ -91,8 +91,8 @@ html_theme_options = {
     'collapse_navigation': True,
     'navigation_depth': -1,
 
-    "light_logo": "LiftOn_color.png",
-    "dark_logo": "LiftOn_white.png",
+    "light_logo": "SpliceAI-toolkit_black.png",
+    "dark_logo": "SpliceAI-toolkit_white.png",
 
     "footer_icons": [
         {
