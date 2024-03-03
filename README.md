@@ -106,8 +106,11 @@
 <div class="line"><br></div>
 <div class="line"><br></div>
 </div>
-<img alt="My Logo" class="logo header-image only-light align-center" src="_images/jhu-logo-dark.png">
-<img alt="My Logo" class="logo header-image only-dark align-center" src="_images/jhu-logo-white.png">
-</section>
 
-        </article>
+<br>
+<br>
+<br>
+
+<img alt="My Logo" class="logo header-image only-light align-center" src="logo/jhu-logo-dark.png">
+
+</section>
