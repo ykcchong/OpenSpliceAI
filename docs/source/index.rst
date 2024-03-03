@@ -33,6 +33,7 @@
         console.log(document.body);
     </script>
     <link rel="preload" href="./_images/jhu-logo-dark.png" as="image">
+    <div id="main_entry"></div>
 
 |
 
@@ -82,12 +83,14 @@
 
 The SpliceAI-toolkit is a flexible framework designed for easy retraining of the SpliceAI model with new datasets. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the SpliceAI-toolkit is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
+|
+
 Why SpliceAI-toolkit❓
 =======================
 
 1. **Easy-to-retrain framework**: Transitioning from the outdated Python 2.7, along with older versions of TensorFlow and Keras, the SpliceAI-toolkit is built on Python 3.7 and leverages the powerful PyTorch library. This simplifies the retraining process significantly. Say goodbye to compatibility issues and hello to efficiency — retrain your models with just two simple commands.
-2. **Pretrained on new dataset**: SpliceAI is great, but SpliceAI-toolkit makes it even better! Pretrained with the latest MANE annotations (released in 2022), it ensures your research is powered by the most accurate and up-to-date genomic information available.
-3. **Pretrained on various species**:  Concerned that the SpliceAI model does not generalize to your study species because you are not studying humans? No problem! The SpliceAI-toolkit is released with models pretrained on various species, including human MANE, mouse, thale cress, honey bee, and zebrafish.
+2. **Retrained on new dataset**: SpliceAI is great, but SpliceAI-toolkit makes it even better! The newly pretrained SpliceAI-Human model is updated from GRCh37 to GRCh38 human genome and integrates the latest MANE (Matched Annotation from NCBI and EMBL-EBI) annotations, ensuring that research is supported by the most up-to-date and precise genomic data available.
+3. **Retrained on various species**:  Concerned that the SpliceAI model does not generalize to your study species because you are not studying humans? No problem! The SpliceAI-toolkit is released with models pretrained on various species, including human MANE, mouse, thale cress, honey bee, and zebrafish.
 4. **Predict the impact of genetic variants on splicing**: Similar to SpliceAI, the SpliceAI-toolkit can take genetic variants in VCF format and predict the impact of these variants on splicing with any of the pretrained models.
 
 SpliceAI-toolkit is open-source, free, and combines the ease of Python with the power of PyTorch for accurate splicing predictions.
@@ -109,6 +112,8 @@ What does SpliceAI-toolkit do❓
 * The spliceai-toolkit :code:`create-data` command takes a genome and annotation file as input and generates a dataset for training and testing your SpliceAI model.
 
 * The spliceai-toolkit :code:`train` command uses the created dataset to train your own SpliceAI model.
+
+* To avoid retraining your SpliceAI model from the ground up, the spliceai-toolkit :code:`fine-tune` command allows for the fine-tuning of the pretrained human model using your own created dataset. It tailors the model to better generalize to your specific species.
 
 * The spliceai-toolkit :code:`predict` command takes a random gene sequence and predicts the score of each position, determining whether it is a donor, acceptor, or neither.
 
@@ -167,7 +172,7 @@ Table of contents
     content/changelog
     content/license
     content/contact
-    
+
     .. content/quickstart    
     .. content/output_explanation
     .. content/behind_scenes
