@@ -38,7 +38,7 @@
 
 .. _same_species_liftover_human:
 
-Human (*GRCh38* to *T2T-CHM13*)
+Zebrafish
 ===================================================================
 
 
