@@ -23,16 +23,16 @@ def setup_device():
     return torch.device(device_str)
 
 
-def initialize_paths(project_root, project_name, chunk_size, flanking_size, exp_num, training_target, sequence_length, model_arch):
+def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch):
     """Initialize project directories and create them if they don't exist."""
     ####################################
     # Modify the model verson here!!
     ####################################
-    MODEL_VERSION = f"{model_arch}_{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}"
+    MODEL_VERSION = f"{model_arch}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
     ####################################
     # Modify the model verson here!!
     ####################################
-    model_train_outdir = f"{project_root}results/model_train_outdir/{MODEL_VERSION}/{exp_num}/"
+    model_train_outdir = f"{output_dir}/{MODEL_VERSION}/{exp_num}/"
     model_output_base = f"{model_train_outdir}models/"
     log_output_base = f"{model_train_outdir}LOG/"
     log_output_train_base = f"{log_output_base}TRAIN/"
@@ -114,7 +114,7 @@ def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=Fal
     # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
 
 
-def model_evaluation(batch_ylabel, batch_ypred, metric_files):
+def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
     batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
@@ -158,7 +158,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files):
     batch_ypred = []
 
 
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode):
+def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
     running_loss = 0.0
@@ -182,9 +182,13 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
             # print("\tAfter clipping labels.shape: ", labels.shape)
             yp = model(DNAs)
-            loss = categorical_crossentropy_2d(labels, yp)
+            if criterion == "cross_entropy_loss":
+                loss = categorical_crossentropy_2d(labels, yp)
+            elif criterion == "focal_loss":
+                loss = focal_loss(yp, labels)
             # Logging loss for every update.
-            metric_files["loss_every_update"].write(f"{loss.item()}\n")
+            with open(metric_files["loss_every_update"], 'a') as f:
+                f.write(f"{loss.item()}\n")
             wandb.log({
                 f'{run_mode}/loss_every_update': loss.item(),
             })
@@ -196,13 +200,13 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
-            if batch_idx % 1000 == 0:
-                model_evaluation(batch_ylabel, batch_ypred, metric_files)
+            if batch_idx % sample_freq == 0:
+                model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files)
+    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
 
 
-def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode):
+def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode, sample_freq):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.train()
     running_loss = 0.0
@@ -212,6 +216,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
     batch_ylabel = []
     batch_ypred = []
     print_dict = {}
+    batch_idx = 0
     for i, shard_idx in enumerate(shuffled_idxs, 1):
         print(f"Shard {i}/{len(shuffled_idxs)}")
         loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=True)
@@ -226,9 +231,13 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             # print("\tAfter clipping labels.shape: ", labels.shape)
             optimizer.zero_grad()
             yp = model(DNAs)
-            loss = categorical_crossentropy_2d(labels, yp)
+            if criterion == "cross_entropy_loss":
+                loss = categorical_crossentropy_2d(labels, yp)
+            elif criterion == "focal_loss":
+                loss = focal_loss(yp, labels)
             # Logging loss for every update.
-            metric_files["loss_every_update"].write(f"{loss.item()}\n")
+            with open(metric_files["loss_every_update"], 'a') as f:
+                f.write(f"{loss.item()}\n")
             wandb.log({
                 f'{run_mode}/loss_every_update': loss.item(),
             })
@@ -242,41 +251,44 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
-            if batch_idx % 1000 == 0:
-                model_evaluation(batch_ylabel, batch_ypred, metric_files)
+            if batch_idx % sample_freq == 0:
+                model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files)
+    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
 
 
 def train(args):
-    project_root = args.project_root
+    output_dir = args.output_dir
     project_name = args.project_name
     sequence_length = 5000
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
-    training_target = args.training_target
     model_arch = args.model
     assert int(flanking_size) in [80, 400, 2000, 10000]
     # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
-    wandb.init(project=f'{model_arch}_{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
+    wandb.init(project=f'{model_arch}_{project_name}_{flanking_size}_{exp_num}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
-    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(project_root, project_name, sequence_length, flanking_size, exp_num, training_target, sequence_length, model_arch)
-    print("* model_output_base: ", model_output_base, file=sys.stderr)
-    print("* log_output_train_base: ", log_output_train_base, file=sys.stderr)
-    print("* log_output_val_base: ", log_output_val_base, file=sys.stderr)
-    print("* log_output_test_base: ", log_output_test_base, file=sys.stderr)
+    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch)
+    print("* Project name: ", args.project_name, file=sys.stderr)
+    print("* Model_output_base: ", model_output_base, file=sys.stderr)
+    print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
+    print("* Log_output_val_base: ", log_output_val_base, file=sys.stderr)
+    print("* Log_output_test_base: ", log_output_test_base, file=sys.stderr)
     training_dataset = args.train_dataset
     testing_dataset = args.test_dataset
-    print("training_dataset: ", training_dataset, file=sys.stderr)
-    print("testing_dataset: ", testing_dataset, file=sys.stderr)
-    
+    print("Training_dataset: ", training_dataset, file=sys.stderr)
+    print("Testing_dataset: ", testing_dataset, file=sys.stderr)
+    print("Model architecture: ", model_arch, file=sys.stderr)
+    print("Loss function: ", args.loss, file=sys.stderr)
+    print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
+    print("Exp number: ", args.exp_num, file=sys.stderr)
     train_h5f = h5py.File(training_dataset, 'r')
     test_h5f = h5py.File(testing_dataset, 'r')
     batch_num = len(train_h5f.keys()) // 2
-    print("batch_num: ", batch_num, file=sys.stderr)
+    print("Batch_num: ", batch_num, file=sys.stderr)
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     idxs = np.random.permutation(batch_num)
     train_idxs = idxs[:int(0.9 * batch_num)]
@@ -294,7 +306,7 @@ def train(args):
         'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
         'topk_acceptor': f'{log_output_train_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_train_base}/acceptor_accuracy.txt',
-        'loss_batch': f'{log_output_train_base}/loss_batch.txt'
+        'loss_batch': f'{log_output_train_base}/loss_batch.txt',
         'loss_every_update': f'{log_output_train_base}/loss_every_update.txt'
     }
     valid_metric_files = {
@@ -302,7 +314,7 @@ def train(args):
         'auprc_donor': f'{log_output_val_base}/donor_accuracy.txt',
         'topk_acceptor': f'{log_output_val_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_val_base}/acceptor_accuracy.txt',
-        'loss_batch': f'{log_output_val_base}/loss_batch.txt'
+        'loss_batch': f'{log_output_val_base}/loss_batch.txt',
         'loss_every_update': f'{log_output_val_base}/loss_every_update.txt'
     }
     test_metric_files = {
@@ -310,18 +322,17 @@ def train(args):
         'auprc_donor': f'{log_output_test_base}/donor_accuracy.txt',
         'topk_acceptor': f'{log_output_test_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_test_base}/acceptor_accuracy.txt',
-        'loss_batch': f'{log_output_test_base}/loss_batch.txt'
+        'loss_batch': f'{log_output_test_base}/loss_batch.txt',
         'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
     }
+    SAMPLE_FREQ = 1000
     for epoch in range(EPOCH_NUM):
         print("\n--------------------------------------------------------------")
         print(f">> Epoch {epoch + 1}")
         start_time = time.time()
-        train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], criterion, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
-        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], criterion, device, params, valid_metric_files, run_mode="validation")
-        valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], criterion, device, params, test_metric_files, run_mode="test")
-
-        # run_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], criterion, None, None, device, params, test_metric_files, run_mode="test")
+        train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
+        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+        valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
         torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
