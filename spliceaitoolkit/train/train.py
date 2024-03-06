@@ -114,39 +114,7 @@ def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=Fal
     # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
 
 
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode):
-    print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
-    model.eval()
-    running_loss = 0.0
-    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
-    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
-    print("shuffled_idxs: ", shuffled_idxs)
-    batch_ylabel = []
-    batch_ypred = []
-    print_dict = {}
-    for i, shard_idx in enumerate(shuffled_idxs, 1):
-        print(f"Shard {i}/{len(shuffled_idxs)}")
-        loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
-        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
-        for batch in pbar:
-            DNAs, labels = batch[0].to(device), batch[1].to(device)
-            # print("\n\tDNAs.shape: ", DNAs.shape)
-            # print("\tlabels.shape: ", labels.shape)
-            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
-            DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
-            # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
-            # print("\tAfter clipping labels.shape: ", labels.shape)
-            yp = model(DNAs)
-            loss = categorical_crossentropy_2d(labels, yp)
-            # loss = criterion(labels, yp)  # Permuting to [batch_size, sequence_length, num_classes]
-            running_loss += loss.item()
-            # print("loss: ", loss.item())
-            batch_ylabel.append(labels.detach().cpu())
-            batch_ypred.append(yp.detach().cpu())
-            print_dict["loss"] = loss.item()
-            pbar.set_postfix(print_dict)
-            pbar.update(1)           
-        pbar.close()
+def model_evaluation(batch_ylabel, batch_ypred, metric_files):
     batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
@@ -165,10 +133,11 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
+        loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
         for k, v in metric_files.items():
             with open(v, 'a') as f:
-                if k == "loss":
-                    f.write(f"{running_loss}\n")
+                if k == "loss_batch":
+                    f.write(f"{loss.item()}\n")
                 elif k == "topk_acceptor":
                     f.write(f"{acceptor_topkl_accuracy}\n")
                 elif k == "topk_donor":
@@ -178,13 +147,59 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
                 elif k == "auprc_donor":
                     f.write(f"{donor_auprc}\n")
         wandb.log({
-            f'{run_mode}/loss': loss.item(),
+            f'{run_mode}/loss_batch': loss.item(),
             f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
             f'{run_mode}/topk_donor': donor_topkl_accuracy,
             f'{run_mode}/auprc_acceptor': acceptor_auprc,
             f'{run_mode}/auprc_donor': donor_auprc,
         })
         print("***************************************\n\n")
+    batch_ylabel = []
+    batch_ypred = []
+
+
+def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode):
+    print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
+    model.eval()
+    running_loss = 0.0
+    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    print("shuffled_idxs: ", shuffled_idxs)
+    batch_ylabel = []
+    batch_ypred = []
+    print_dict = {}
+    batch_idx = 0
+    for i, shard_idx in enumerate(shuffled_idxs, 1):
+        print(f"Shard {i}/{len(shuffled_idxs)}")
+        loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
+        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
+        for batch in pbar:
+            DNAs, labels = batch[0].to(device), batch[1].to(device)
+            # print("\n\tDNAs.shape: ", DNAs.shape)
+            # print("\tlabels.shape: ", labels.shape)
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+            DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
+            # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
+            # print("\tAfter clipping labels.shape: ", labels.shape)
+            yp = model(DNAs)
+            loss = categorical_crossentropy_2d(labels, yp)
+            # Logging loss for every update.
+            metric_files["loss_every_update"].write(f"{loss.item()}\n")
+            wandb.log({
+                f'{run_mode}/loss_every_update': loss.item(),
+            })
+            running_loss += loss.item()
+            # print("loss: ", loss.item())
+            batch_ylabel.append(labels.detach().cpu())
+            batch_ypred.append(yp.detach().cpu())
+            print_dict["loss"] = loss.item()
+            pbar.set_postfix(print_dict)
+            pbar.update(1)
+            batch_idx += 1
+            if batch_idx % 1000 == 0:
+                model_evaluation(batch_ylabel, batch_ypred, metric_files)
+        pbar.close()
+    model_evaluation(batch_ylabel, batch_ypred, metric_files)
 
 
 def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode):
@@ -212,8 +227,12 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             optimizer.zero_grad()
             yp = model(DNAs)
             loss = categorical_crossentropy_2d(labels, yp)
+            # Logging loss for every update.
+            metric_files["loss_every_update"].write(f"{loss.item()}\n")
+            wandb.log({
+                f'{run_mode}/loss_every_update': loss.item(),
+            })
             # print("loss: ", loss.item())
-            # loss = criterion(labels, yp)  # Permuting to [batch_size, sequence_length, num_classes]
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
@@ -222,47 +241,11 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             print_dict["loss"] = loss.item()
             pbar.set_postfix(print_dict)
             pbar.update(1)
+            batch_idx += 1
+            if batch_idx % 1000 == 0:
+                model_evaluation(batch_ylabel, batch_ypred, metric_files)
         pbar.close()
-    batch_ylabel = torch.cat(batch_ylabel, dim=0)
-    batch_ypred = torch.cat(batch_ypred, dim=0)
-    is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
-    scheduler.step()
-    if np.any(is_expr):
-        ############################
-        # Topk SpliceAI assessment approach
-        ############################
-        subset_size = 1000
-        indices = np.arange(batch_ylabel[is_expr].shape[0])
-        subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-        Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-                            np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-        donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-                            np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-        for k, v in metric_files.items():
-            with open(v, 'a') as f:
-                if k == "loss":
-                    f.write(f"{running_loss}\n")
-                elif k == "topk_acceptor":
-                    f.write(f"{acceptor_topkl_accuracy}\n")
-                elif k == "topk_donor":
-                    f.write(f"{donor_topkl_accuracy}\n")
-                elif k == "auprc_acceptor":
-                    f.write(f"{acceptor_auprc}\n")
-                elif k == "auprc_donor":
-                    f.write(f"{donor_auprc}\n")
-        wandb.log({
-            f'{run_mode}/loss': loss.item(),
-            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-            f'{run_mode}/topk_donor': donor_topkl_accuracy,
-            f'{run_mode}/auprc_acceptor': acceptor_auprc,
-            f'{run_mode}/auprc_donor': donor_auprc,
-        })
-        print("***************************************\n\n")
-
+    model_evaluation(batch_ylabel, batch_ypred, metric_files)
 
 
 def train(args):
@@ -311,21 +294,24 @@ def train(args):
         'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
         'topk_acceptor': f'{log_output_train_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_train_base}/acceptor_accuracy.txt',
-        'loss': f'{log_output_train_base}/loss.txt'
+        'loss_batch': f'{log_output_train_base}/loss_batch.txt'
+        'loss_every_update': f'{log_output_train_base}/loss_every_update.txt'
     }
     valid_metric_files = {
         'topk_donor': f'{log_output_val_base}/donor_topk.txt',
         'auprc_donor': f'{log_output_val_base}/donor_accuracy.txt',
         'topk_acceptor': f'{log_output_val_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_val_base}/acceptor_accuracy.txt',
-        'loss': f'{log_output_val_base}/loss.txt'
+        'loss_batch': f'{log_output_val_base}/loss_batch.txt'
+        'loss_every_update': f'{log_output_val_base}/loss_every_update.txt'
     }
     test_metric_files = {
         'topk_donor': f'{log_output_test_base}/donor_topk.txt',
         'auprc_donor': f'{log_output_test_base}/donor_accuracy.txt',
         'topk_acceptor': f'{log_output_test_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_test_base}/acceptor_accuracy.txt',
-        'loss': f'{log_output_test_base}/loss.txt'
+        'loss_batch': f'{log_output_test_base}/loss_batch.txt'
+        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
     }
     for epoch in range(EPOCH_NUM):
         print("\n--------------------------------------------------------------")
