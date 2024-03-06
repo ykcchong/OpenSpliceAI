@@ -4,12 +4,25 @@
 python train_splan.py --flanking-size 80 \
 --exp-num small_dataset_h5py_version \
 --training-target RefSeq \
---train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_RefSeq/dataset_train.h5 \
---test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_RefSeq/dataset_test.h5 \
---project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
+--train-dataset ../../results/spliceai_test/dataset_train.h5 \
+--test-dataset ../../results/spliceai_test/dataset_test.h5 \
+--project-root ../../ \
 --project-name RefSeq_h5py_dataset \
 --model DNALocalTransformer \
 > train_splan.log 2> train_splan_error.log
+
+# ##########################################
+# # Train RefSeq dataset h5py_version
+# ##########################################
+# python train_splan.py --flanking-size 80 \
+# --exp-num small_dataset_h5py_version \
+# --training-target RefSeq \
+# --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_RefSeq/dataset_train.h5 \
+# --test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_RefSeq/dataset_test.h5 \
+# --project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
+# --project-name RefSeq_h5py_dataset \
+# --model DNALocalTransformer \
+# > train_splan.log 2> train_splan_error.log
 
 # --exp-num full_dataset_h5py_version \
 
