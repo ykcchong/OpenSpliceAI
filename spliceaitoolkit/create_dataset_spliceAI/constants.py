@@ -1,7 +1,4 @@
-#CL_set = [80, 400, 2000, 10000]
-#SL_set = [2500, 5000, 7500]
-
-CL_max=80
+CL_max=10000
 # Maximum nucleotide context length (CL_max/2 on either side of the 
 # position of interest)
 # CL_max should be an even number
