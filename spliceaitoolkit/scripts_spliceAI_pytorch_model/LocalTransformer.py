@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 from einops import rearrange
 
-from local_attention.local_attention import LocalAttention
+from local_attention import LocalAttention
 
 # helper function
 
@@ -94,8 +94,13 @@ class LocalMHA(nn.Module):
     def forward(self, x, mask = None, attn_bias = None):
         if exists(self.norm):
             x = self.norm(x)
+        # print("x: ", x.shape)
 
         q, k, v = self.to_qkv(x).chunk(3, dim = -1)
+        # print("q: ", q.shape)
+        # print("k: ", k.shape)
+        # print("v: ", v.shape)
+
         q, k, v = map(lambda t: rearrange(t, 'b n (h d) -> b h n d', h = self.heads), (q, k, v)) 
 
         if self.qk_rmsnorm:
@@ -105,12 +110,15 @@ class LocalMHA(nn.Module):
 
         out = self.attn_fn(q, k, v, mask = mask, attn_bias = attn_bias)
 
+        # print("out: ", out.shape)
+
         if exists(self.to_v_gate):
             gates = self.to_v_gate(x)
             gates = rearrange(gates, 'b n h -> b h n 1')
             out = out * gates.sigmoid()
 
         out = rearrange(out, 'b h n d -> b n (h d)')
+
         return self.to_out(out)
 
 # feedforward
@@ -191,8 +199,12 @@ class LocalTransformer(nn.Module):
         **kwargs
     ):
         super().__init__()
-        self.token_emb = nn.Embedding(num_tokens, dim)
-        self.pos_emb = nn.Embedding(max_seq_len, dim)
+        # self.token_emb = nn.Embedding(num_tokens, dim)
+        # self.pos_emb = nn.Embedding(max_seq_len, dim)
+        # self.pos_emb = nn.Parameter(torch.randn(1, max_seq_len, num_tokens))  # Adjusted for direct addition
+        self.pos_emb = nn.Parameter(torch.randn(1, max_seq_len, 4))  # Adjusted to match the one-hot input
+        # Projection layer to match the dimensionality of the model's internal processing
+        self.input_projection = nn.Linear(4, dim)
 
         self.max_seq_len = max_seq_len
         self.layers = nn.ModuleList([])
@@ -238,17 +250,22 @@ class LocalTransformer(nn.Module):
         return out[:, n:]
 
     def forward(self, x, mask = None, return_loss = False):
+        x = torch.permute(x, (0, 2, 1))
         if return_loss:
             x, labels = x[:, :-1], x[:, 1:]
 
         n, device = x.shape[1], x.device
-        x = self.token_emb(x)
+        # x = self.token_emb(x)
 
-        assert n <= self.max_seq_len
-        x = x + self.pos_emb(torch.arange(n, device = device))
+        # print("x: ", x.shape)
+        # print("self.pos_emb(torch.arange(n, device = device)): ", self.pos_emb(torch.arange(n, device = device)).shape)
+
+        assert x.size(1) <= self.max_seq_len
+        x = x + self.pos_emb[:, :x.size(1)]  # Add positional embeddings
+        x = self.input_projection(x)  # Project input from 4 dimensions to model's internal dimension
+        # print("x after input_projection: ", x.shape)
 
         # dynamic pos bias
-
         attn_bias = None
         if exists(self.dynamic_pos_bias):
             w = self.local_attn_window_size
@@ -261,7 +278,10 @@ class LocalTransformer(nn.Module):
             x = ff(x) + x
 
         logits = self.to_logits(x)
-
+        logits = torch.permute(logits, (0, 2, 1))
+        # print("logits: ", logits.shape)
+        logits = F.softmax(logits, dim=1)
+        # print("logits: ", logits)
         if not return_loss:
             return logits
 
@@ -273,17 +293,20 @@ class LocalTransformer(nn.Module):
 
 
 
-model = LocalTransformer(
-    num_tokens = 256,
-    dim = 512,
-    depth = 6,
-    max_seq_len = 8192,
-    causal = True,
-    local_attn_window_size = 256
-).cuda()
+# model = LocalTransformer(
+#     num_tokens = 3,
+#     dim = 512,
+#     depth = 6,
+#     max_seq_len = 8192,
+#     causal = True,
+#     local_attn_window_size = 80
+# ).cuda()
 
-x = torch.randint(0, 256, (4, 5000)).cuda()
-print("x: ", x.shape)
+# batch_size = 20
+# sequence_len = 5000
+# dna_dimension = 4
+# x = torch.randint(0, 256, (batch_size, dna_dimension, sequence_len)).cuda()
+# print("x: ", x.shape)
 
-logits = model(x) # (1, 8192, 256)
-print("logits: ", logits.shape)
+# logits = model(x) # (1, 8192, 256)
+# print("logits: ", logits.shape)
