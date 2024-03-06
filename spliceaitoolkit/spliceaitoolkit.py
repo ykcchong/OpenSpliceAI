@@ -15,6 +15,12 @@ try:
 except ImportError:
     from sys import stdin as std_in
     from sys import stdout as std_out
+To avoid retraining your SpliceAI model from the ground up, the spliceai-toolkit fine-tune command allows for the fine-tuning of the pretrained human model using a created dataset. This process tailors the model to better generalize to your specific species, streamlining the adaptation of SpliceAI to meet your unique research needs.
+
+
+
+
+
 
 
 # , verify_h5_file 

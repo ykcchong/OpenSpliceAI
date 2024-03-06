@@ -12,6 +12,7 @@ import spliceai_multihead
 import DNATransformerConformer
 import DNALocalTransformer
 import DNALocalTransformerEncDec
+import LocalTransformer
 from splan_utils import *
 from splan_constant import *
 from tqdm import tqdm
@@ -85,6 +86,20 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     if model_arch == "SpliceAI":
         model = spliceai.SpliceAI(L, W, AR).to(device)
+    elif model_arch == "LocalTransformer":
+        BATCH_SIZE = 8
+        CL = 0
+        sequence_len = 5000
+        dna_dimension = 4
+        output_dimension = 3
+        model = LocalTransformer.LocalTransformer(
+            num_tokens = output_dimension,
+            dim = 512,
+            depth = 6,
+            max_seq_len = sequence_len,
+            causal = True,
+            local_attn_window_size = int(flanking_size)
+        ).to(device)
     elif model_arch == "SpliceAI_Multihead":
         BATCH_SIZE = 8
         CL = 0
