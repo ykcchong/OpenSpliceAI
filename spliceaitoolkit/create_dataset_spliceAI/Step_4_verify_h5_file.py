@@ -1,21 +1,6 @@
-# import h5py
-# # filename = "datafile_train_all.h5"
-# # filename = "dataset_train_all.h5"
-# filename = "dataset_test_0.h5"
-# # filename = "datafile_test_0.h5"
+# Usage: python Step_4_verify_h5_file.py <train, test, all>
 
-# with h5py.File(filename, "r") as f:
-#     # List all groups
-#     print(("Keys: %s" % list(f.keys())))
-#     a_group_key = list(f.keys())[3]
-#     print(("a_group_key: ", a_group_key))
-
-#     # Get the data
-#     data = list(f[a_group_key])
-#     # print(("data: ", data))
-#     print(("data: ", len(data)))
-
-
+# import necessary libraries
 import h5py
 import numpy as np
 import torch
@@ -24,36 +9,40 @@ import matplotlib.pyplot as plt
 from constants import *
 import time 
 
+# record start time for benchmark
 start_time = time.time()
 
 assert sys.argv[1] in ['train', 'test', 'all']
 
-# hf = h5py.File('./dataset_train_all.h5', 'r')
-hf = h5py.File(data_dir + 'dataset'
-                + '_' + sys.argv[1]
-                + '.h5', 'r')
+# construct the filename and open h5 file
+filename = data_dir + 'dataset' + '_' + sys.argv[1] + '.h5'
 
-hf.keys()
-torch.from_numpy(hf['X0'][:]).shape
-torch.from_numpy(hf['X0'][:])[0].float()
-torch.from_numpy(hf['Y0'][:]).shape
+with h5py.File(filename, 'r') as hf:
+    # print the available dataset keys in the file
+    print(f"Dataset keys: {list(hf.keys())}\n\n")
 
-x = torch.from_numpy(hf['X3'][:]).float()
-y = torch.from_numpy(hf['Y3'][:])
+    # convert datasets to PyTorch tensors and display their shapes
+    X0_tensor = torch.from_numpy(hf['X0'][:]).float()  
+    Y0_tensor = torch.from_numpy(hf['Y0'][:]) 
+    print(f"X0 shape: {X0_tensor.shape}, Y0 shape: {Y0_tensor.shape}")
 
+    # process a specific dataset ('X3') for visualization
+    x = torch.from_numpy(hf['X3'][:]).float()  
+    y = torch.from_numpy(hf['Y3'][:])  
+    print(f"x[0].shape: {x[0].shape}, y[0].shape: {y[0].shape}")
 
-print(f"x[0].shape: {x[0].shape}")
+    # plot the sum of the last entry in the 'X3' dataset along its rows
+    fig = plt.figure(figsize=(7, 3))
+    ax = fig.add_subplot(111)
+    ax.set_xlim([0, 15000])
+    ax.plot(x[-1].sum(axis=1))  # Sum over rows and plot
 
-fig = plt.figure(figsize=(7, 3))
-ax = fig.add_subplot(111)
-ax.set_xlim([0, 15000])
+    # additional info
+    print("x[0].sum(axis=1): ", len(x[len(x)-1].sum(axis=1))) # Length of row sum in the last 'X3' entry
+    print("x[0].sum(axis=0): ", len(x[len(x)-1].sum(axis=0))) # Length of column sum in the last 'X3' entry
+    print(f"(x[0].sum(axis=1) == 0).sum(): {(x[0].sum(axis=1) == 0).sum()}") # Number of zero-sum rows in the first 'X3' entry
 
-ax.plot(x[len(x)-1].sum(axis=1))
-print("x[0].sum(axis=1): ", len(x[len(x)-1].sum(axis=1)))
-print("x[0].sum(axis=0): ", len(x[len(x)-1].sum(axis=0)))
+# END
+print(("--- %s seconds ---" % (time.time() - start_time)))
 
 plt.show()
-
-print(f"(x[0].sum(axis=1) == 0).sum(): {(x[0].sum(axis=1) == 0).sum()}")
-
-print(f"y[0].shape): {y[0].shape}")
