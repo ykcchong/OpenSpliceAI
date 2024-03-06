@@ -40,41 +40,6 @@
 Release SpliceAI-toolkit models
 ====================================
 
-
-.. When dealing with a newly assembled genome, users often encounter the need to lift-over or convert the genome annotation from a reference genome to the new assembly.
-
-.. LiftOn performs well on the same species annotation Lift-over. Here ase some examples of running LiftOn on *Homo sapiens*, *Arabidopsis thaliana*, and *Apis mellifera*.
-
-When working with a recently assembled genome, users often need to lift-over or convert the genome annotation from a reference genome to the new assembly.
-
-LiftOn excels in performing lift-over on annotations within the same species. Here ase some examples of running LiftOn on *Homo sapiens* (human), *Mus musculus* (mouse), *Apis mellifera* (honey bee), *Arabidopsis thaliana* (Thale cress), and *Oryza sativa* (rice).
-
-|
-
-.. admonition:: LiftOn examples
-    :class: note
-
-    * **Eukaryote**
-        * :ref:`same_species_liftover_human`
-        * :ref:`same_species_liftover_mouse`
-
-    * **Insect**
-        * :ref:`same_species_liftover_bee`
-
-    * **Plant**
-        * :ref:`same_species_liftover_thale`
-        * :ref:`same_species_liftover_rice`
-
-.. toctree::
-    :hidden:
-
-    GRCh38_MANE
-    GRCh38_RefSeq
-    mouse
-    bee_insect
-    arabidopsis_plant
-    zebrafish
-
 |
 |
 |
