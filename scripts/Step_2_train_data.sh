@@ -56,11 +56,12 @@
 
 spliceai-toolkit train --flanking-size 80 \
 --exp-num full_dataset_h5py_version \
---training-target RefSeq_isoforms \
---train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/RefSeq_isoforms/dataset_train.h5 \
---test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/RefSeq_isoforms/dataset_test.h5 \
---project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
---project-name RefSeq_isoforms_h5py_dataset \
---output-dir ./RefSeq_isoforms/ \
+--train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_MANE/dataset_train_all.h5 \
+--test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_MANE/dataset_test_0.h5 \
+--output-dir /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/model_train_outdir/ \
+--project-name human_MANE_newlog \
 --model SpliceAI \
-> train_splan_isoforms.log 2> train_splan_isoforms_error.log
+--loss focal_loss -d \ 
+> train_splan_MANE_newlog.log 2> train_splan_MANE_newlog_error.log
+
+# --loss focal_loss \ 

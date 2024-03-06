@@ -15,15 +15,7 @@ try:
 except ImportError:
     from sys import stdin as std_in
     from sys import stdout as std_out
-To avoid retraining your SpliceAI model from the ground up, the spliceai-toolkit fine-tune command allows for the fine-tuning of the pretrained human model using a created dataset. This process tailors the model to better generalize to your specific species, streamlining the adaptation of SpliceAI to meet your unique research needs.
 
-
-
-
-
-
-
-# , verify_h5_file 
 __VERSION__ = header.__version__
 
 def get_all_chromosomes(db):
@@ -58,14 +50,13 @@ def parse_args_create_data(subparsers):
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
     parser_train.add_argument('--disable-wandb', '-d', action='store_true', default=False)
-    parser_train.add_argument('--project-root', '-p', type=str)
+    parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_train.add_argument('--project-name', '-s', type=str)
     parser_train.add_argument('--flanking-size', '-f', type=int, default=80)
     parser_train.add_argument('--exp-num', '-e', type=str, default=0)
-    parser_train.add_argument('--training-target', '-t', type=str, default="SpliceAI")
     parser_train.add_argument('--train-dataset', '-train', type=str)
     parser_train.add_argument('--test-dataset', '-test', type=str)
-    parser_train.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
+    parser_train.add_argument('--loss', '-l', type=str, default="cross_entropy_loss", help='The loss function to train SpliceAI model')
     parser_train.add_argument('--model', '-m', default="SpliceAI", type=str)
 
 

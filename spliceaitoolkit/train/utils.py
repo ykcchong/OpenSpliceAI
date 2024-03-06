@@ -100,8 +100,8 @@ def weighted_binary_cross_entropy(output, target, weights=None):
                weights[0] * ((1 - target) * torch.log(1 - output+1e-10))
     else:
         loss = target * torch.log(output+1e-10) + (1 - target) * torch.log(1 - output+1e-10)
-
     return torch.neg(torch.mean(loss))
+
 
 def categorical_crossentropy_2d(y_true, y_pred):
     # print("y_true: ", y_true.shape)
@@ -111,3 +111,31 @@ def categorical_crossentropy_2d(y_true, y_pred):
     return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
                         + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
                         + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))
+
+def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
+    """
+    Compute 2D focal loss.
+    
+    Parameters:
+    - y_true: tensor of true labels.
+    - y_pred: tensor of predicted labels.
+    - gamma: focusing parameter.
+    - alpha: balancing factor.
+
+    Returns:
+    - loss: computed focal loss.
+    """
+    # Ensuring numerical stability
+    epsilon = 1e-10
+    y_pred = torch.clamp(y_pred, epsilon, 1. - epsilon)    
+    # return - torch.mean(alpha * torch.pow(1 - y_pred[:, 0, :], gamma) *  y_true[:, 0, :]*torch.log(y_pred[:, 0, :])
+    #                     + alpha * torch.pow(1 - y_pred[:, 1, :], gamma) *  y_true[:, 1, :]*torch.log(y_pred[:, 1, :])
+    #                     + alpha * torch.pow(1 - y_pred[:, 2, :], gamma) *  y_true[:, 2, :]*torch.log(y_pred[:, 2, :]))
+    # Compute the focal loss
+    cross_entropy = -y_true * torch.log(y_pred)
+    # print("cross_entropy: ", cross_entropy.shape)
+    # print("cross_entropy: ", cross_entropy)
+    loss = alpha * torch.pow(1 - y_pred, gamma) * cross_entropy
+    # Return the mean loss
+    return torch.mean(loss)
+
