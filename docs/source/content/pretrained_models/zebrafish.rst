@@ -42,134 +42,81 @@ Zebrafish
 ===================================================================
 
 
-Input files
+Released models
 +++++++++++++++++++++++++++++++++++
 
-To run this example, download the following three input files.
+We trained SpliceAI-PyTorch using four different flanking sequence lengths: 80 nt, 400 nt, 2000 nt, and 10000 nt. We strongly recommend using **SpliceAI-MANE-10000nt** for best performance. The other models are suitable for experimental / research purposes.
 
-* **Input**
-    1. target **Genome** :math:`T` in FASTA : `chm13v2.0.fa <ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_ref/chm13v2.0.fa>`_ 
+.. raw:: html
 
-.. ftp://ftp.ccb.jhu.edu/pub/data/Homo_sapiens/Han1/v1.0/Assembly/Han1_v1.2.fasta)
+    <ul>
+        <li><b>SpliceAI-MANE-10000nt</b><a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-10000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a> </li>
+        <li>SpliceAI-MANE-2000nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-2000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li>SpliceAI-MANE-400nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-400nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li>SpliceAI-MANE-80nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-80nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+    </ul>
+
+|
+
+Train SpliceAI-MANE yourself
++++++++++++++++++++++++++++++++++++
+
+This section provides detailed insights into the training process of models using the SpliceAI-toolkit. To train your own version of SpliceAI-MANE, you will need a Genome FASTA file and an Annotation GFF file. Below are the links to download these files:
 
 
-    2. reference **Genome** :math:`R` in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_ref/GCF_000001405.40_GRCh38.p14_genomic.fna>`_
-    3. reference **Annotation** :math:`R_A` in GFF3 : `NCBI_RefSeq_no_rRNA.gff <ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_ref/NCBI_RefSeq_no_rRNA.gff>`_
+Files for training
+-----------------------------------------
+* **Genome** file in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/GCF_000001405.40_GRCh38.p14_genomic.fna>`_ 
+
+* **Annotation** file in GFF : `MANE.GRCh38.v1.2.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/MANE.GRCh38.v1.2.refseq_genomic.gff>`_ 
 
 
+Creating Training & Testing Datasets
+-----------------------------------------
 
-.. .. important::
-
-..     **We propose running Splam as a new step in RNA-Seq analysis pipeline to score all splice junctions.**
-
-There is only one command you need to run LiftOn:
+To create datasets for training and testing, use the following command:
 
 .. code-block:: bash
 
-    lifton -D -g NCBI_RefSeq_no_rRNA.gff -o lifton.gff3 -copies chm13v2.0.fa GCF_000001405.40_GRCh38.p14_genomic.fna
+    spliceai-toolkit create-data \
+    --genome-fasta  GCF_000001405.40_GRCh38.p14_genomic.fna \
+    --annotation-gff MANE.GRCh38.v1.2.refseq_genomic.gff \
+    --output-dir ./MANE/ \
+    --parse-type maximum
 
+Training the SpliceAI-MANE Model
+-----------------------------------------
 
-After successfully running LiftOn, you will get the following file and output directory:
+To train the SpliceAI-MANE model, run the following command:
 
-* **Output**: 
-    1. LiftOn annotation file in GFF3: ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_refseq/lifton.gff3
-    2. LiftOn output directory: ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_refseq/lifton_output/
+.. code-block:: bash
 
-       *  `score.txt <ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_refseq/lifton_output/score.txt>`_
-       *  `extra_copy_features.txt <ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_refseq/lifton_output/extra_copy_features.txt>`_
-       *  `unmapped_features.txt <ftp://ftp.ccb.jhu.edu/pub/data/LiftOn/human_refseq/lifton_output/unmapped_features.txt>`_
+    spliceai-toolkit train --flanking-size 80 \
+    --exp-num full_dataset_h5py_version \
+    --training-target MANE \
+    --train-dataset ./MANE/dataset_train.h5 \
+    --test-dataset ./MANE/dataset_test.h5 \
+    --project-name MANE_h5py_dataset \
+    --output-dir ./MANE/ \
+    --model SpliceAI \
+    > train_SpliceAI_MANE.log 2> train_SpliceAI_MANE_error.log
+
 
 |
-|
+
 
 Results
 +++++++++++++++++++++++++++++++++++
 
-Genome annotation evaluation
-------------------------------
+Training / Validation / Testing report
+-----------------------------------------
 
-Here are some visualization results comparing LiftOn annotation to (1) Liftoff and (2) miniprot annotation. 
+.. raw:: html
 
+    Here is the link to the <a href="https://api.wandb.ai/links/khchao/mnt4jczt" target="_blank">report</a>.
 
-First, we calculate the protein sequence identity score for every protein-coding transcript (check :ref:`lifton_sequence_identity` section) for three annotations, LiftOn, Liftoff, and miniprot. 
-
-:numref:`figure-human_miniprot_vs_liftoff` compares the protein-coding gene mapping of Liftoff, based on DNA alignment, with miniprot, utilizing protein-to-DNA alignment. Dots in the lower right signify transcripts where Liftoff outperformed miniprot in protein sequence identity, while the upper left indicates transcripts where miniprot excelled. LiftOn employs the PM algorithm to enhance annotations in both, achieving improved protein-coding gene annotation, as neither approach dominates the other.
-
-.. _figure-human_miniprot_vs_liftoff:
-.. figure::  ../../_images/human_refseq/Liftoff_miniprot/parasail_identities.png
-    :align:   center
-    :scale:   25 %
-
-    The scatter plot of protein sequence identity comparing between miniprot (y-axis) and Liftoff (x-axis). Each dot represents a protein-coding transcript.
+    <iframe src="https://wandb.ai/khchao/SpliceAI_Human_MANE/reports/SpliceAI-MANE--Vmlldzo2OTgxMTE4" style="border:none;height:1024px;width:100%">    
 |
-
-Next, we individually assess LiftOn in comparison to Liftoff and miniprot. In the comparison of LiftOn versus Liftoff (:numref:`figure-human_lifton_vs_liftoff_vs_miniprot`, left), 2,075 transcripts demonstrate higher protein sequence identity, with 442 achieving 100% identity. Similarly, in the LiftOn versus miniprot comparison (:numref:`figure-human_lifton_vs_liftoff_vs_miniprot`, right), 30,276 protein-coding transcripts exhibit superior matches, elevating 22,598 to identical status relative to the reference.
-
-.. _figure-human_lifton_vs_liftoff_vs_miniprot:
-.. figure::  ../../_images/human_refseq/combined_scatter_plots.png
-    :align:   center
-    :scale:   21 %
-
-    The scatter plot of protein sequence identity comparing between LiftOn (y-axis) and Liftoff (x-axis) (left) and comparing between LiftOn (y-axis) and miniprot (x-axis) (right).
-|
-
-We visualize the transcripts in a 3-D plot, incorporating LiftOn, Liftoff, and miniprot scores (see Figure :numref:`figure-human_3D_scatter`) to provide a comprehensive comparison of the three tools. If a dot is above the :math:`x=y` plane, it indicates that the protein-coding transcript annotation of LiftOn generates a longer valid protein sequence aligning to the full-length reference protein. The 3-D plot reveals that the majority of dots are above the :math:`x=y` plane, suggesting that LiftOn annotation is better.
-
-
-.. _figure-human_3D_scatter:
-.. figure::  ../../_images/human_refseq/3d_scatter.png
-    :align:   center
-    :scale:   30 %
-
-    The 3-D scatter plot of protein sequence identity comparing between LiftOn (y-axis), Liftoff (x-axis), and miniprot (z-axis).
-
-|
-
-Next, we check the distribution of protein sequence identities (see :numref:`figure-human_frequency_log`). Among the three tools, LiftOn (middle) exhibits the smallest left tail, with 322 protein-coding transcripts having a protein sequence identity of :math:`< 0.4`.
-
-.. _figure-human_frequency_log:
-.. figure::  ../../_images/human_refseq/combined_frequency_log.png
-    :align:   center
-    :scale:   12 %
-
-    Frequency plots in logarithmic scale of protein sequence identity for Liftoff (left), LiftOn (middle), and miniprot (right) for the results of GRCh38 to T2TCHM13 lift-over.
-
-|
-
-
-Finding extra copies of lift-over features
--------------------------------------------------
-
-LiftOn also has a module to find extra copies by using `intervaltree <https://github.com/chaimleib/intervaltree>`_, `Liftoff <https://academic.oup.com/bioinformatics/article/37/12/1639/6035128?login=true>`_, and `miniprot <https://academic.oup.com/bioinformatics/article/39/1/btad014/6989621>`_. The Circos plot in :numref:`figure-human_circos` shows their relative positions between the two genomes. The plot illustrates that the extra copies were predominantly located on the same chromosomes in both GRCh38 and T2T-CHM13. The frequency plot of extra copy features are show in :numref:`figure-human_extra_copy_fq`.
-
-.. _figure-human_circos:
-.. figure::  ../../_images/human_refseq/circos_plot.png
-    :align:   center
-    :scale:  16 %
-
-    Circos plot illustrating the locations of extra gene copies found on T2T-CHM13 (left side) compared to GRCh38 (right side). Each line shows the location of an extra copy, and lines are color-coded by the chromosome of the original copy.
-
-|
-
-
-.. _figure-human_extra_copy_fq:
-.. figure::  ../../_images/human_refseq/extra_cp/frequency.png
-    :align:   center
-    :scale:  30 %
-
-    Frequency plot for additional gene copy.
-
-|
-
-Finally, we examined the order of protein-coding genes (:numref:`figure-human_gene_order`) between the two genomes and observed that, as expected, nearly all genes occur in the same order and orientation in both human genomes.
-
-.. _figure-human_gene_order:
-.. figure::  ../../_images/human_refseq/gene_order_plot.png
-    :align:   center
-    :scale:  30 %
-
-    Protein-gene order plot, with the x-axis representing the reference genome (GRCh38) and the y-axis representing the target genome (T2T-CHM13). The protein sequence identities are color-coded on a logarithmic scale, ranging from green to red. Green represents a sequence identity score of 1, while red corresponds to a sequence identity score of 0.
-
 |
 
 .. _alignment-whats-next:
