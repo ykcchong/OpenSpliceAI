@@ -86,7 +86,6 @@ def parse_args_variant(subparsers):
                         type=int, choices=[0, 1],
                         help='mask scores representing annotated acceptor/donor gain and '
                              'unannotated acceptor/donor loss, defaults to 0')
-
  
 
 def parse_args(arglist):

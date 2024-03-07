@@ -4,7 +4,7 @@
 #SBATCH -p a100 # specify the GPU partition
 #SBATCH -N 1 # Number of nodes
 #SBATCH --ntasks-per-node=48
-#SBATCH --gres=gpu:4
+#SBATCH --gres=gpu:1
 #SBATCH -A ssalzbe1_gpu ### Slurm-account is usually the PI’s userid
 #SBATCH --export=ALL
 
@@ -19,15 +19,13 @@ which python
 python -c "import sys; print(sys.path)"
 
 spliceai-toolkit train --flanking-size 80 \
---exp-num full_dataset_h5py_version \
---training-target MANE \
+--exp-num full_dataset_seq_gamma_2 \
 --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/dataset_train.h5 \
 --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/dataset_test.h5 \
---project-root /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/ \
---project-name human_MANE_newlog \
---output-dir ./MANE/ \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
+--project-name human_MANE_loss_test \
 --model SpliceAI \
-> train_splan_MANE_newlog.log 2> train_splan_MANE_newlog_error.log
+--loss focal_loss > train_splan_MANE_fl_gamma_2.log 2> train_splan_MANE_fl_gamma_2_error.log
 
 
 # python train_splan.py --flanking-size 80 \
