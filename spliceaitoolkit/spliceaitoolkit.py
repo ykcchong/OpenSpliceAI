@@ -6,6 +6,7 @@ import numpy as np
 from spliceaitoolkit import header
 from spliceaitoolkit.create_data import create_datafile, create_dataset
 from spliceaitoolkit.train import train
+from spliceaitoolkit.fine_tune import fine_tune
 from spliceaitoolkit.predict import predict
 from spliceaitoolkit.variant import variant
 
@@ -38,13 +39,12 @@ def split_chromosomes(chromosomes, method='random', split_ratio=0.8):
     return train_chroms, test_chroms
 
 def parse_args_create_data(subparsers):
-    # Create subparsers for each of the subcommands.
     parser_create_data = subparsers.add_parser('create-data', help='Create dataset for your genome for SpliceAI model training')
     parser_create_data.add_argument('--annotation-gff', type=str, required=True, help='Path to the GFF file')
     parser_create_data.add_argument('--genome-fasta', type=str, required=True, help='Path to the FASTA file')
     parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--parse-type', type=str, default='maximum', choices=['maximum', 'all_isoforms'], help='Type of transcript processing')
-    # parser_create_data.add_argument('--chrom-dict', type=str, required=True, help='Path to the chromosome dictionary file')
+    # parser_create_data.add_argument('--chrom-split', type=str, required=True, help='Chromosome split method for training and testing dataset')
 
 
 def parse_args_train(subparsers):
@@ -60,9 +60,26 @@ def parse_args_train(subparsers):
     parser_train.add_argument('--model', '-m', default="SpliceAI", type=str)
 
 
+def parse_args_fine_tune(subparsers):
+    parser_fine_tune = subparsers.add_parser('fine-tune', help='Train the SpliceAI model')
+    parser_fine_tune.add_argument('--disable-wandb', '-d', action='store_true', default=False)
+    parser_predict.add_argument('--input-model', '-im', default="SpliceAI", type=str)
+    parser_fine_tune.add_argument('--output-model', '-om', default="SpliceAI", type=str)
+    parser_fine_tune.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
+    parser_fine_tune.add_argument('--project-name', '-s', type=str)
+    parser_fine_tune.add_argument('--flanking-size', '-f', type=int, default=80)
+    parser_fine_tune.add_argument('--exp-num', '-e', type=str, default=0)
+    parser_fine_tune.add_argument('--train-dataset', '-train', type=str)
+    parser_fine_tune.add_argument('--test-dataset', '-test', type=str)
+    parser_fine_tune.add_argument('--loss', '-l', type=str, default="cross_entropy_loss", help='The loss function to train SpliceAI model')
+
+
 def parse_args_predict(subparsers):
     parser_predict = subparsers.add_parser('predict', help='Predict splice sites in a given sequence using the SpliceAI model')
     parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
+    parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
+    parser_train.add_argument('--flanking-size', '-f', type=int, default=80)
+    parser_train.add_argument('--input-sequence', '-i', type=str)
 
 
 def parse_args_variant(subparsers):
@@ -86,7 +103,6 @@ def parse_args_variant(subparsers):
                         type=int, choices=[0, 1],
                         help='mask scores representing annotated acceptor/donor gain and '
                              'unannotated acceptor/donor loss, defaults to 0')
-
  
 
 def parse_args(arglist):
@@ -95,6 +111,7 @@ def parse_args(arglist):
     subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, variant')
     parse_args_create_data(subparsers)
     parse_args_train(subparsers)
+    parse_args_fine_tune(subparsers)
     parse_args_predict(subparsers)
     parse_args_variant(subparsers)
     if arglist is not None:
@@ -130,6 +147,8 @@ Deep learning framework to train your own SpliceAI model
         create_dataset.create_dataset(args)
     elif args.command == 'train':
         train.train(args)
+    elif args.command == 'fine-tune':
+        fine_tune.fine_tune(args)
     elif args.command == 'predict':
         predict.predict(args)
     elif args.command == 'variant':
