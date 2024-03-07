@@ -23,12 +23,12 @@ def setup_device():
     return torch.device(device_str)
 
 
-def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch):
+def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun):
     """Initialize project directories and create them if they don't exist."""
     ####################################
     # Modify the model verson here!!
     ####################################
-    MODEL_VERSION = f"{model_arch}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
+    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
     ####################################
     # Modify the model verson here!!
     ####################################
@@ -114,7 +114,7 @@ def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=Fal
     # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
 
 
-def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
+def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
     batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
@@ -133,7 +133,10 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-        loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
+        if criterion == "cross_entropy_loss":
+            loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
+        elif criterion == "focal_loss":
+            loss = focal_loss(batch_ylabel, batch_ypred)
         for k, v in metric_files.items():
             with open(v, 'a') as f:
                 if k == "loss_batch":
@@ -185,7 +188,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             if criterion == "cross_entropy_loss":
                 loss = categorical_crossentropy_2d(labels, yp)
             elif criterion == "focal_loss":
-                loss = focal_loss(yp, labels)
+                loss = focal_loss(labels, yp)
             # Logging loss for every update.
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")
@@ -200,10 +203,10 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
-            if batch_idx % sample_freq == 0:
-                model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
+            # if batch_idx % sample_freq == 0:
+            #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
+    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
 
 
 def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode, sample_freq):
@@ -234,7 +237,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             if criterion == "cross_entropy_loss":
                 loss = categorical_crossentropy_2d(labels, yp)
             elif criterion == "focal_loss":
-                loss = focal_loss(yp, labels)
+                loss = focal_loss(labels, yp)
             # Logging loss for every update.
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")
@@ -251,10 +254,10 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
-            if batch_idx % sample_freq == 0:
-                model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
+            # if batch_idx % sample_freq == 0:
+            #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
+    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
 
 
 def train(args):
@@ -268,10 +271,10 @@ def train(args):
     # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
-    wandb.init(project=f'{model_arch}_{project_name}_{flanking_size}_{exp_num}', reinit=True)
+    wandb.init(project=f'{project_name}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
-    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch)
+    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss)
     print("* Project name: ", args.project_name, file=sys.stderr)
     print("* Model_output_base: ", model_output_base, file=sys.stderr)
     print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
