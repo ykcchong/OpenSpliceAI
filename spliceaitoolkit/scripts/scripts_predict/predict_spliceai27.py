@@ -126,12 +126,12 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     for idx in idxs[:10]:
         X = h5f['X' + str(idx)][:100]
         Y = h5f['Y' + str(idx)][:,:100]
-        print("\n\tX.shape: ", X.shape)
-        print("\tY.shape: ", Y.shape)
+        # print("\n\tX.shape: ", X.shape)
+        # print("\tY.shape: ", Y.shape)
 
         Xc, Yc = clip_datapoints_spliceai27(X, Y, params['CL'], 2)
-        print("\n\tXc.shape: ", Xc.shape)
-        print("\tYc[0].shape: ", Yc[0].shape)
+        # print("\n\tXc.shape: ", Xc.shape)
+        # print("\tYc[0].shape: ", Yc[0].shape)
         Yp = model.predict(Xc, batch_size=params['BATCH_SIZE'])
 
         # loss = categorical_crossentropy_2d(Yc[0], Yp)
