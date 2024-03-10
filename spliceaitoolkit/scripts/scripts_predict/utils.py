@@ -86,6 +86,8 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
             num_elements = len(y_pred)  # Adjust num_elements to prevent out-of-bounds error
 
         idx_pred = argsorted_y_pred[-int(top_length*len(idx_true)):]
+        print("idx_pred: ", idx_pred)
+        print("idx_true: ", idx_true)
         # print(("idx_pred: ", idx_pred))
         
         # print(("np.size(np.intersect1d(idx_true, idx_pred)): ", np.size(np.intersect1d(idx_true, idx_pred))))

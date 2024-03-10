@@ -14,4 +14,4 @@ awk '$2 >= 0 && $3 > $2' temp.bed > filtered.bed
 
 bedtools getfasta -bed filtered.bed -fi $ref_genome -fo $sequence -tab
 
-rm temp.bed filtered.bed
+# rm temp.bed filtered.bed

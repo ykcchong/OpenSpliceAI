@@ -208,10 +208,10 @@ def main():
         torch.save(dataset, f'{output_dir}dataset_{data_type}_pytorch.pth')
 
         dataloader = DataLoader(dataset, batch_size=100, shuffle=True)
-        print("dataloader: ", dataloader)
+        # print("dataloader: ", dataloader)
         for X_batch, Y_batch in dataloader:
-            print("Batch X shape:", X_batch.shape)
-            print("Batch Y shape:", Y_batch.shape)
+            # print("Batch X shape:", X_batch.shape)
+            # print("Batch Y shape:", Y_batch.shape)
         print("--- %s seconds ---" % (time.time() - start_time))
 
 

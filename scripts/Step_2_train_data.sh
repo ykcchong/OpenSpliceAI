@@ -1,7 +1,7 @@
 # ########################################
 # # Train zebra_fish SpliceAI-model
 # ########################################
-# spliceai-toolkit train --flanking-size 80 \
+# spliceai-toolkit train --flanking-size 10000 \
 # --exp-num dataset_h5py_version \
 # --training-target zebra_fish \
 # --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/zebra_fish/dataset_train.h5 \
@@ -15,7 +15,7 @@
 ########################################
 # Train bee SpliceAI-model
 ########################################
-# spliceai-toolkit train --flanking-size 80 \
+# spliceai-toolkit train --flanking-size 10000 \
 # --exp-num dataset_h5py_version \
 # --training-target bee \
 # --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/bee/dataset_train.h5 \
@@ -29,7 +29,7 @@
 # ########################################
 # # Train arabadopsis SpliceAI-model
 # ########################################
-# spliceai-toolkit train --flanking-size 80 \
+# spliceai-toolkit train --flanking-size 10000 \
 # --exp-num dataset_h5py_version \
 # --training-target arabadop \
 # --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/arabadop/dataset_train.h5 \
@@ -43,7 +43,7 @@
 ########################################
 # Train RefSeq SpliceAI-model
 ########################################
-# spliceai-toolkit train --flanking-size 80 \
+# spliceai-toolkit train --flanking-size 10000 \
 # --exp-num full_dataset_h5py_version \
 # --training-target RefSeq_canonical \
 # --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/RefSeq_canonical/dataset_train.h5 \
@@ -54,14 +54,13 @@
 # --model SpliceAI \
 # > train_splan_canonical.log 2> train_splan_canonical_error.log
 
-spliceai-toolkit train --flanking-size 80 \
---exp-num full_dataset_h5py_version \
---train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_MANE/dataset_train_all.h5 \
---test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/train_test_dataset_MANE/dataset_test_0.h5 \
---output-dir /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/results/model_train_outdir/ \
---project-name human_MANE_newlog \
+spliceai-toolkit train --flanking-size 10000 \
+--exp-num full_dataset \
+--train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_train.h5 \
+--test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
+--project-name human_MANE_relabel \
 --model SpliceAI \
---loss focal_loss -d \ 
-> train_splan_MANE_newlog.log 2> train_splan_MANE_newlog_error.log
+--loss cross_entropy_loss > train_splan_MANE_relabel_10000.log 2> train_splan_MANE_relabel_error_10000.log
 
 # --loss focal_loss \ 

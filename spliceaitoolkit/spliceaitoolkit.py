@@ -63,7 +63,7 @@ def parse_args_train(subparsers):
 def parse_args_fine_tune(subparsers):
     parser_fine_tune = subparsers.add_parser('fine-tune', help='Train the SpliceAI model')
     parser_fine_tune.add_argument('--disable-wandb', '-d', action='store_true', default=False)
-    parser_predict.add_argument('--input-model', '-im', default="SpliceAI", type=str)
+    parser_fine_tune.add_argument('--input-model', '-im', default="SpliceAI", type=str)
     parser_fine_tune.add_argument('--output-model', '-om', default="SpliceAI", type=str)
     parser_fine_tune.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_fine_tune.add_argument('--project-name', '-s', type=str)
@@ -77,9 +77,9 @@ def parse_args_fine_tune(subparsers):
 def parse_args_predict(subparsers):
     parser_predict = subparsers.add_parser('predict', help='Predict splice sites in a given sequence using the SpliceAI model')
     parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
-    parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    parser_train.add_argument('--flanking-size', '-f', type=int, default=80)
-    parser_train.add_argument('--input-sequence', '-i', type=str)
+    parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
+    parser_predict.add_argument('--flanking-size', '-f', type=int, default=80)
+    parser_predict.add_argument('--input-sequence', '-i', type=str)
 
 
 def parse_args_variant(subparsers):
