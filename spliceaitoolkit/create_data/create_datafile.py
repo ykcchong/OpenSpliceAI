@@ -31,26 +31,18 @@ def check_and_count_motifs(seq, labels, strand):
     global donor_motif_counts, acceptor_motif_counts
     for i, label in enumerate(labels):
         if label in [1, 2]:  # Check only labeled positions
-            if strand == '+':  # For forward strand
-                motif = str(seq[i:i+2]) if i > 0 else ""  # Extract preceding 2-base motif
-                if label == 2:
-                    if motif not in donor_motif_counts:
-                        donor_motif_counts[motif] = 0
-                    donor_motif_counts[motif] += 1
-                elif label == 1:
-                    if motif not in acceptor_motif_counts:
-                        acceptor_motif_counts[motif] = 0
-                    acceptor_motif_counts[motif] += 1
-            elif strand == '-':  # For reverse strand, after adjustment
-                motif = str(seq[i:i+2]) if i < len(seq) - 1 else ""  # Extract following 2-base motif
-                if label == 2:
-                    if motif not in donor_motif_counts:
-                        donor_motif_counts[motif] = 0
-                    donor_motif_counts[motif] += 1    
-                elif label == 1:
-                    if motif not in acceptor_motif_counts:
-                        acceptor_motif_counts[motif] = 0
-                    acceptor_motif_counts[motif] += 1
+            if label == 2:
+                # Donor site
+                d_motif = str(seq[i+1:i+3])
+                if d_motif not in donor_motif_counts:
+                    donor_motif_counts[d_motif] = 0
+                donor_motif_counts[d_motif] += 1
+            elif label == 1:
+                # Acceptor site
+                a_motif = str(seq[i-2:i])
+                if a_motif not in acceptor_motif_counts:
+                    acceptor_motif_counts[a_motif] = 0
+                acceptor_motif_counts[a_motif] += 1
 
 
 def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="maximum"):
@@ -68,6 +60,7 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
     SEQ = []       # Nucleotide sequence
     LABEL = []     # Label for each nucleotide in the sequence
     h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
+    GENE_COUNTER = 0
     for gene in db.features_of_type('gene'):
         if gene.attributes["gene_biotype"][0] == "protein_coding" and gene.seqid in chrom_dict:
             chrom_dict[gene.seqid] += 1
@@ -97,22 +90,23 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
             for transcript in transcripts_ls:
                 exons = list(db.children(transcript, featuretype='exon', order_by='start'))
                 if len(exons) > 1:
+                    GENE_COUNTER += 1
                     for i in range(len(exons) - 1):
                         # Donor site is one base after the end of the current exon
-                        first_site = exons[i].end - gene.start + 1  # Adjusted for python indexing
+                        first_site = exons[i].end - gene.start  # Adjusted for python indexing
                         # Acceptor site is at the start of the next exon
                         second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
-                        # Ensure the sites are within the sequence bounds
-                        if 0 <= first_site < len(labels):
-                            if gene.strand == '+':
-                                labels[first_site] = 2  # Mark donor site
-                            elif gene.strand == '-':
-                                labels[len(labels) - first_site-2] = 1  # Mark acceptor site
-                        if 0 < second_site - 1 < len(labels):
-                            if gene.strand == '+':
-                                labels[second_site - 2] = 1  # Mark acceptor site
-                            elif gene.strand == '-':
-                                labels[len(labels) - second_site] = 2   # Mark donor site
+                        if gene.strand == '+':
+                            labels[first_site] = 2  # Mark donor site
+                            labels[second_site] = 1  # Mark acceptor site
+                        elif gene.strand == '-':
+                            d_idx = len(labels) - second_site-1
+                            a_idx = len(labels) - first_site-1
+                            labels[d_idx] = 2   # Mark donor site
+                            labels[a_idx] = 1  # Mark acceptor site
+                            seq = gene_seq.reverse_complement()
+                            print("D: ", seq[d_idx-3:  d_idx+4])
+                            print("A: ", seq[a_idx-6: a_idx+3])
             if gene.strand == '-':
                 gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
             gene_seq = str(gene_seq.upper())

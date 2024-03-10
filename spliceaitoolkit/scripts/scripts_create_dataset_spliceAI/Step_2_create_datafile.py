@@ -61,16 +61,16 @@ with open(splice_table, 'r') as fpr1:
 
         if (sys.argv[2] != data1[1]) and (sys.argv[2] != 'all'):
             continue
-
-        NAME.append(data1[0])
-        PARALOG.append(int(data1[1]))
-        CHROM.append(data1[2])
-        STRAND.append(data1[3])
-        TX_START.append(data1[4])
-        TX_END.append(data1[5])
-        JN_START.append(data1[6::2])
-        JN_END.append(data1[7::2])
-        SEQ.append(data2[3])
+        if data1[0] == "ITGB3BP":
+            NAME.append(data1[0])
+            PARALOG.append(int(data1[1]))
+            CHROM.append(data1[2])
+            STRAND.append(data1[3])
+            TX_START.append(data1[4])
+            TX_END.append(data1[5])
+            JN_START.append(data1[6::2])
+            JN_END.append(data1[7::2])
+            SEQ.append(data2[3])
 
 fpr1.close()
 fpr2.close()
@@ -80,6 +80,17 @@ fpr2.close()
 h5f = h5py.File(data_dir + 'datafile' 
                 + '_' + sys.argv[1]
                 + '.h5', 'w')
+
+print("NAME: ", NAME)
+print("PARALOG: ", PARALOG)
+print("CHROM: ", CHROM)
+print("STRAND: ", STRAND)
+print("TX_START: ", TX_START)
+print("TX_END: ", TX_END)
+print("JN_START: ", JN_START)
+print("JN_END: ", JN_END)
+print("SEQ: ", SEQ)
+
 
 dt = h5py.string_dtype(encoding='utf-8')
 ds = h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)

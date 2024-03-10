@@ -124,10 +124,12 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     Y_pred_2 = [[] for t in range(1)]
 
     for idx in idxs[:10]:
-        X = h5f['X' + str(idx)][:100]
-        Y = h5f['Y' + str(idx)][:,:100]
-        # print("\n\tX.shape: ", X.shape)
-        # print("\tY.shape: ", Y.shape)
+        X = h5f['X' + str(idx)]
+        # [:100]
+        Y = h5f['Y' + str(idx)]
+        # [:,:100]
+        print("\n\tX.shape: ", X.shape)
+        print("\tY.shape: ", Y.shape)
 
         Xc, Yc = clip_datapoints_spliceai27(X, Y, params['CL'], 2)
         # print("\n\tXc.shape: ", Xc.shape)

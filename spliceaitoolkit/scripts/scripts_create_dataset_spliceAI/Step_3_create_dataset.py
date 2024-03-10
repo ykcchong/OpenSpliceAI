@@ -42,7 +42,7 @@ h5f2 = h5py.File(data_dir + 'dataset'
                 + '_' + sys.argv[1]
                 + '.h5', 'w')
 
-CHUNK_SIZE = 100
+CHUNK_SIZE = 1
 
 print("SEQ.shape[0]: ", SEQ.shape[0])
 print("SEQ.shape[0]//CHUNK_SIZE: ", SEQ.shape[0]//CHUNK_SIZE)
@@ -74,7 +74,7 @@ for i in range(SEQ.shape[0]//CHUNK_SIZE):
         JN_START_cvt = np.array([JN_START[idx][0].decode('utf-8')])
         JN_END_cvt = np.array([JN_END[idx][0].decode('utf-8')])
         # print("SEQ_cvt: ", SEQ_cvt)
-        # print("STRAND_cvt: ", STRAND_cvt)
+        print("STRAND_cvt: ", STRAND_cvt)
         # print("TX_START_cvt: ", TX_START_cvt)
         # print("TX_END_cvt: ", TX_END_cvt)
         # print("JN_START_cvt: ", JN_START_cvt)
@@ -85,9 +85,9 @@ for i in range(SEQ.shape[0]//CHUNK_SIZE):
                                  TX_START_cvt, TX_END_cvt,
                                  JN_START_cvt, JN_END_cvt)
 
-        print("X.shape: ", X.shape)
-        print("len(Y[0]): ", len(Y[0]))
-        print("\n\n")
+        # print("X.shape: ", X.shape)
+        # print("len(Y[0]): ", len(Y[0]))
+        # print("\n\n")
 
         X_batch.extend(X)
         for t in range(1):

@@ -2,6 +2,7 @@
 *.log
 *.h5
 *.png
+*.txt
 data/
 wandb/
 results/
