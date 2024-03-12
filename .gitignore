@@ -3,6 +3,10 @@
 *.h5
 *.png
 *.txt
+*delta
+*.bed
+*.fa
+
 data/
 wandb/
 results/

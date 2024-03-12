@@ -1,0 +1,1 @@
+nucmer -p aln transcripts_train.fa transcripts_test.fa

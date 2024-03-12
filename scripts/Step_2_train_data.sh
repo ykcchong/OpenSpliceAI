@@ -54,13 +54,14 @@
 # --model SpliceAI \
 # > train_splan_canonical.log 2> train_splan_canonical_error.log
 
-spliceai-toolkit train --flanking-size 10000 \
+spliceai-toolkit train --flanking-size 80 \
 --exp-num full_dataset \
 --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_train.h5 \
 --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
 --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
---project-name human_MANE_relabel \
+--project-name human_MANE_adeptive_lr \
+--random-seed 11 \
 --model SpliceAI \
---loss cross_entropy_loss > train_splan_MANE_relabel_10000.log 2> train_splan_MANE_relabel_error_10000.log
+--loss cross_entropy_loss > train_splan_MANE_adeptive_lr_2_80.log 2> train_splan_MANE_adeptive_lr_2_error_80.log
 
 # --loss focal_loss \ 
