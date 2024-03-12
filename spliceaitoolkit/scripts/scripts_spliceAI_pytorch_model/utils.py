@@ -4,10 +4,10 @@ datafile_{}_{}.h5 and convert them into a format usable by Keras.'''
 ###############################################################################
 
 import numpy as np
-import torch
+import re
 from math import ceil
 from sklearn.metrics import average_precision_score
-from spliceaitoolkit.constants import *
+from constants import *
 
 assert CL_max % 2 == 0
 
@@ -90,66 +90,3 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
           threshold[2], threshold[3], len(idx_true))))
 
     return topkl_accuracy[1], auprc
-
-
-def weighted_binary_cross_entropy(output, target, weights=None):
-        
-    if weights is not None:
-        assert len(weights) == 2
-        loss = weights[1] * (target * torch.log(output+1e-10)) + \
-               weights[0] * ((1 - target) * torch.log(1 - output+1e-10))
-    else:
-        loss = target * torch.log(output+1e-10) + (1 - target) * torch.log(1 - output+1e-10)
-    return torch.neg(torch.mean(loss))
-
-
-def categorical_crossentropy_2d(y_true, y_pred):
-    # print("y_true: ", y_true.shape)
-    # print("y_pred: ", y_pred.shape)
-    # print("y_true: ", y_true)
-    # print("y_pred: ", y_pred)
-    # SEQ_WEIGHT = 10
-    return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
-                        + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
-                        + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))
-
-def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
-    """
-    Compute 2D focal loss.
-    
-    Parameters:
-    - y_true: tensor of true labels.
-    - y_pred: tensor of predicted labels.
-    - gamma: focusing parameter.
-    - alpha: balancing factor.
-
-    Returns:
-    - loss: computed focal loss.
-    """
-    # Ensuring numerical stability
-    gamma = 2
-    epsilon = 1e-10
-    return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 0, :]), gamma)
-                        + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 1, :]), gamma)
-                        + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 2, :]), gamma))
-
-
-    # return - torch.mean(y_true[:, 0, :] * torch.pow(torch.sub(1, y_pred[:, 0, :]), gamma) * torch.log(y_pred[:, 0, :]+epsilon)
-    #                     + SEQ_WEIGHT * y_true[:, 1, :] * torch.pow(torch.sub(1, y_pred[:, 1, :]), gamma) * torch.log(y_pred[:, 1, :]+epsilon)
-    #                     + SEQ_WEIGHT * y_true[:, 2, :] * torch.pow(torch.sub(1, y_pred[:, 2, :]), gamma) * torch.log(y_pred[:, 2, :]+epsilon))
-
-    # # y_pred = torch.clamp(y_pred, epsilon, 1. - epsilon)    
-    # return - torch.mean(alpha * torch.pow(1 - y_pred[:, 0, :], gamma) *  y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
-    #                     + alpha * torch.pow(1 - y_pred[:, 1, :], gamma) *  y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
-    #                     + alpha * torch.pow(1 - y_pred[:, 2, :], gamma) *  y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))
-
-
-
-    # # Compute the focal loss
-    # cross_entropy = -y_true * torch.log(y_pred)
-    # # print("cross_entropy: ", cross_entropy.shape)
-    # # print("cross_entropy: ", cross_entropy)
-    # loss = alpha * torch.pow(1 - y_pred, gamma) * cross_entropy
-    # # Return the mean loss
-    # return torch.mean(loss)
-

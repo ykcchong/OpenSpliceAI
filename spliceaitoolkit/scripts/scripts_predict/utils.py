@@ -15,6 +15,28 @@ def ceil_div(x, y):
     return int(ceil(float(x)/y))
 
 
+def clip_datapoints_spliceai27(X, Y, CL, N_GPUS):
+    # This function is necessary to make sure of the following:
+    # (i) Each time model_m.fit is called, the number of datapoints is a
+    # multiple of N_GPUS. Failure to ensure this often results in crashes.
+    # (ii) If the required context length is less than CL_max, then
+    # appropriate clipping is done below.
+    # Additionally, Y is also converted to a list (the .h5 files store 
+    # them as an array).
+
+    rem = X.shape[0]%N_GPUS
+    clip = (CL_max-CL)//2
+
+    if rem != 0 and clip != 0:
+        return X[:-rem, clip:-clip], [Y[t][:-rem] for t in range(1)]
+    elif rem == 0 and clip != 0:
+        return X[:, clip:-clip], [Y[t] for t in range(1)]
+    elif rem != 0 and clip == 0:
+        return X[:-rem], [Y[t][:-rem] for t in range(1)]
+    else:
+        return X, [Y[t] for t in range(1)]
+
+
 def clip_datapoints(X, Y, CL, N_GPUS):
     # This function is necessary to make sure of the following:
     # (i) Each time model_m.fit is called, the number of datapoints is a
@@ -64,6 +86,8 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
             num_elements = len(y_pred)  # Adjust num_elements to prevent out-of-bounds error
 
         idx_pred = argsorted_y_pred[-int(top_length*len(idx_true)):]
+        print("idx_pred: ", idx_pred)
+        print("idx_true: ", idx_true)
         # print(("idx_pred: ", idx_pred))
         
         # print(("np.size(np.intersect1d(idx_true, idx_pred)): ", np.size(np.intersect1d(idx_true, idx_pred))))
