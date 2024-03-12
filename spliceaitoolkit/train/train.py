@@ -7,14 +7,13 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
-import spliceai
+from spliceaitoolkit.train.spliceai import *
 from spliceaitoolkit.train.utils import *
-from ..constants import *
+from spliceaitoolkit.constants import *
 import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 import wandb
-from utils import clip_datapoints, print_topl_statistics
 
 RANDOM_SEED = 42
 
@@ -78,7 +77,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     CL = 2 * np.sum(AR*(W-1))
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
-    model = spliceai.SpliceAI(L, W, AR).to(device)
+    model = SpliceAI(L, W, AR).to(device)
     print(model, file=sys.stderr)
     # criterion = nn.BCELoss()
     # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
@@ -266,7 +265,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
 
 
 
-def train_epoch(args):
+def train(args):
     project_root = args.project_root
     project_name = args.project_name
     sequence_length = 5000
@@ -275,7 +274,7 @@ def train_epoch(args):
     training_target = args.training_target
     model_arch = args.model
     assert int(flanking_size) in [80, 400, 2000, 10000]
-    assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
+    # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
     wandb.init(project=f'{model_arch}_{project_name}_{training_target}_{sequence_length}_{flanking_size}_{exp_num}', reinit=True)
@@ -297,12 +296,12 @@ def train_epoch(args):
     print("batch_num: ", batch_num, file=sys.stderr)
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     idxs = np.random.permutation(batch_num)
-    # train_idxs = idxs[:int(0.9 * batch_num)]
-    # val_idxs = idxs[int(0.9 * batch_num):]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    train_idxs = idxs[:int(0.1*batch_num)]
-    val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
-    test_idxs = np.arange(len(test_h5f.keys()) // 10)
+    train_idxs = idxs[:int(0.9 * batch_num)]
+    val_idxs = idxs[int(0.9 * batch_num):]
+    test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    # train_idxs = idxs[:int(0.1*batch_num)]
+    # val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
+    # test_idxs = np.arange(len(test_h5f.keys()) // 10)
     print("train_idxs: ", train_idxs, file=sys.stderr)
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
@@ -332,12 +331,12 @@ def train_epoch(args):
         print("\n--------------------------------------------------------------")
         print(f">> Epoch {epoch + 1}")
         start_time = time.time()
-        # train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], criterion, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
-        # valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], criterion, device, params, valid_metric_files, run_mode="validation")
-        # valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], criterion, device, params, test_metric_files, run_mode="test")
+        train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], criterion, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
+        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], criterion, device, params, valid_metric_files, run_mode="validation")
+        valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], criterion, device, params, test_metric_files, run_mode="test")
 
-        # # run_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], criterion, None, None, device, params, test_metric_files, run_mode="test")
-        # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+        # run_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], criterion, None, None, device, params, test_metric_files, run_mode="test")
+        torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
     train_h5f.close()
