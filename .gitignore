@@ -20,7 +20,7 @@ spliceaitoolkit/spliceAI_pytorch_model/spliceai/
 
 canonical_sequence.txt
 train_data/
-
+test/
 
 
 # Byte-compiled / optimized / DLL files
