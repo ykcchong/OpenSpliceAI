@@ -7,16 +7,15 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
-from spliceaitoolkit.train.spliceai import *
-from spliceaitoolkit.train.utils import *
-from spliceaitoolkit.constants import *
 import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from spliceaitoolkit.train.spliceai import *
+from spliceaitoolkit.train.utils import *
+from spliceaitoolkit.constants import *
 import wandb
 
 RANDOM_SEED = 42
-
 
 def setup_device():
     """Select computation device based on availability."""
@@ -39,6 +38,7 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     log_output_train_base = f"{log_output_base}TRAIN/"
     log_output_val_base = f"{log_output_base}VAL/"
     log_output_test_base = f"{log_output_base}TEST/"
+
     for path in [model_output_base, log_output_train_base, log_output_val_base, log_output_test_base]:
         os.makedirs(path, exist_ok=True)
     return model_output_base, log_output_train_base, log_output_val_base, log_output_test_base
@@ -55,6 +55,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     W = np.asarray([11, 11, 11, 11])
     AR = np.asarray([1, 1, 1, 1])
     BATCH_SIZE = 18*N_GPUS
+
     if int(flanking_size) == 80:
         W = np.asarray([11, 11, 11, 11])
         AR = np.asarray([1, 1, 1, 1])
@@ -75,6 +76,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
         AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
                         10, 10, 10, 10, 25, 25, 25, 25])
         BATCH_SIZE = 6*N_GPUS
+
     CL = 2 * np.sum(AR*(W-1))
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
@@ -87,6 +89,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
+    
     return model, criterion, optimizer, scheduler, params
 
 

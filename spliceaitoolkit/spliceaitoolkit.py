@@ -142,7 +142,6 @@ Deep learning framework to train your own SpliceAI model
     print(args)
 
     if args.command == 'create-data':
-        os.makedirs(args.output_dir, exist_ok=True)
         create_datafile.create_datafile(args)
         create_dataset.create_dataset(args)
     elif args.command == 'train':
