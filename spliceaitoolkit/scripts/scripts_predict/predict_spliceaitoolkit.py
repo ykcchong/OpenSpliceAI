@@ -12,7 +12,10 @@ from utils import *
 from constants import *
 import h5py
 import time
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score, roc_curve, auc, precision_recall_curve, average_precision_score
+
+from sklearn.preprocessing import label_binarize
+from sklearn.metrics import roc_auc_score
 from keras.models import load_model
 import wandb
 
@@ -67,10 +70,166 @@ def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=Fal
     # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
 
 
+def metrics(batch_ypred, batch_ylabel, metric_files):
+    # # Placeholder for AUC and AUPRC scores
+    # auc_scores = []
+    # auprc_scores = []
+    # # Placeholder for ROC and PRC curves
+    # roc_curves = []
+    # prc_curves = []
+    # # Assuming batch_ypred and batch_ylabel are your tensors
+    # # Convert probabilities to predicted classes
+    # pred_classes = torch.argmax(batch_ypred, dim=1)
+    # # If batch_ylabel is not already in class format, convert it
+    # true_classes = torch.argmax(batch_ylabel, dim=1)
+    # # Convert tensors to numpy arrays for compatibility with scikit-learn
+    # pred_classes_np = pred_classes.numpy()
+    # true_classes_np = true_classes.numpy()
+
+    # num_classes = 3
+
+
+
+    # Assuming batch_ypred and batch_ylabel are your tensors
+    # Convert tensors to numpy arrays for compatibility with scikit-learn
+    y_pred_numpy = batch_ypred.numpy()
+    y_true_numpy = batch_ylabel.numpy()
+
+    num_classes = 3
+
+    # Ensure labels are in the correct shape for label_binarize
+    # Flatten y_true_numpy if it's not already 1D (assuming it's one-hot encoded)
+    if y_true_numpy.ndim > 1:
+        y_true_numpy = np.argmax(y_true_numpy, axis=1)
+
+    y_true_binarized = label_binarize(y_true_numpy, classes=range(num_classes))
+
+    # Calculate metrics
+    roc_auc = roc_auc_score(y_true_binarized, y_pred_numpy, multi_class='ovr', average='macro')
+    print("Average AUROC (One-vs-Rest):", roc_auc)
+
+    average_precision = average_precision_score(y_true_binarized, y_pred_numpy, average='macro')
+    print("Average AUPRC:", average_precision)
+
+    # Compute and plot ROC curves for each class
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    plt.figure()
+    for i in range(num_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_true_binarized[:, i], y_pred_numpy[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+        plt.plot(fpr[i], tpr[i], label=f'Class {i} (area = {roc_auc[i]:.2f})')
+
+    plt.plot([0, 1], [0, 1], 'k--')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('ROC Curves for Each Class')
+    plt.legend(loc="lower right")
+    plt.savefig(metric_files['roc'])  # Assuming 'roc' key in metric_files dictionary holds a correct file path
+
+
+
+    # precision = np.zeros(num_classes)
+    # recall = np.zeros(num_classes)
+    # f1 = np.zeros(num_classes)
+    # accuracies = torch.zeros(num_classes)
+
+    # # Binarize the output labels for multi-class AUROC
+    # y_true_binarized = label_binarize(true_classes_np, classes=range(num_classes))
+    # # Calculate the ROC AUC score
+    # # This computes the average AUC for each class against all others
+    # roc_auc = roc_auc_score(y_true_binarized, batch_ypred.numpy(), multi_class='ovr')
+    # print("Average AUROC (One-vs-Rest):", roc_auc)
+
+
+    # # Calculate the AUPRC for each class and average them
+    # average_precision = average_precision_score(y_true_binarized, batch_ypred.numpy(), average='macro')
+    # print("Average AUPRC:", average_precision)
+
+    # for i in range(num_classes):
+    #     class_indices = true_classes == i
+    #     correct_predictions = pred_classes[class_indices] == true_classes[class_indices]
+    #     accuracies[i] = correct_predictions.float().mean()
+        
+    #     # Binary labels for the current class
+    #     true_binary = (true_classes_np == i).astype(int)
+    #     pred_probs_i = batch_ypred.numpy()[:, i]
+
+    #     # Calculate ROC curve and AUC
+    #     fpr, tpr, _ = roc_curve(true_binary, pred_probs_i)
+    #     auc_scores.append(roc_auc)
+    #     roc_curves.append((fpr, tpr, roc_auc))
+
+    #     # Calculate Precision-Recall curve and AUPRC
+    #     precision, recall, _ = precision_recall_curve(true_binary, pred_probs_i)
+    #     pr_auc = average_precision_score(true_binary, pred_probs_i)
+    #     auprc_scores.append(pr_auc)
+    #     prc_curves.append((precision, recall, pr_auc))
+    # print("accuracies: ", accuracies)
+    # print("precision: ", precision)
+    # print("recall: ", recall)
+    # print("f1: ", f1)
+
+    # # Compute ROC curve and ROC area for each class
+    # fpr = dict()
+    # tpr = dict()
+    # roc_auc = dict()
+
+    # for i in range(num_classes):
+    #     fpr[i], tpr[i], _ = roc_curve(y_true_binarized[:, i], batch_ypred.numpy()[:, i])
+    #     roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # # Plotting
+    # plt.figure()
+    # colors = ['aqua', 'darkorange', 'cornflowerblue']
+    # for i, color in zip(range(num_classes), colors):
+    #     plt.plot(fpr[i], tpr[i], color=color, lw=2,
+    #             label='ROC curve of class {0} (area = {1:0.2f})'
+    #             ''.format(i, roc_auc[i]))
+
+    # plt.plot([0, 1], [0, 1], 'k--', lw=2)
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('Some extension of Receiver operating characteristic to multi-class')
+    # plt.legend(loc="lower right")
+    # plt.savefig(metric_files['roc.png'])
+
+    # # Plotting ROC Curves
+    # plt.figure(figsize=(10, 5))
+    # for i, (fpr, tpr, roc_auc) in enumerate(roc_curves):
+    #     plt.plot(fpr, tpr, lw=2, label='Class %d (area = %0.2f)' % (i, roc_auc))
+    # plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('Receiver Operating Characteristic (ROC) curves')
+    # plt.legend(loc="lower right")
+    # plt.savefig(metric_files['roc.png'])
+    # # Plotting Precision-Recall Curves
+    # plt.figure(figsize=(10, 5))
+    # for i, (precision, recall, pr_auc) in enumerate(prc_curves):
+    #     plt.plot(recall, precision, lw=2, label='Class %d (area = %0.2f)' % (i, pr_auc))
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+    # plt.xlabel('Recall')
+    # plt.ylabel('Precision')
+    # plt.title('Precision-Recall curves')
+    # plt.legend(loc="lower left")
+    # plt.savefig(metric_files['prc.png'])
+
+
 def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
     batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
+    print("batch_ylabel: ", batch_ylabel.shape)
+    print("batch_ypred: ", batch_ypred.shape)
     if np.any(is_expr):
         ############################
         # Topk SpliceAI assessment approach
@@ -86,6 +245,8 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
+
+        metrics(batch_ypred, batch_ylabel, metric_files)
         # if criterion == "cross_entropy_loss":
         loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
         # elif criterion == "focal_loss":
@@ -119,7 +280,8 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     model.eval()
     running_loss = 0.0
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
-    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    # shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    shuffled_idxs = idxs
     print("shuffled_idxs: ", shuffled_idxs)
     batch_ylabel = []
     batch_ypred = []
@@ -145,9 +307,9 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
             # Logging loss for every update.
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")
-            wandb.log({
-                f'{run_mode}/loss_every_update': loss.item(),
-            })
+            # wandb.log({
+            #     f'{run_mode}/loss_every_update': loss.item(),
+            # })
             running_loss += loss.item()
             # print("loss: ", loss.item())
             batch_ylabel.append(labels.detach().cpu())
@@ -157,8 +319,7 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
             pbar.update(1)
             batch_idx += 1
             # if batch_idx % sample_freq == 0:
-            #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
-        
+            #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)        
         if i == 5:
             break
         pbar.close()
@@ -259,7 +420,9 @@ def predict():
         'topk_acceptor': f'{log_output_test_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_test_base}/acceptor_accuracy.txt',
         'loss_batch': f'{log_output_test_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
+        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt',
+        'auc': f'{log_output_test_base}/auc.png',
+        'prc': f'{log_output_test_base}/prc.png',
     }
     SAMPLE_FREQ = 1000
     print("\n--------------------------------------------------------------")
