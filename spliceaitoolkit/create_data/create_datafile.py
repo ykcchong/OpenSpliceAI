@@ -1,19 +1,55 @@
+"""
+create_datafile.py 
+
+- Extracts sequences and labels from GFF-format genome annotations and FASTA-format genomic sequences
+- Marks donor and acceptor splice sites, outputs the data in HDF5-format
+- Counts the occurrences of motifs at donor and acceptor sites
+- Supports handling multiple transcripts per gene, allowing user to choose between processing only longest transcript or all isoforms
+
+Usage:
+    Required arguments: annotation_gff, genome_fasta, and output_dir.
+    Optional arguments: db_file (for specifying the database filename), parse_type
+    (choose between processing 'maximum' transcript length or 'all_isoforms')
+
+Example:
+    python create_datafile.py --annotation_gff path/to/gff --genome_fasta path/to/fasta --output_dir path/to/output
+
+Attributes:
+    donor_motif_counts (dict): A global dictionary to count occurrences of donor motifs.
+    acceptor_motif_counts (dict): A global dictionary to count occurrences of acceptor motifs.
+
+Functions:
+    create_or_load_db(gff_file, db_file='gff.db'): Create or load a gffutils database.
+    check_and_count_motifs(seq, labels, strand): Check and count motifs at splice sites.
+    get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="maximum"): Process gene sequences.
+    print_motif_counts(): Print the counts of donor and acceptor motifs.
+    create_datafile(args): Main function to create the data file from genomic data.
+"""
+
 import os 
 import gffutils
 from Bio import SeqIO
-from Bio.Seq import MutableSeq
 import numpy as np
 import h5py
 import time
 import argparse
 
-donor_motif_counts = {}  # Initialize counts
-acceptor_motif_counts = {}  # Initialize counts
+# Counting donor and acceptor motif counts
+donor_motif_counts = {}  
+acceptor_motif_counts = {}  
 
 def create_or_load_db(gff_file, db_file='gff.db'):
     """
     Create a gffutils database from a GFF file, or load it if it already exists.
+
+    Parameters:
+    - gff_file: Path to GFF file
+    - db_file: Path to save or load the database file (default: 'gff.db')
+
+    Returns:
+    - db: gffutils FeatureDB object
     """
+
     if not os.path.exists(db_file):
         print("Creating new database...")
         db = gffutils.create_db(gff_file, dbfn=db_file, force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
@@ -25,31 +61,38 @@ def create_or_load_db(gff_file, db_file='gff.db'):
 
 def check_and_count_motifs(seq, labels, strand):
     """
-    Check sequences for donor and acceptor motifs based on labels and strand,
-    and return their counts in a dictionary.
-    """    
+    Check sequences for donor and acceptor motifs and count their occurrences.
+
+    Parameters:
+    - seq: The DNA sequence (str).
+    - labels: Array of labels indicating locations of interest in the sequence.
+    - strand: The strand (+ or -) indicating the direction of the gene.
+    """     
+
     global donor_motif_counts, acceptor_motif_counts
     for i, label in enumerate(labels):
-        if label in [1, 2]:  # Check only labeled positions
-            if label == 2:
-                # Donor site
-                d_motif = str(seq[i+1:i+3])
-                if d_motif not in donor_motif_counts:
-                    donor_motif_counts[d_motif] = 0
-                donor_motif_counts[d_motif] += 1
-            elif label == 1:
-                # Acceptor site
-                a_motif = str(seq[i-2:i])
-                if a_motif not in acceptor_motif_counts:
-                    acceptor_motif_counts[a_motif] = 0
-                acceptor_motif_counts[a_motif] += 1
+        if label == 2:  # Donor site
+            d_motif = str(seq[i+1:i+3])
+            donor_motif_counts[d_motif] = donor_motif_counts.get(d_motif, 0) + 1
+        elif label == 1:  # Acceptor site
+            a_motif = str(seq[i-2:i])
+            acceptor_motif_counts[a_motif] = acceptor_motif_counts.get(a_motif, 0) + 1
 
 
 def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="maximum"):
     """
-    Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
-    and label donor and acceptor sites correctly based on strand orientation.
+    Extract sequences for each protein-coding gene, process them based on strand orientation,
+    label donor and acceptor sites, and save the data in an HDF5 file.
+
+    Parameters:
+    - db: The gffutils database object.
+    - fasta_file: Path to the FASTA file.
+    - output_dir: Directory to save the output files.
+    - type: Type of dataset being processed ('train' or 'test').
+    - chrom_dict: Dictionary of chromosomes to process.
+    - parse_type: Mode of parsing transcripts ('maximum' or 'all_isoforms').
     """
+
     seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
     fw_stats = open(f"{output_dir}stats.txt", "w")
     NAME = []      # Gene Name
@@ -133,6 +176,10 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
 
 
 def print_motif_counts():
+    """
+    Print the counts of donor and acceptor motifs.
+    """
+
     global donor_motif_counts, acceptor_motif_counts
     print("Donor motifs:")
     for motif, count in donor_motif_counts.items():
@@ -142,13 +189,38 @@ def print_motif_counts():
         print(f"{motif}: {count}")
 
 def create_datafile(args):
+    """
+    Main function to create the HDF5 data files for training and testing datasets.
+    
+    This function takes command-line arguments to specify the input and output directories, 
+    as well as the genome annotation and sequence files. It first ensures the output directory exists,
+    then creates or loads a gffutils database from the annotation GFF file. It divides the chromosomes
+    into training and testing groups, processes gene sequences for each group, labels the donor and
+    acceptor splice sites, and finally, writes the processed data to HDF5 files.
+    
+    Parameters:
+    - args (argparse.Namespace): Command-line arguments 
+        - output_dir (str): The directory where the HDF5 files will be saved.
+        - annotation_gff (str): Path to the GFF file containing genome annotations.
+        - genome_fasta (str): Path to the FASTA file containing genome sequences.
+        - parse_type (str): Specifies how to handle genes with multiple transcripts ('maximum' or 'all_isoforms').
+    """
+
+    ''' 
+    NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!
+    Where are the `get_all_chromosomes` and `split_chromosomes` functions?
+    '''
+    # Use gffutils to parse annotation file
     os.makedirs(args.output_dir, exist_ok=True)
     db = create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
+
     # Find all distinct chromosomes and split them
     all_chromosomes = get_all_chromosomes(db)
     TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = split_chromosomes(all_chromosomes, method='random')  # Or any other method you prefer
     print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
     print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
+
+    # Collect sequences and labels
     print("--- Step 1: Creating datafile.h5 ... ---")
     start_time = time.time()
     get_sequences_and_labels(db, args.genome_fasta, args.output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type)

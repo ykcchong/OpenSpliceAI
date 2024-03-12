@@ -1,8 +1,18 @@
+"""
+create_dataset.py
+
+- Converts sequences to one-hot encoded format, considering strand information
+- Pads sequences and replaces non-standard nucleotides
+- Breaks down data into manageable chunks for processing
+- Counts occurrences of motifs at donor and acceptor splice sites
+
+
+"""
+
 import h5py
 import numpy as np
 import sys, os
 import time
-# from utils import *
 from math import ceil
 from spliceaitoolkit.constants import *
 import argparse
