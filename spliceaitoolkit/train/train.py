@@ -1,3 +1,44 @@
+# def get_cosine_schedule_with_warmup(
+#       optimizer: Optimizer,
+#       num_warmup_steps: int,
+#       num_training_steps: int,
+#       num_cycles: float = 0.5,
+#       last_epoch: int = -1,
+#     ):
+#     """
+#     Create a schedule with a learning rate that decreases following the values of the cosine function between the
+#     initial lr set in the optimizer to 0, after a warmup period during which it increases linearly between 0 and the
+#     initial lr set in the optimizer.
+
+#     Args:
+#     optimizer (:class:`~torch.optim.Optimizer`):
+#       The optimizer for which to schedule the learning rate.
+#     num_warmup_steps (:obj:`int`):
+#       The number of steps for the warmup phase.
+#     num_training_steps (:obj:`int`):
+#       The total number of training steps.
+#     num_cycles (:obj:`float`, `optional`, defaults to 0.5):
+#       The number of waves in the cosine schedule (the defaults is to just decrease from the max value to 0
+#       following a half-cosine).
+#     last_epoch (:obj:`int`, `optional`, defaults to -1):
+#       The index of the last epoch when resuming training.
+
+#     Return:
+#     :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
+#     """
+#     def lr_lambda(current_step):
+#         # Warmup
+#         if current_step < num_warmup_steps:
+#             return float(current_step) / float(max(1, num_warmup_steps))
+#         # decadence
+#         progress = float(current_step - num_warmup_steps) / float(
+#           max(1, num_training_steps - num_warmup_steps)
+#         )
+#         return max(
+#           0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))
+#         )
+#     return LambdaLR(optimizer, lr_lambda, last_epoch)
+
 import argparse
 import os, sys
 import numpy as np
@@ -15,7 +56,6 @@ import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 import wandb
 
-RANDOM_SEED = 42
 
 def setup_device():
     """Select computation device based on availability."""
@@ -23,12 +63,12 @@ def setup_device():
     return torch.device(device_str)
 
 
-def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun):
+def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun, random_seed):
     """Initialize project directories and create them if they don't exist."""
     ####################################
     # Modify the model verson here!!
     ####################################
-    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
+    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}_rs{random_seed}"
     ####################################
     # Modify the model verson here!!
     ####################################
@@ -80,11 +120,13 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     model = SpliceAI(L, W, AR).to(device)
     print(model, file=sys.stderr)
     # criterion = nn.BCELoss()
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
-    # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
     criterion = torch.nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+    # optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
+    # Replace the existing scheduler with ReduceLROnPlateau
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, verbose=True)
+    # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, len(train_loader)*EPOCH_NUM)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
     return model, criterion, optimizer, scheduler, params
 
@@ -159,13 +201,14 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
         print("***************************************\n\n")
     batch_ylabel = []
     batch_ypred = []
+    return loss
 
 
 def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
     running_loss = 0.0
-    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    np.random.seed(params["RANDOM_SEED"])  # You can choose any number as a seed
     shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
     print("shuffled_idxs: ", shuffled_idxs)
     batch_ylabel = []
@@ -192,9 +235,9 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             # Logging loss for every update.
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")
-            wandb.log({
-                f'{run_mode}/loss_every_update': loss.item(),
-            })
+            # wandb.log({
+            #     f'{run_mode}/loss_every_update': loss.item(),
+            # })
             running_loss += loss.item()
             # print("loss: ", loss.item())
             batch_ylabel.append(labels.detach().cpu())
@@ -206,14 +249,15 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             # if batch_idx % sample_freq == 0:
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    eval_loss = model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    return eval_loss
 
 
 def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode, sample_freq):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.train()
     running_loss = 0.0
-    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    np.random.seed(params["RANDOM_SEED"])  # You can choose any number as a seed
     shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)
     print("shuffled_idxs: ", shuffled_idxs)
     batch_ylabel = []
@@ -241,9 +285,9 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             # Logging loss for every update.
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")
-            wandb.log({
-                f'{run_mode}/loss_every_update': loss.item(),
-            })
+            # wandb.log({
+            #     f'{run_mode}/loss_every_update': loss.item(),
+            # })
             # print("loss: ", loss.item())
             loss.backward()
             optimizer.step()
@@ -257,7 +301,8 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             # if batch_idx % sample_freq == 0:
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    eval_loss = model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    return eval_loss
 
 
 def train(args):
@@ -274,7 +319,7 @@ def train(args):
     wandb.init(project=f'{project_name}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
-    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss)
+    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss, args.random_seed)
     print("* Project name: ", args.project_name, file=sys.stderr)
     print("* Model_output_base: ", model_output_base, file=sys.stderr)
     print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
@@ -291,7 +336,9 @@ def train(args):
     train_h5f = h5py.File(training_dataset, 'r')
     test_h5f = h5py.File(testing_dataset, 'r')
     batch_num = len(train_h5f.keys()) // 2
+    RANDOM_SEED = args.random_seed
     print("Batch_num: ", batch_num, file=sys.stderr)
+    print("RANDOM_SEED: ", RANDOM_SEED, file=sys.stderr)
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     idxs = np.random.permutation(batch_num)
     train_idxs = idxs[:int(0.9 * batch_num)]
@@ -304,6 +351,7 @@ def train(args):
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
     model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_arch)
+    params["RANDOM_SEED"] = RANDOM_SEED
     train_metric_files = {
         'topk_donor': f'{log_output_train_base}/donor_topk.txt',
         'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
@@ -329,14 +377,36 @@ def train(args):
         'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
     }
     SAMPLE_FREQ = 1000
-    for epoch in range(EPOCH_NUM):
+    best_val_loss = float('inf')
+    epochs_no_improve = 0
+    n_patience = 10  # For example, stop after 10 epochs with no improvement
+    for epoch in range(1000):
         print("\n--------------------------------------------------------------")
-        print(f">> Epoch {epoch + 1}")
+        # Print the current learning rate
+        current_lr = optimizer.param_groups[0]['lr']
+        print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
+        wandb.log({
+            f'train/learning_rate': current_lr,
+        })
         start_time = time.time()
-        train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
-        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
-        valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
-        torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
+        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
+        # Scheduler step with validation loss
+        scheduler.step(val_loss)
+        # Check for early stopping or model improvement
+        if val_loss.item() < best_val_loss:
+            best_val_loss = val_loss.item()
+            # Consider saving the best model here
+            torch.save(model.state_dict(), f"{model_output_base}/best_model.pt")
+            print("New best model saved.")
+        else:
+            epochs_no_improve += 1
+            print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
+            if epochs_no_improve >= n_patience:
+                print("Early stopping triggered.")
+                break  # Break out of the loop to stop training
+        # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
     train_h5f.close()
