@@ -17,42 +17,35 @@ import wandb
 
 RANDOM_SEED = 42
 
+# needed
 def setup_device():
     """Select computation device based on availability."""
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
     return torch.device(device_str)
 
-def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun):
+# adjusted for prediction only
+def initialize_paths(output_dir, flanking_size, sequence_length, model_arch):
     """Initialize project directories and create them if they don't exist."""
-    ####################################
-    # Modify the model verson here!!
-    ####################################
-    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
-    ####################################
-    # Modify the model verson here!!
-    ####################################
-    model_train_outdir = f"{output_dir}/{MODEL_VERSION}/{exp_num}/"
-    model_output_base = f"{model_train_outdir}models/"
+
+    BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
+    model_train_outdir = f"{output_dir}/{BASENAME}/"
+
     log_output_base = f"{model_train_outdir}LOG/"
-    log_output_train_base = f"{log_output_base}TRAIN/"
-    log_output_val_base = f"{log_output_base}VAL/"
-    log_output_test_base = f"{log_output_base}TEST/"
+    os.makedirs(log_output_base, exist_ok=True)
 
-    for path in [model_output_base, log_output_train_base, log_output_val_base, log_output_test_base]:
-        os.makedirs(path, exist_ok=True)
-    return model_output_base, log_output_train_base, log_output_val_base, log_output_test_base
+    return log_output_base
 
-
-def initialize_model_and_optim(device, flanking_size, model_arch):
-    """Initialize the model, criterion, optimizer, and scheduler."""
+# adjusted for prediction 
+def load_model(device, flanking_size, model_arch):
+    """Loads the given model."""
     # Hyper-parameters:
     # L: Number of convolution kernels
     # W: Convolution window size in each residual unit
     # AR: Atrous rate in each residual unit
     L = 32
-    N_GPUS = 2
     W = np.asarray([11, 11, 11, 11])
     AR = np.asarray([1, 1, 1, 1])
+    N_GPUS = 2
     BATCH_SIZE = 18*N_GPUS
 
     if int(flanking_size) == 80:
@@ -77,20 +70,17 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
         BATCH_SIZE = 6*N_GPUS
 
     CL = 2 * np.sum(AR*(W-1))
+
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
+    
+    # GET MODEL
     model = SpliceAI(L, W, AR).to(device)
     print(model, file=sys.stderr)
-    # criterion = nn.BCELoss()
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
-    # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
+    return model
 
-    return model, criterion, optimizer, scheduler, params
 
+# don't need?
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
     X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
     Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
@@ -99,60 +89,11 @@ def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=Fal
     X = torch.tensor(X, dtype=torch.float32)
     Y = torch.tensor(Y, dtype=torch.float32)
     ds = TensorDataset(X, Y)
-    # print("\rds: ", ds)
+
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
-    # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
 
-
-def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
-    batch_ylabel = torch.cat(batch_ylabel, dim=0)
-    batch_ypred = torch.cat(batch_ypred, dim=0)
-    is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
-    if np.any(is_expr):
-        ############################
-        # Topk SpliceAI assessment approach
-        ############################
-        subset_size = 1000
-        indices = np.arange(batch_ylabel[is_expr].shape[0])
-        subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-        Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-                            np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-        donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-                            np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-        if criterion == "cross_entropy_loss":
-            loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
-        elif criterion == "focal_loss":
-            loss = focal_loss(batch_ylabel, batch_ypred)
-        for k, v in metric_files.items():
-            with open(v, 'a') as f:
-                if k == "loss_batch":
-                    f.write(f"{loss.item()}\n")
-                elif k == "topk_acceptor":
-                    f.write(f"{acceptor_topkl_accuracy}\n")
-                elif k == "topk_donor":
-                    f.write(f"{donor_topkl_accuracy}\n")
-                elif k == "auprc_acceptor":
-                    f.write(f"{acceptor_auprc}\n")
-                elif k == "auprc_donor":
-                    f.write(f"{donor_auprc}\n")
-        wandb.log({
-            f'{run_mode}/loss_batch': loss.item(),
-            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-            f'{run_mode}/topk_donor': donor_topkl_accuracy,
-            f'{run_mode}/auprc_acceptor': acceptor_auprc,
-            f'{run_mode}/auprc_donor': donor_auprc,
-        })
-        print("***************************************\n\n")
-    batch_ylabel = []
-    batch_ypred = []
-
-
+# definitely need
 def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
-
     """
     Validates the SpliceAI model on a given dataset.
     (Similar to train_epoch, but without performing backpropagation or updating model parameters)
@@ -169,11 +110,13 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     - run_mode (str): Indicates the phase (e.g., "validation", "test").
     - sample_freq (int): Frequency of sampling for evaluation and logging.
     """
-    
+
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
+
     running_loss = 0.0
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+
     shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
     print("shuffled_idxs: ", shuffled_idxs)
     batch_ylabel = []
@@ -270,36 +213,33 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
 
 def predict(args):
     print("Running SpliceAI-toolkit with 'predict' mode")
+
+    # one-hot encode input sequence -> to DataLoader -> model.eval() -> get predictions -> return
     
+    # get args
     output_dir = args.output_dir
-    project_name = args.project_name
-    sequence_length = 5000
+    sequence_length = SL
     flanking_size = int(args.flanking_size)
-    exp_num = args.exp_num
     model_arch = args.model
+
     assert int(flanking_size) in [80, 400, 2000, 10000]
-    # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
-    if args.disable_wandb:
-        os.environ['WANDB_MODE'] = 'disabled'
-    wandb.init(project=f'{project_name}', reinit=True)
+
+    # get device for model
     device = setup_device()
     print("device: ", device, file=sys.stderr)
-    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss)
+
+    # initialize output directory
+    log_output_base = initialize_paths(output_dir, flanking_size, sequence_length, model_arch)
     print("* Project name: ", args.project_name, file=sys.stderr)
-    print("* Model_output_base: ", model_output_base, file=sys.stderr)
-    print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
-    print("* Log_output_val_base: ", log_output_val_base, file=sys.stderr)
-    print("* Log_output_test_base: ", log_output_test_base, file=sys.stderr)
-    training_dataset = args.train_dataset
-    testing_dataset = args.test_dataset
-    print("Training_dataset: ", training_dataset, file=sys.stderr)
-    print("Testing_dataset: ", testing_dataset, file=sys.stderr)
+    print("* log_output_base: ", log_output_base, file=sys.stderr)
+
     print("Model architecture: ", model_arch, file=sys.stderr)
     print("Loss function: ", args.loss, file=sys.stderr)
     print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
-    print("Exp number: ", args.exp_num, file=sys.stderr)
+
     train_h5f = h5py.File(training_dataset, 'r')
     test_h5f = h5py.File(testing_dataset, 'r')
+
     batch_num = len(train_h5f.keys()) // 2
     print("Batch_num: ", batch_num, file=sys.stderr)
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
@@ -307,13 +247,12 @@ def predict(args):
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    # train_idxs = idxs[:int(0.1*batch_num)]
-    # val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 10)
     print("train_idxs: ", train_idxs, file=sys.stderr)
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
-    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_arch)
+
+    model = load_model(device, flanking_size, model_arch)
+
     train_metric_files = {
         'topk_donor': f'{log_output_train_base}/donor_topk.txt',
         'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
