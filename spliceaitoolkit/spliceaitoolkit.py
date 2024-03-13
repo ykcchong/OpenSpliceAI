@@ -61,7 +61,7 @@ def parse_args_train(subparsers):
 
 
 def parse_args_fine_tune(subparsers):
-    parser_fine_tune = subparsers.add_parser('fine-tune', help='Train the SpliceAI model')
+    parser_fine_tune = subparsers.add_parser('fine-tune', help='Fine-tune a pre-trained SpliceAI model.')
     parser_fine_tune.add_argument('--disable-wandb', '-d', action='store_true', default=False)
     parser_fine_tune.add_argument('--input-model', '-im', default="SpliceAI", type=str)
     parser_fine_tune.add_argument('--output-model', '-om', default="SpliceAI", type=str)

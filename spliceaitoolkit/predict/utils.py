@@ -9,6 +9,31 @@ from math import ceil
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, accuracy_score
 from spliceaitoolkit.constants import *
 
+# One-hot encoding of the inputs: 
+# 1: A;  2: C;  3: G;  4: T;  0: padding
+IN_MAP = np.asarray([[0, 0, 0, 0],
+                     [1, 0, 0, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]])
+
+def one_hot_encode(Xd):
+    """
+    Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
+    predefined mappings (IN_MAP for inputs and OUT_MAP for outputs).
+
+    Parameters:
+    - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
+        is encoded as an integer (1 for 'A', 2 for 'C', 3 for 'G', 4 for 'T', and 0 for padding).
+    - Yd (list of numpy.ndarray): A list containing a single array of integers representing the output label data,
+        where each label is encoded as an integer (0 for 'no splice', 1 for 'acceptor', 2 for 'donor', and -1 for padding).
+
+    Returns:
+    - numpy.ndarray: the one-hot encoded input sequence data.
+    - numpy.ndarray: the one-hot encoded output label data.
+    """
+    return IN_MAP[Xd.astype('int8')]
+
 def calculate_metrics(y_true, y_pred):
     """Calculate metrics including precision, recall, f1-score, and accuracy."""
     precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
