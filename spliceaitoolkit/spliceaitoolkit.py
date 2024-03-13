@@ -79,7 +79,7 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
     parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_predict.add_argument('--flanking-size', '-f', type=int, default=80)
-    parser_predict.add_argument('--input-sequence', '-i', type=str)
+    parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
 
 
 def parse_args_variant(subparsers):
