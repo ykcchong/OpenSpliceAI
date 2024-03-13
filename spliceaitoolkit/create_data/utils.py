@@ -1,5 +1,5 @@
 ###############################################################################
-'''This code has functions to process sequences into h5 datasets.'''
+'''This code has functions to process sequences into .h5 datasets.'''
 ###############################################################################
 
 import numpy as np
