@@ -7,16 +7,17 @@ create_datafile.py
 - Supports handling multiple transcripts per gene, allowing user to choose between processing only longest transcript or all isoforms
 
 Usage:
-    Required arguments: annotation_gff, genome_fasta, and output_dir.
-    Optional arguments: db_file (for specifying the database filename), parse_type
-    (choose between processing 'maximum' transcript length or 'all_isoforms')
+    Required arguments:
+        - annotation_gff: Path to the GFF file containing genome annotations.
+        - genome_fasta: Path to the FASTA file containing genome sequences.
+        - output_dir: Directory where the output files will be saved.
+
+    Optional arguments:
+        - db_file: Specifies the filename for the database. Default is 'gff.db'.
+        - parse_type: Choose between processing the 'maximum' transcript length or 'all_isoforms'.
 
 Example:
     python create_datafile.py --annotation_gff path/to/gff --genome_fasta path/to/fasta --output_dir path/to/output
-
-Attributes:
-    donor_motif_counts (dict): A global dictionary to count occurrences of donor motifs.
-    acceptor_motif_counts (dict): A global dictionary to count occurrences of acceptor motifs.
 
 Functions:
     create_or_load_db(gff_file, db_file='gff.db'): Create or load a gffutils database.
@@ -33,10 +34,7 @@ import numpy as np
 import h5py
 import time
 import argparse
-
-# Counting donor and acceptor motif counts
-donor_motif_counts = {}  
-acceptor_motif_counts = {}  
+from spliceaitoolkit.create_data.utils import check_and_count_motifs, print_motif_counts
 
 def create_or_load_db(gff_file, db_file='gff.db'):
     """
@@ -57,27 +55,6 @@ def create_or_load_db(gff_file, db_file='gff.db'):
         print("Loading existing database...")
         db = gffutils.FeatureDB(db_file)
     return db
-
-
-def check_and_count_motifs(seq, labels, strand):
-    """
-    Check sequences for donor and acceptor motifs and count their occurrences.
-
-    Parameters:
-    - seq: The DNA sequence (str).
-    - labels: Array of labels indicating locations of interest in the sequence.
-    - strand: The strand (+ or -) indicating the direction of the gene.
-    """     
-
-    global donor_motif_counts, acceptor_motif_counts
-    for i, label in enumerate(labels):
-        if label == 2:  # Donor site
-            d_motif = str(seq[i+1:i+3])
-            donor_motif_counts[d_motif] = donor_motif_counts.get(d_motif, 0) + 1
-        elif label == 1:  # Acceptor site
-            a_motif = str(seq[i-2:i])
-            acceptor_motif_counts[a_motif] = acceptor_motif_counts.get(a_motif, 0) + 1
-
 
 def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="maximum"):
     """
@@ -173,20 +150,6 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
     h5f.create_dataset('SEQ', data=np.asarray(SEQ, dtype=dt) , dtype=dt)
     h5f.create_dataset('LABEL', data=np.asarray(LABEL, dtype=dt) , dtype=dt)
     h5f.close()
-
-
-def print_motif_counts():
-    """
-    Print the counts of donor and acceptor motifs.
-    """
-
-    global donor_motif_counts, acceptor_motif_counts
-    print("Donor motifs:")
-    for motif, count in donor_motif_counts.items():
-        print(f"{motif}: {count}")
-    print("\nAcceptor motifs:")
-    for motif, count in acceptor_motif_counts.items():
-        print(f"{motif}: {count}")
 
 def create_datafile(args):
     """
