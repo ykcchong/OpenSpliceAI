@@ -16,7 +16,7 @@ Example:
     python train.py --output_dir=./outputs --project_name="SpliceAI" --flanking_size=200 --exp_num=1
                     --model="SpliceAI" --loss="cross_entropy" --train_dataset="./data/train.h5"
                     --test_dataset="./data/test.h5" --disable_wandb=False
-                    
+
 Functions:
 - `setup_device()`: Determines the best computational device (CUDA, MPS, CPU) available for training.
 - `initialize_paths()`: Sets up directories for saving outputs, including model checkpoints and logs.
@@ -367,6 +367,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
                 loss = categorical_crossentropy_2d(labels, yp)
             elif criterion == "focal_loss":
                 loss = focal_loss(labels, yp)
+                
             # Logging loss for every update.
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")

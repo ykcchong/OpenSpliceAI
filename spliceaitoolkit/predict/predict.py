@@ -10,8 +10,8 @@ import platform
 import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-from spliceaitoolkit.train.spliceai import *
-from spliceaitoolkit.train.utils import *
+from spliceaitoolkit.predict.spliceai import *
+from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
 import wandb
 
@@ -21,7 +21,6 @@ def setup_device():
     """Select computation device based on availability."""
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
     return torch.device(device_str)
-
 
 def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun):
     """Initialize project directories and create them if they don't exist."""
@@ -89,21 +88,8 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
-    
+
     return model, criterion, optimizer, scheduler, params
-
-
-def calculate_metrics(y_true, y_pred):
-    """Calculate metrics including precision, recall, f1-score, and accuracy."""
-    precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
-    accuracy = accuracy_score(y_true, y_pred)
-    return precision, recall, f1, accuracy
-
-
-def threshold_predictions(y_probs, threshold=0.5):
-    """Threshold probabilities to get binary predictions."""
-    return (y_probs > threshold).astype(int)
-
 
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
     X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
@@ -166,6 +152,24 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
 
 
 def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
+
+    """
+    Validates the SpliceAI model on a given dataset.
+    (Similar to train_epoch, but without performing backpropagation or updating model parameters)
+
+    Parameters:
+    - model (torch.nn.Module): The SpliceAI model to be evaluated.
+    - h5f (h5py.File): HDF5 file object containing the validation or test data.
+    - idxs (np.array): Array of indices for the batches to be used in validation/testing.
+    - batch_size (int): Size of each batch.
+    - criterion (str): The loss function used for validation/testing.
+    - device (torch.device): The computational device (CUDA, MPS, CPU).
+    - params (dict): Dictionary of parameters related to model and validation/testing.
+    - metric_files (dict): Dictionary containing paths to log files for various metrics.
+    - run_mode (str): Indicates the phase (e.g., "validation", "test").
+    - sample_freq (int): Frequency of sampling for evaluation and logging.
+    """
+    
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
     running_loss = 0.0
@@ -266,3 +270,84 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
 
 def predict(args):
     print("Running SpliceAI-toolkit with 'predict' mode")
+    
+    output_dir = args.output_dir
+    project_name = args.project_name
+    sequence_length = 5000
+    flanking_size = int(args.flanking_size)
+    exp_num = args.exp_num
+    model_arch = args.model
+    assert int(flanking_size) in [80, 400, 2000, 10000]
+    # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
+    if args.disable_wandb:
+        os.environ['WANDB_MODE'] = 'disabled'
+    wandb.init(project=f'{project_name}', reinit=True)
+    device = setup_device()
+    print("device: ", device, file=sys.stderr)
+    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss)
+    print("* Project name: ", args.project_name, file=sys.stderr)
+    print("* Model_output_base: ", model_output_base, file=sys.stderr)
+    print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
+    print("* Log_output_val_base: ", log_output_val_base, file=sys.stderr)
+    print("* Log_output_test_base: ", log_output_test_base, file=sys.stderr)
+    training_dataset = args.train_dataset
+    testing_dataset = args.test_dataset
+    print("Training_dataset: ", training_dataset, file=sys.stderr)
+    print("Testing_dataset: ", testing_dataset, file=sys.stderr)
+    print("Model architecture: ", model_arch, file=sys.stderr)
+    print("Loss function: ", args.loss, file=sys.stderr)
+    print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
+    print("Exp number: ", args.exp_num, file=sys.stderr)
+    train_h5f = h5py.File(training_dataset, 'r')
+    test_h5f = h5py.File(testing_dataset, 'r')
+    batch_num = len(train_h5f.keys()) // 2
+    print("Batch_num: ", batch_num, file=sys.stderr)
+    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    idxs = np.random.permutation(batch_num)
+    train_idxs = idxs[:int(0.9 * batch_num)]
+    val_idxs = idxs[int(0.9 * batch_num):]
+    test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    # train_idxs = idxs[:int(0.1*batch_num)]
+    # val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
+    # test_idxs = np.arange(len(test_h5f.keys()) // 10)
+    print("train_idxs: ", train_idxs, file=sys.stderr)
+    print("val_idxs: ", val_idxs, file=sys.stderr)
+    print("test_idxs: ", test_idxs, file=sys.stderr)
+    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_arch)
+    train_metric_files = {
+        'topk_donor': f'{log_output_train_base}/donor_topk.txt',
+        'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
+        'topk_acceptor': f'{log_output_train_base}/acceptor_topk.txt',
+        'auprc_acceptor': f'{log_output_train_base}/acceptor_accuracy.txt',
+        'loss_batch': f'{log_output_train_base}/loss_batch.txt',
+        'loss_every_update': f'{log_output_train_base}/loss_every_update.txt'
+    }
+    valid_metric_files = {
+        'topk_donor': f'{log_output_val_base}/donor_topk.txt',
+        'auprc_donor': f'{log_output_val_base}/donor_accuracy.txt',
+        'topk_acceptor': f'{log_output_val_base}/acceptor_topk.txt',
+        'auprc_acceptor': f'{log_output_val_base}/acceptor_accuracy.txt',
+        'loss_batch': f'{log_output_val_base}/loss_batch.txt',
+        'loss_every_update': f'{log_output_val_base}/loss_every_update.txt'
+    }
+    test_metric_files = {
+        'topk_donor': f'{log_output_test_base}/donor_topk.txt',
+        'auprc_donor': f'{log_output_test_base}/donor_accuracy.txt',
+        'topk_acceptor': f'{log_output_test_base}/acceptor_topk.txt',
+        'auprc_acceptor': f'{log_output_test_base}/acceptor_accuracy.txt',
+        'loss_batch': f'{log_output_test_base}/loss_batch.txt',
+        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
+    }
+    SAMPLE_FREQ = 1000
+    for epoch in range(EPOCH_NUM):
+        print("\n--------------------------------------------------------------")
+        print(f">> Epoch {epoch + 1}")
+        start_time = time.time()
+        train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
+        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+        valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
+        torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+        print("--- %s seconds ---" % (time.time() - start_time))
+        print("--------------------------------------------------------------")
+    train_h5f.close()
+    test_h5f.close()
