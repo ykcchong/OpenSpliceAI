@@ -410,10 +410,11 @@ def train(args):
         - test_dataset (str): Path to the testing dataset file.
         - disable_wandb (bool): Flag to disable logging to Weights & Biases.
     """
+    print("Running SpliceAI-toolkit with 'train' mode")
 
     output_dir = args.output_dir
     project_name = args.project_name
-    sequence_length = 5000
+    sequence_length = SL
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
     model_arch = args.model
@@ -424,12 +425,14 @@ def train(args):
     wandb.init(project=f'{project_name}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
+
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss)
     print("* Project name: ", args.project_name, file=sys.stderr)
     print("* Model_output_base: ", model_output_base, file=sys.stderr)
     print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
     print("* Log_output_val_base: ", log_output_val_base, file=sys.stderr)
     print("* Log_output_test_base: ", log_output_test_base, file=sys.stderr)
+
     training_dataset = args.train_dataset
     testing_dataset = args.test_dataset
     print("Training_dataset: ", training_dataset, file=sys.stderr)
@@ -438,21 +441,21 @@ def train(args):
     print("Loss function: ", args.loss, file=sys.stderr)
     print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
     print("Exp number: ", args.exp_num, file=sys.stderr)
+
     train_h5f = h5py.File(training_dataset, 'r')
     test_h5f = h5py.File(testing_dataset, 'r')
     batch_num = len(train_h5f.keys()) // 2
     print("Batch_num: ", batch_num, file=sys.stderr)
+
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     idxs = np.random.permutation(batch_num)
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    # train_idxs = idxs[:int(0.1*batch_num)]
-    # val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 10)
     print("train_idxs: ", train_idxs, file=sys.stderr)
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
+
     model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_arch)
     train_metric_files = {
         'topk_donor': f'{log_output_train_base}/donor_topk.txt',
