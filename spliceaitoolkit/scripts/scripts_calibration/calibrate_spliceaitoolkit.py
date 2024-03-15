@@ -272,7 +272,6 @@ def fit_temperature_scaling(model, h5f, idxs, device, batch_size, params, train=
     return temp_model, logits, labels
 
 
-
 def calibrate_and_predict(model, temp_model, test_loader):
     model.eval() # Ensure the model is in evaluation mode
     temp_model.eval() # Ensure the temperature model is in evaluation mode
@@ -291,6 +290,7 @@ def calibrate_and_predict(model, temp_model, test_loader):
 ############################################
 # End of model calibration
 ############################################
+
 
 def reverse_softmax(softmax_output, epsilon=1e-12):
     # Using log softmax for numerical stability

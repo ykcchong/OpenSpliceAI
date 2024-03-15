@@ -22,18 +22,18 @@
 # python -c "import sys; print(sys.path)"
 
 
-python predict_spliceai27.py --flanking-size 10000 \
---project-name spliceai5_prediction \
+python calibrate_spliceaitoolkit.py --flanking-size 10000 \
+--project-name spliceai1_prediction \
+--train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_train.h5 \
 --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
 --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
---model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai/spliceai5.h5 -d
+--model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/10000nt/model_10000nt_rs30.pt -d
 
-# \ > train_splan_LocalTransformer_MANE_80.log 2> train_splan_LocalTransformer_MANE_80_error.log
 
-python predict_spliceaitoolkit.py --flanking-size 10000 \
---project-name spliceai_pytorch_prediction_rs15 \
---test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
---output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
---model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/model_10000nt_rs40.pt -d
+# # \ > train_splan_LocalTransformer_MANE_80.log 2> train_splan_LocalTransformer_MANE_80_error.log
 
-# dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/dataset_test.h5 \
+# python predict_spliceaitoolkit.py --flanking-size 10000 \
+# --project-name spliceai1_prediction \
+# --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/dataset_test.h5 \
+# --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
+# --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/model_10000nt.pt -d
