@@ -2,8 +2,8 @@
 # # Creating zebra_fish dataset
 # ########################################
 # spliceai-toolkit create-data \
-# --genome-fasta /Users/chaokuan-hao/Documents/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.fna \
-# --annotation-gff /Users/chaokuan-hao/Documents/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.gff \
+# --genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.fna \
+# --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.gff \
 # --output-dir ./zebra_fish/ \
 # --parse-type maximum
 
@@ -11,19 +11,19 @@
 # # Creating bee dataset
 # ########################################
 # spliceai-toolkit create-data \
-# --genome-fasta /Users/chaokuan-hao/Documents/ref_genome/bee/HAv3.1_genomic.fna \
-# --annotation-gff /Users/chaokuan-hao/Documents/ref_genome/bee/HAv3.1_genomic.gff \
+# --genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/bee/HAv3.1_genomic.fna \
+# --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/bee/HAv3.1_genomic.gff \
 # --output-dir ./bee/ \
 # --parse-type maximum
 
-# ########################################
-# # Creating arabadopsis dataset
-# ########################################
-# spliceai-toolkit create-data \
-# --genome-fasta  /Users/chaokuan-hao/Documents/ref_genome/arabadop/TAIR10.fna \
-# --annotation-gff /Users/chaokuan-hao/Documents/ref_genome/arabadop/TAIR10.gff \
-# --output-dir ./arabadop/ \
-# --parse-type maximum
+########################################
+# Creating arabadopsis dataset
+########################################
+spliceai-toolkit create-data \
+--genome-fasta  /home/kchao10/data_ssalzbe1/khchao/ref_genome/arabadop/TAIR10.fna \
+--annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/arabadop/TAIR10.gff \
+--output-dir ./arabadop/ \
+--parse-type maximum
 
 # ########################################
 # # Creating RefSeq dataset
@@ -35,19 +35,19 @@
 # --parse-type maximum
 
 
-########################################
-# Creating RefSeq dataset
-########################################
-spliceai-toolkit create-data \
---genome-fasta  /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna \
---annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff \
---output-dir ./RefSeq/ \
---parse-type maximum
+# ########################################
+# # Creating RefSeq dataset
+# ########################################
+# spliceai-toolkit create-data \
+# --genome-fasta  /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna \
+# --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff \
+# --output-dir ./RefSeq/ \
+# --parse-type maximum
 
 
 
-spliceai-toolkit create-data \
---genome-fasta  /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna \
---annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/MANE/v1.3/MANE.GRCh38.v1.3.refseq_genomic.gff \
---output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/ \
---parse-type maximum
+# spliceai-toolkit create-data \
+# --genome-fasta  /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna \
+# --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/MANE/v1.3/MANE.GRCh38.v1.3.refseq_genomic.gff \
+# --output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/ \
+# --parse-type maximum
