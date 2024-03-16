@@ -1,20 +1,29 @@
-# ########################################
-# # Creating zebra_fish dataset
-# ########################################
-# spliceai-toolkit create-data \
-# --genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.fna \
-# --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.gff \
-# --output-dir ./zebra_fish/ \
-# --parse-type maximum
+########################################
+# Creating zebra_fish dataset
+########################################
+spliceai-toolkit create-data \
+--genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.fna \
+--annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/zebra_fish/GCF_000002035.6_GRCz11_genomic.gff \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_zebrafish/ \
+--parse-type maximum
 
-# ########################################
-# # Creating bee dataset
-# ########################################
-# spliceai-toolkit create-data \
-# --genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/bee/HAv3.1_genomic.fna \
-# --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/bee/HAv3.1_genomic.gff \
-# --output-dir ./bee/ \
-# --parse-type maximum
+########################################
+# Creating bee dataset
+########################################
+spliceai-toolkit create-data \
+--genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/bee/HAv3.1_genomic.fna \
+--annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/bee/HAv3.1_genomic.gff \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_zebrafish/ \
+--parse-type maximum
+
+########################################
+# Creating bee dataset
+########################################
+spliceai-toolkit create-data \
+--genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/mouse/GCF_000001635.27_GRCm39_genomic.fna \
+--annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/mouse/GCF_000001635.27_GRCm39_genomic.gff \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_mouse/ \
+--parse-type maximum
 
 ########################################
 # Creating arabadopsis dataset
