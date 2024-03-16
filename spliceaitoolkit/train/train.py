@@ -1,44 +1,3 @@
-# def get_cosine_schedule_with_warmup(
-#       optimizer: Optimizer,
-#       num_warmup_steps: int,
-#       num_training_steps: int,
-#       num_cycles: float = 0.5,
-#       last_epoch: int = -1,
-#     ):
-#     """
-#     Create a schedule with a learning rate that decreases following the values of the cosine function between the
-#     initial lr set in the optimizer to 0, after a warmup period during which it increases linearly between 0 and the
-#     initial lr set in the optimizer.
-
-#     Args:
-#     optimizer (:class:`~torch.optim.Optimizer`):
-#       The optimizer for which to schedule the learning rate.
-#     num_warmup_steps (:obj:`int`):
-#       The number of steps for the warmup phase.
-#     num_training_steps (:obj:`int`):
-#       The total number of training steps.
-#     num_cycles (:obj:`float`, `optional`, defaults to 0.5):
-#       The number of waves in the cosine schedule (the defaults is to just decrease from the max value to 0
-#       following a half-cosine).
-#     last_epoch (:obj:`int`, `optional`, defaults to -1):
-#       The index of the last epoch when resuming training.
-
-#     Return:
-#     :obj:`torch.optim.lr_scheduler.LambdaLR` with the appropriate schedule.
-#     """
-#     def lr_lambda(current_step):
-#         # Warmup
-#         if current_step < num_warmup_steps:
-#             return float(current_step) / float(max(1, num_warmup_steps))
-#         # decadence
-#         progress = float(current_step - num_warmup_steps) / float(
-#           max(1, num_training_steps - num_warmup_steps)
-#         )
-#         return max(
-#           0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress))
-#         )
-#     return LambdaLR(optimizer, lr_lambda, last_epoch)
-
 import argparse
 import os, sys
 import numpy as np
@@ -68,7 +27,7 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     ####################################
     # Modify the model verson here!!
     ####################################
-    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}_rs{random_seed}"
+    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{flanking_size}_{exp_num}_rs{random_seed}"
     ####################################
     # Modify the model verson here!!
     ####################################
@@ -119,8 +78,6 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     model = SpliceAI(L, W, AR).to(device)
     print(model, file=sys.stderr)
-    # criterion = nn.BCELoss()
-    criterion = torch.nn.CrossEntropyLoss()
     # optimizer = optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
@@ -128,19 +85,63 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, verbose=True)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, len(train_loader)*EPOCH_NUM)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
-    return model, criterion, optimizer, scheduler, params
+    return model, None, optimizer, scheduler, params
 
 
-def calculate_metrics(y_true, y_pred):
-    """Calculate metrics including precision, recall, f1-score, and accuracy."""
-    precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
-    accuracy = accuracy_score(y_true, y_pred)
-    return precision, recall, f1, accuracy
+def classwise_accuracy(true_classes, predicted_classes, num_classes):
+    class_accuracies = []
+    for i in range(num_classes):
+        true_positives = np.sum((predicted_classes == i) & (true_classes == i))
+        total_class_samples = np.sum(true_classes == i)
+        if total_class_samples > 0:
+            accuracy = true_positives / total_class_samples
+        else:
+            accuracy = 0.0  # Or set to an appropriate value for classes with no samples
+        class_accuracies.append(accuracy)
+    return class_accuracies
 
 
-def threshold_predictions(y_probs, threshold=0.5):
-    """Threshold probabilities to get binary predictions."""
-    return (y_probs > threshold).astype(int)
+def metrics(batch_ypred, batch_ylabel, metric_files, run_mode):
+    # Convert softmax probabilities to predicted classes
+    _, predicted_classes = torch.max(batch_ypred, 1)  # Ensure this matches your data shape correctly
+    true_classes = torch.argmax(batch_ylabel, dim=1)  # Adjust the axis if necessary
+    # Convert tensors to numpy for compatibility with scikit-learn
+    true_classes = true_classes.numpy()
+    predicted_classes = predicted_classes.numpy()
+    # Flatten arrays if they're 2D (for multi-class, not multi-label)
+    true_classes_flat = true_classes.flatten()
+    predicted_classes_flat = predicted_classes.flatten()
+    # Now, calculate the metrics without iterating over each class
+    accuracy = accuracy_score(true_classes_flat, predicted_classes_flat)
+    precision, recall, f1, _ = precision_recall_fscore_support(true_classes_flat, predicted_classes_flat, average=None)
+    class_accuracies = classwise_accuracy(true_classes, predicted_classes, 3)
+    overall_accuracy = np.mean(class_accuracies)
+    print(f"Overall Accuracy: {overall_accuracy}")
+    for k, v in metric_files.items():
+        with open(v, 'a') as f:
+            if k == "accuracy":
+                f.write(f"{overall_accuracy}\n")
+    ss_types = ["Non-splice", "acceptor", "donor"]
+    for i, (acc, prec, rec, f1_score) in enumerate(zip(class_accuracies, precision, recall, f1)):
+        print(f"Class {ss_types[i]}\t: Accuracy={acc}, Precision={prec}, Recall={rec}, F1={f1_score}")
+        if ss_types[i] == "Non-splice":
+            continue
+        for k, v in metric_files.items():
+            with open(v, 'a') as f:
+                if k == f"{ss_types[i]}_precision":
+                    f.write(f"{prec}\n")
+                elif k == f"{ss_types[i]}_recall":
+                    f.write(f"{rec}\n")
+                elif k == f"{ss_types[i]}_f1":
+                    f.write(f"{f1_score}\n")
+                elif k == f"{ss_types[i]}_accuracy":
+                    f.write(f"{acc}\n")
+        wandb.log({
+            f'{run_mode}/{ss_types[i]} precision': prec,
+            f'{run_mode}/{ss_types[i]} recall': rec,
+            f'{run_mode}/{ss_types[i]} F1': f1_score,
+            f'{run_mode}/{ss_types[i]} accuracy': acc
+        })
 
 
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
@@ -167,14 +168,22 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
         subset_size = 1000
         indices = np.arange(batch_ylabel[is_expr].shape[0])
         subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-        Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-                            np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-        donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-                            np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
+        batch_ylabel = batch_ylabel[is_expr][subset_indices, :, :]
+        batch_ypred = batch_ypred[is_expr][subset_indices, :, :]
+
+        Y_true_1 = batch_ylabel[:, 1, :].flatten().cpu().detach().numpy()
+        Y_true_2 = batch_ylabel[:, 2, :].flatten().cpu().detach().numpy()
+        Y_pred_1 = batch_ypred[:, 1, :].flatten().cpu().detach().numpy()
+        Y_pred_2 = batch_ypred[:, 2, :].flatten().cpu().detach().numpy()
+
+        # Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
+        # Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
+        # Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
+        # Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
+        acceptor_topk_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
+                            np.asarray(Y_pred_1), metric_files["acceptor_topk"], type='acceptor', print_top_k=True)
+        donor_topk_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
+                            np.asarray(Y_pred_2), metric_files["donor_topk"], type='donor', print_top_k=True)
         if criterion == "cross_entropy_loss":
             loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
         elif criterion == "focal_loss":
@@ -183,22 +192,25 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
             with open(v, 'a') as f:
                 if k == "loss_batch":
                     f.write(f"{loss.item()}\n")
-                elif k == "topk_acceptor":
-                    f.write(f"{acceptor_topkl_accuracy}\n")
-                elif k == "topk_donor":
-                    f.write(f"{donor_topkl_accuracy}\n")
-                elif k == "auprc_acceptor":
-                    f.write(f"{acceptor_auprc}\n")
-                elif k == "auprc_donor":
+                elif k == "donor_topk":
+                    f.write(f"{donor_topk_accuracy}\n")
+                elif k == "donor_auprc":
                     f.write(f"{donor_auprc}\n")
+                elif k == "acceptor_topk":
+                    f.write(f"{acceptor_topk_accuracy}\n")
+                elif k == "acceptor_auprc":
+                    f.write(f"{acceptor_auprc}\n")
+                elif k == "acceptor_auroc":
+                    f.write(f"{acceptor_auroc}\n")
         wandb.log({
-            f'{run_mode}/loss_batch': loss.item(),
-            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-            f'{run_mode}/topk_donor': donor_topkl_accuracy,
-            f'{run_mode}/auprc_acceptor': acceptor_auprc,
-            f'{run_mode}/auprc_donor': donor_auprc,
+            f'{run_mode}/Loss batch': loss.item(),
+            f'{run_mode}/acceptor TopK': acceptor_topk_accuracy,
+            f'{run_mode}/donor TopK': donor_topk_accuracy,
+            f'{run_mode}/acceptor AUPRC': acceptor_auprc,
+            f'{run_mode}/donor AUPRC': donor_auprc,
         })
         print("***************************************\n\n")
+        metrics(batch_ypred, batch_ylabel, metric_files, run_mode)
     batch_ylabel = []
     batch_ypred = []
     return loss
@@ -246,8 +258,6 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
-            # if batch_idx % sample_freq == 0:
-            #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
     eval_loss = model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
     return eval_loss
@@ -353,28 +363,64 @@ def train(args):
     model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_arch)
     params["RANDOM_SEED"] = RANDOM_SEED
     train_metric_files = {
-        'topk_donor': f'{log_output_train_base}/donor_topk.txt',
-        'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
-        'topk_acceptor': f'{log_output_train_base}/acceptor_topk.txt',
-        'auprc_acceptor': f'{log_output_train_base}/acceptor_accuracy.txt',
+        'donor_topk_all': f'{log_output_train_base}/donor_topk_all.txt',
+        'donor_topk': f'{log_output_train_base}/donor_topk.txt',
+        'donor_auprc': f'{log_output_train_base}/donor_auprc.txt',
+        'donor_accuracy': f'{log_output_train_base}/donor_accuracy.txt',
+        'donor_precision': f'{log_output_train_base}/donor_precision.txt',
+        'donor_recall': f'{log_output_train_base}/donor_recall.txt',
+        'donor_f1': f'{log_output_train_base}/donor_f1.txt',
+        'acceptor_topk_all': f'{log_output_train_base}/acceptor_topk_all.txt',
+        'acceptor_topk': f'{log_output_train_base}/acceptor_topk.txt',
+        'acceptor_auprc': f'{log_output_train_base}/acceptor_auprc.txt',
+        'acceptor_accuracy': f'{log_output_train_base}/acceptor_accuracy.txt',
+        'acceptor_precision': f'{log_output_train_base}/acceptor_precision.txt',
+        'acceptor_recall': f'{log_output_train_base}/acceptor_recall.txt',
+        'acceptor_f1': f'{log_output_train_base}/acceptor_f1.txt',
+        'prc': f'{log_output_train_base}/prc.png',
+        'accuracy': f'{log_output_train_base}/accuracy.txt',
         'loss_batch': f'{log_output_train_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_train_base}/loss_every_update.txt'
+        'loss_every_update': f'{log_output_train_base}/loss_every_update.txt',
     }
     valid_metric_files = {
-        'topk_donor': f'{log_output_val_base}/donor_topk.txt',
-        'auprc_donor': f'{log_output_val_base}/donor_accuracy.txt',
-        'topk_acceptor': f'{log_output_val_base}/acceptor_topk.txt',
-        'auprc_acceptor': f'{log_output_val_base}/acceptor_accuracy.txt',
+        'donor_topk_all': f'{log_output_val_base}/donor_topk_all.txt',
+        'donor_topk': f'{log_output_val_base}/donor_topk.txt',
+        'donor_auprc': f'{log_output_val_base}/donor_auprc.txt',
+        'donor_accuracy': f'{log_output_val_base}/donor_accuracy.txt',
+        'donor_precision': f'{log_output_val_base}/donor_precision.txt',
+        'donor_recall': f'{log_output_val_base}/donor_recall.txt',
+        'donor_f1': f'{log_output_val_base}/donor_f1.txt',
+        'acceptor_topk_all': f'{log_output_val_base}/acceptor_topk_all.txt',
+        'acceptor_topk': f'{log_output_val_base}/acceptor_topk.txt',
+        'acceptor_auprc': f'{log_output_val_base}/acceptor_auprc.txt',
+        'acceptor_accuracy': f'{log_output_val_base}/acceptor_accuracy.txt',
+        'acceptor_precision': f'{log_output_val_base}/acceptor_precision.txt',
+        'acceptor_recall': f'{log_output_val_base}/acceptor_recall.txt',
+        'acceptor_f1': f'{log_output_val_base}/acceptor_f1.txt',
+        'prc': f'{log_output_val_base}/prc.png',
+        'accuracy': f'{log_output_val_base}/accuracy.txt',
         'loss_batch': f'{log_output_val_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_val_base}/loss_every_update.txt'
+        'loss_every_update': f'{log_output_val_base}/loss_every_update.txt',
     }
     test_metric_files = {
-        'topk_donor': f'{log_output_test_base}/donor_topk.txt',
-        'auprc_donor': f'{log_output_test_base}/donor_accuracy.txt',
-        'topk_acceptor': f'{log_output_test_base}/acceptor_topk.txt',
-        'auprc_acceptor': f'{log_output_test_base}/acceptor_accuracy.txt',
+        'donor_topk_all': f'{log_output_test_base}/donor_topk_all.txt',
+        'donor_topk': f'{log_output_test_base}/donor_topk.txt',
+        'donor_auprc': f'{log_output_test_base}/donor_auprc.txt',
+        'donor_accuracy': f'{log_output_test_base}/donor_accuracy.txt',
+        'donor_precision': f'{log_output_test_base}/donor_precision.txt',
+        'donor_recall': f'{log_output_test_base}/donor_recall.txt',
+        'donor_f1': f'{log_output_test_base}/donor_f1.txt',
+        'acceptor_topk_all': f'{log_output_test_base}/acceptor_topk_all.txt',
+        'acceptor_topk': f'{log_output_test_base}/acceptor_topk.txt',
+        'acceptor_auprc': f'{log_output_test_base}/acceptor_auprc.txt',
+        'acceptor_accuracy': f'{log_output_test_base}/acceptor_accuracy.txt',
+        'acceptor_precision': f'{log_output_test_base}/acceptor_precision.txt',
+        'acceptor_recall': f'{log_output_test_base}/acceptor_recall.txt',
+        'acceptor_f1': f'{log_output_test_base}/acceptor_f1.txt',
+        'prc': f'{log_output_test_base}/prc.png',        
+        'accuracy': f'{log_output_test_base}/accuracy.txt',
         'loss_batch': f'{log_output_test_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
+        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt',
     }
     SAMPLE_FREQ = 1000
     best_val_loss = float('inf')

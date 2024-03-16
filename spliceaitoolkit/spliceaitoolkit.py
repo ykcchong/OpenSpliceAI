@@ -19,25 +19,6 @@ except ImportError:
 
 __VERSION__ = header.__version__
 
-def get_all_chromosomes(db):
-    """Extract all unique chromosomes from the GFF database."""
-    chromosomes = set()
-    for feature in db.all_features():
-        chromosomes.add(feature.seqid)
-    return list(chromosomes)
-
-def split_chromosomes(chromosomes, method='random', split_ratio=0.8):
-    """Split chromosomes into training and testing groups."""
-    if method == 'random':
-        random.shuffle(chromosomes)
-        split_point = int(len(chromosomes) * split_ratio)
-        train_chroms = {chrom: 0 for chrom in chromosomes[:split_point]}
-        test_chroms = {chrom: 0 for chrom in chromosomes[split_point:]}
-    else:
-        # Implement other methods if needed
-        train_chroms, test_chroms = {}, {}
-    return train_chroms, test_chroms
-
 def parse_args_create_data(subparsers):
     parser_create_data = subparsers.add_parser('create-data', help='Create dataset for your genome for SpliceAI model training')
     parser_create_data.add_argument('--annotation-gff', type=str, required=True, help='Path to the GFF file')
