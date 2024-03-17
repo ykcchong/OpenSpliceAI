@@ -16,7 +16,8 @@ def initialize_paths(output_dir, flanking_size, sequence_length, idx, species, t
     if target == "spliceai_keras":
         MODEL_VERSION = f"spliceai{idx}_{species}_{sequence_length}_{flanking_size}"
     elif target == "spliceai_pytorch":
-        MODEL_VERSION = f"spliceai_{species}_rs{idx}_{sequence_length}_{flanking_size}"
+        # MODEL_VERSION = f"spliceai_{species}_rs{idx}_{sequence_length}_{flanking_size}"
+        MODEL_VERSION = f"RefSeq_noncoding_fine-tune_unfreeze_last_residual_{sequence_length}_{flanking_size}"
     ####################################
     # Modify the model verson here!!
     ####################################

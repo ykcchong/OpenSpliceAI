@@ -85,7 +85,7 @@ def initialize_model_and_optim(device, flanking_size, pretrained_model_path=None
     print(model, file=sys.stderr)
     # optimizer = optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
-    optimizer = optim.AdamW(model.parameters(), lr=5e-4)
+    optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     # Replace the existing scheduler with ReduceLROnPlateau
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, len(train_loader)*EPOCH_NUM)
@@ -328,7 +328,6 @@ def fine_tune(args):
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
     pretrained_model = args.input_model
-
     assert int(flanking_size) in [80, 400, 2000, 10000]
     # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
@@ -372,9 +371,16 @@ def fine_tune(args):
     for param in model.parameters():
         param.requires_grad = False
         print("param.requires_grad: ", param.requires_grad)
+
+    # Unfreeze the last Residual Unit
+    for param in model.residual_units[-1].parameters():
+        param.requires_grad = True
+        print("Unfreeze the last residual_unit param.requires_grad: ", param.requires_grad)
+
+    # Unfreeze the final Convolutional Layer
     for param in model.final_conv.parameters():
         param.requires_grad = True
-        print("param.requires_grad: ", param.requires_grad)
+        print("Unfreeze the final_cov param.requires_grad: ", param.requires_grad)
 
     train_metric_files = {
         'donor_topk_all': f'{log_output_train_base}/donor_topk_all.txt',

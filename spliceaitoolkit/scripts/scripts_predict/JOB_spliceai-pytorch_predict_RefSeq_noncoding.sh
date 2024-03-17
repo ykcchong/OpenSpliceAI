@@ -28,11 +28,12 @@ for FLANKING_SIZE in 80 400 2000 10000; do
     RANDOPM_SEED=12
     LOSS_FUNC=cross_entropy_loss
     EXP_NUM=full_dataset
+    PROJECT_NAME=${SPECIES}_fine-tune_unfreeze_last_residual
 
     python predict_spliceaitoolkit.py --flanking-size ${FLANKING_SIZE} \
-    --project-name spliceai_${SPECIES}_rs${RANDOPM_SEED} \
+    --project-name ${PROJECT_NAME} \
     --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test_ncRNA.h5 \
     --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
-    --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/${FLANKING_SIZE}nt/model_${FLANKING_SIZE}nt_rs${RANDOPM_SEED}.pt
+    --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_${PROJECT_NAME}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/full_dataset/models/best_model.pt
 done
 
