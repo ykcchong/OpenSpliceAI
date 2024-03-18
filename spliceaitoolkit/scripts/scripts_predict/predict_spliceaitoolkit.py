@@ -167,8 +167,8 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     model.eval()
     running_loss = 0.0
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
-    # shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
-    shuffled_idxs = idxs
+    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    shuffled_idxs = idxs[:30]
     print("shuffled_idxs: ", shuffled_idxs)
     batch_ylabel = []
     batch_ypred = []

@@ -10,7 +10,7 @@ import spliceaitoolkit.create_data.utils as utils
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
 
-def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, type, chrom_dict, parse_type="maximum"):
+def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, type, chrom_dict, parse_type="maximum", biotype="protein-coding"):
     """
     Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
     and label donor and acceptor sites correctly based on strand orientation.
@@ -23,56 +23,74 @@ def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, type, chrom_d
     TX_END = []    # Position where transcription ends
     SEQ = []       # Nucleotide sequence
     LABEL = []     # Label for each nucleotide in the sequence
-    h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
+    h5fname = None
+    if biotype =="non-coding":
+        h5fname = output_dir + f'datafile_{type}_ncRNA.h5'
+    elif biotype =="protein-coding":
+        h5fname = output_dir + f'datafile_{type}.h5'
+    h5f = h5py.File(h5fname, 'w')
     GENE_COUNTER = 0
     for gene in db.features_of_type('gene'):
         if "exception" in gene.attributes.keys() and gene.attributes["exception"][0] == "trans-splicing":
             continue
-        if gene.attributes["gene_biotype"][0] == "protein_coding" and gene.seqid in chrom_dict:
-            chrom_dict[gene.seqid] += 1
-            gene_id = gene.id
-            gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
-            print(f"Processing gene {gene_id} on chromosome {gene.seqid}..., len(gene_seq): {len(gene_seq)}")
-            labels = [0] * len(gene_seq)  # Initialize all labels to 0
-            transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
-            if len(transcripts) == 0:
+        if gene.seqid not in chrom_dict:
+            continue
+        # print(f'gene.attributes["gene_biotype"][0]: {gene.attributes["gene_biotype"][0]}')
+        if biotype =="protein-coding":
+            if gene.attributes["gene_biotype"][0] != "protein_coding":
                 continue
-            elif len(transcripts) > 1:
-                print(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
-            ############################################
-            # Selecting which mode to process the data
-            ############################################
-            transcripts_ls = []
-            if parse_type == 'maximum':
-                max_trans = transcripts[0]
-                max_len = max_trans.end - max_trans.start + 1
-                for transcript in transcripts:
-                    if transcript.end - transcript.start + 1 > max_len:
-                        max_trans = transcript
-                        max_len = transcript.end - transcript.start + 1
-                transcripts_ls = [max_trans]
-            elif parse_type == 'all_isoforms':
-                transcripts_ls = transcripts
-            # Process transcripts
-            for transcript in transcripts_ls:
-                exons = list(db.children(transcript, featuretype='exon', order_by='start'))
-                if len(exons) > 1:
-                    GENE_COUNTER += 1
-                    for i in range(len(exons) - 1):
-                        # Donor site is one base after the end of the current exon
-                        first_site = exons[i].end - gene.start  # Adjusted for python indexing
-                        # Acceptor site is at the start of the next exon
-                        second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
-                        if gene.strand == '+':
-                            labels[first_site] = 2  # Mark donor site
-                            labels[second_site] = 1  # Mark acceptor site
-                        elif gene.strand == '-':
-                            d_idx = len(labels) - second_site-1
-                            a_idx = len(labels) - first_site-1
-                            # print(f"Gene {gene_id} is on the reverse strand, d_idx: {d_idx}, a_idx: {a_idx}; len(labels): {len(labels)}")
-                            labels[d_idx] = 2   # Mark donor site
-                            labels[a_idx] = 1  # Mark acceptor site
-                            seq = gene_seq.reverse_complement()
+        elif biotype =="non-coding":
+            if gene.attributes["gene_biotype"][0] != "lncRNA" and gene.attributes["gene_biotype"][0] != "ncRNA":
+                continue
+        else:
+            continue
+        chrom_dict[gene.seqid] += 1
+        gene_id = gene.id
+        gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
+        print(f"Processing gene {gene_id} on chromosome {gene.seqid}..., len(gene_seq): {len(gene_seq)}")
+        labels = [0] * len(gene_seq)  # Initialize all labels to 0
+        if biotype =="protein-coding":
+            transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
+        elif biotype =="non-coding":
+            transcripts = list(db.children(gene, level=1, order_by='start'))
+        if len(transcripts) == 0:
+            continue
+        elif len(transcripts) > 1:
+            print(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
+        ############################################
+        # Selecting which mode to process the data
+        ############################################
+        transcripts_ls = []
+        if parse_type == 'maximum':
+            max_trans = transcripts[0]
+            max_len = max_trans.end - max_trans.start + 1
+            for transcript in transcripts:
+                if transcript.end - transcript.start + 1 > max_len:
+                    max_trans = transcript
+                    max_len = transcript.end - transcript.start + 1
+            transcripts_ls = [max_trans]
+        elif parse_type == 'all_isoforms':
+            transcripts_ls = transcripts
+        # Process transcripts
+        for transcript in transcripts_ls:
+            exons = list(db.children(transcript, featuretype='exon', order_by='start'))
+            if len(exons) > 1:
+                GENE_COUNTER += 1
+                for i in range(len(exons) - 1):
+                    # Donor site is one base after the end of the current exon
+                    first_site = exons[i].end - gene.start  # Adjusted for python indexing
+                    # Acceptor site is at the start of the next exon
+                    second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
+                    if gene.strand == '+':
+                        labels[first_site] = 2  # Mark donor site
+                        labels[second_site] = 1  # Mark acceptor site
+                    elif gene.strand == '-':
+                        d_idx = len(labels) - second_site-1
+                        a_idx = len(labels) - first_site-1
+                        # print(f"Gene {gene_id} is on the reverse strand, d_idx: {d_idx}, a_idx: {a_idx}; len(labels): {len(labels)}")
+                        labels[d_idx] = 2   # Mark donor site
+                        labels[a_idx] = 1  # Mark acceptor site
+                        seq = gene_seq.reverse_complement()
             if gene.strand == '-':
                 gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
             gene_seq = str(gene_seq.upper())
@@ -102,12 +120,18 @@ def create_datafile(args):
     os.makedirs(args.output_dir, exist_ok=True)
     db = utils.create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
     seq_dict = SeqIO.to_dict(SeqIO.parse(args.genome_fasta, "fasta"))
-    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(seq_dict, split_ratio=0.8)  
+    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(seq_dict, split_ratio=0.8, chr_split=args.chr_split)
     print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
     print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
     print("--- Step 1: Creating datafile.h5 ... ---")
     start_time = time.time()
-    get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type)
-    get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type)
+    if args.chr_split == 'test':
+        print("Creating test datafile...")
+        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
+    elif args.chr_split == 'train-test':
+        print("Creating train datafile...")
+        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
+        print("Creating test datafile...")
+        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
     utils.print_motif_counts(donor_motif_counts, acceptor_motif_counts)
     print("--- %s seconds ---" % (time.time() - start_time))

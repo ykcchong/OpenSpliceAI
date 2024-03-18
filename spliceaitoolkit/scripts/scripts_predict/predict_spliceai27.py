@@ -127,7 +127,10 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     Y_true_2 = [[] for t in range(1)]
     Y_pred_1 = [[] for t in range(1)]
     Y_pred_2 = [[] for t in range(1)]
-    for idx in idxs:
+    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    shuffled_idxs = idxs[:30]
+    for idx in shuffled_idxs[:30]:
         X = h5f['X' + str(idx)]
         Y = h5f['Y' + str(idx)]
         print("\n\tX.shape: ", X.shape)

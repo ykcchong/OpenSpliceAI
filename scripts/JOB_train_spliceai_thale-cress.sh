@@ -17,7 +17,7 @@ source activate /home/kchao10/miniconda3/envs/pytorch_cuda
 which python
 python -c "import sys; print(sys.path)"
 
-FLANKING_SIZE=80
+FLANKING_SIZE=10000
 SPECIES=arabadop
 RANDOPM_SEED=12
 LOSS_FUNC=cross_entropy_loss
