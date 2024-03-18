@@ -36,27 +36,32 @@ def print_motif_counts(donor_motif_counts, acceptor_motif_counts):
 ###################################################
 # Functions for create_datafile
 ###################################################
-def split_chromosomes(seq_dict, split_ratio=0.8):
+def split_chromosomes(seq_dict, split_ratio=0.8, chr_split='train-test'):
     """Split chromosomes into training and testing groups."""
     chromosome_sizes = {chromosome: len(record.seq) for chromosome, record in seq_dict.items()}
-    total_sequence_size = sum(chromosome_sizes.values())
-    target_training_size = 0.8 * total_sequence_size
-    sorted_chromosomes = dict(sorted(chromosome_sizes.items(), key=lambda item: item[1], reverse=True))
     training_set = {}
     testing_set = {}
-    current_training_size = 0
-    for chromo, length in sorted_chromosomes.items():
-        if (current_training_size + length <= target_training_size) or not training_set:
-            training_set[chromo] = length
-            current_training_size += length
-        else:
+    if chr_split == 'test':
+        for chromo, length in chromosome_sizes.items():
             testing_set[chromo] = length
-    # print("Training set:", training_set)
-    # print("Testing set:", testing_set)
-    # print("Total sequence size:", total_sequence_size)
-    # print("current_training_size:", current_training_size)
-    # training_set, testing_set, current_training_size, total_sequence_size
-    return training_set, testing_set
+        return training_set, testing_set
+    if chr_split == 'train-test':
+        total_sequence_size = sum(chromosome_sizes.values())
+        target_training_size = 0.8 * total_sequence_size
+        sorted_chromosomes = dict(sorted(chromosome_sizes.items(), key=lambda item: item[1], reverse=True))
+        current_training_size = 0
+        for chromo, length in sorted_chromosomes.items():
+            if (current_training_size + length <= target_training_size) or not training_set:
+                training_set[chromo] = length
+                current_training_size += length
+            else:
+                testing_set[chromo] = length
+        # print("Training set:", training_set)
+        # print("Testing set:", testing_set)
+        # print("Total sequence size:", total_sequence_size)
+        # print("current_training_size:", current_training_size)
+        # training_set, testing_set, current_training_size, total_sequence_size
+        return training_set, testing_set
 
 
 def create_or_load_db(gff_file, db_file='gff.db'):

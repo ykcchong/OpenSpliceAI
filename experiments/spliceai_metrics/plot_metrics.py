@@ -8,15 +8,15 @@ import sys
 
 RANDOM_SEED = 42
 
-def initialize_paths(output_dir, flanking_size, sequence_length, idx, target):
+def initialize_paths(output_dir, flanking_size, sequence_length, idx, species, target):
     """Initialize project directories and create them if they don't exist."""
     ####################################
     # Modify the model verson here!!
     ####################################
     if target == "spliceai_keras":
-        MODEL_VERSION = f"spliceai{idx}_prediction_{sequence_length}_{flanking_size}"
+        MODEL_VERSION = f"spliceai{idx}_{species}_{sequence_length}_{flanking_size}"
     elif target == "spliceai_pytorch":
-        MODEL_VERSION = f"spliceai_pytorch_prediction_rs{idx}_{sequence_length}_{flanking_size}"
+        MODEL_VERSION = f"spliceai_{species}_rs{idx}_{sequence_length}_{flanking_size}"
     ####################################
     # Modify the model verson here!!
     ####################################
@@ -84,7 +84,7 @@ def metrics(batch_ypred, batch_ylabel, metric_files):
                     f.write(f"{acc}\n")
     
 
-def collect_metrics(output_dir, flanking_size, sequence_length, random_seeds):
+def collect_metrics(output_dir, flanking_size, sequence_length, random_seeds, species):
     """Collect metric values for each seed."""
     metrics_across_spliceai_keras = {
         'donor_topk': [],
@@ -122,7 +122,7 @@ def collect_metrics(output_dir, flanking_size, sequence_length, random_seeds):
     # Plot SpliceAI-Keras
     for idx in range(1,4):
         print(f"idx: {idx}")
-        _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, idx, target="spliceai_keras")
+        _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, idx, species, target="spliceai_keras")
         metrics_for_spliceai_keras = {
             'donor_topk': f'{log_output_test_base}/donor_topk.txt',
             'donor_auprc': f'{log_output_test_base}/donor_auprc.txt',
@@ -153,7 +153,7 @@ def collect_metrics(output_dir, flanking_size, sequence_length, random_seeds):
 
     # Plot SpliceAI-Pytorch 
     for idx, rs in enumerate(random_seeds):
-        _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, rs, target="spliceai_pytorch")
+        _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, rs, species, target="spliceai_pytorch")
         
         metrics_for_spliceai_pytorch = {
             'donor_topk': f'{log_output_test_base}/donor_topk.txt',
@@ -185,7 +185,7 @@ def collect_metrics(output_dir, flanking_size, sequence_length, random_seeds):
     return metrics_across_spliceai_keras, metrics_across_spliceai_pytorch
 
 
-def plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_size):
+def plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_size, species):
     """Plot collected metrics across different random seeds with the same x-axis value."""
     keys = ['donor_topk', 'donor_auprc', 'donor_accuracy', 'donor_precision', 'donor_recall', 'donor_f1', 
             'acceptor_topk', 'acceptor_auprc', 'acceptor_accuracy', 'acceptor_precision', 'acceptor_recall', 'acceptor_f1']
@@ -229,8 +229,8 @@ def plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai
     plt.tight_layout()
     # Adjust the layout to make space for the legend
     fig.subplots_adjust(top=0.85)  # You might need to adjust this value based on your figure's dimensions
-    print(f"Output figure: vis/metrics_{flanking_size}.png")
-    plt.savefig(f"vis/metrics_{flanking_size}.png")
+    print(f"Output figure: vis/metrics_{species}_{flanking_size}.png")
+    plt.savefig(f"vis/metrics_{species}_{flanking_size}.png")
 
 
 
@@ -275,6 +275,7 @@ def predict():
     parser.add_argument('--flanking-size', '-f', type=int, default=80)
     parser.add_argument('--random-seeds', '-r', type=str)
     parser.add_argument('--project-name', '-s', type=str)
+    parser.add_argument('--species', '-sp', type=str)
     args = parser.parse_args()
     print("args: ", args, file=sys.stderr)
     print("Visualizing SpliceAI-toolkit results")
@@ -287,8 +288,8 @@ def predict():
     # random_seeds = [15, 22, 30, 40]
     random_seeds = [11, 12, 22, 40]
 
-    metrics_across_spliceai_keras, metrics_across_spliceai_pytorch = collect_metrics(output_dir, flanking_size, sequence_length, random_seeds)
-    plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_size)
+    metrics_across_spliceai_keras, metrics_across_spliceai_pytorch = collect_metrics(output_dir, flanking_size, sequence_length, random_seeds, args.species)
+    plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_size, args.species)
 
 if __name__ == "__main__":
     predict()

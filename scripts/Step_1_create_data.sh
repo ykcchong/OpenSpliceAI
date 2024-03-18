@@ -17,7 +17,7 @@ spliceai-toolkit create-data \
 --parse-type maximum
 
 ########################################
-# Creating bee dataset
+# Creating mouse dataset
 ########################################
 spliceai-toolkit create-data \
 --genome-fasta /home/kchao10/data_ssalzbe1/khchao/ref_genome/mouse/GCF_000001635.27_GRCm39_genomic.fna \
@@ -33,6 +33,17 @@ spliceai-toolkit create-data \
 --annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/arabadop/TAIR10.gff \
 --output-dir ./arabadop/ \
 --parse-type maximum
+
+########################################
+# Creating RefSeq dataset non-coding
+########################################
+spliceai-toolkit create-data \
+--genome-fasta  /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna \
+--annotation-gff /home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_RefSeq_noncoding/ \
+--parse-type maximum \
+--biotype non-coding \
+--chr-split train-test
 
 # ########################################
 # # Creating RefSeq dataset

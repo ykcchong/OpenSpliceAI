@@ -12,11 +12,22 @@ acceptor_motif_counts = {}  # Initialize counts
 def create_dataset(args):
     print("--- Step 2: Creating dataset.h5 ... ---")
     start_time = time.time()
-    for type in ['train', 'test']:
-        print(("\tProcessing %s ..." % type))
-        input_file = f"{args.output_dir}/datafile_{type}.h5"
-        output_file = f"{args.output_dir}/dataset_{type}.h5"
-        # output_file = f"{os.path.dirname(input_file)}/dataset_{type}.h5"
+
+    dataset_ls = [] 
+    if args.chr_split == 'test':
+        dataset_ls.append('test')
+    elif args.chr_split == 'train-test':
+        dataset_ls.append('test')
+        dataset_ls.append('train')
+    for dataset_type in dataset_ls:
+        print(("\tProcessing %s ..." % dataset_type))
+        if args.biotype =="non-coding":
+            input_file = f"{args.output_dir}/datafile_{dataset_type}_ncRNA.h5"
+            output_file = f"{args.output_dir}/dataset_{dataset_type}_ncRNA.h5"
+        elif args.biotype =="protein-coding":
+            input_file = f"{args.output_dir}/datafile_{dataset_type}.h5"
+            output_file = f"{args.output_dir}/dataset_{dataset_type}.h5"
+        # output_file = f"{os.path.dirname(input_file)}/dataset_{dataset_type}.h5"
         print("\tReading datafile.h5 ... ")
         h5f = h5py.File(input_file, 'r')
         STRAND = h5f['STRAND'][:]

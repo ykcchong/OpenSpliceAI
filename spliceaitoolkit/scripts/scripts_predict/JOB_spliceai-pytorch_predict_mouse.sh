@@ -21,11 +21,18 @@ source activate /home/kchao10/miniconda3/envs/pytorch_cuda
 which python
 python -c "import sys; print(sys.path)"
 
+# FLANKING_SIZE=10000
 
-for num in 1 2 3 4 5; do
-    python predict_spliceai27.py --flanking-size 400 \
-    --project-name spliceai${num}_prediction \
-    --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
+for FLANKING_SIZE in 80 400 2000 10000; do
+    SPECIES=mouse
+    RANDOPM_SEED=12
+    LOSS_FUNC=cross_entropy_loss
+    EXP_NUM=full_dataset
+
+    python predict_spliceaitoolkit.py --flanking-size ${FLANKING_SIZE} \
+    --project-name spliceai_${SPECIES}_rs${RANDOPM_SEED} \
+    --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test.h5 \
     --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
-    --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai/400nt/spliceai$num.h5 -d > spliceai${num}_prediction.log
+    --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-${SPECIES}/${FLANKING_SIZE}nt/model_${FLANKING_SIZE}nt_rs${RANDOPM_SEED}.pt
 done
+

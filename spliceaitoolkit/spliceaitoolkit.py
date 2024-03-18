@@ -25,7 +25,8 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--genome-fasta', type=str, required=True, help='Path to the FASTA file')
     parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--parse-type', type=str, default='maximum', choices=['maximum', 'all_isoforms'], help='Type of transcript processing')
-    # parser_create_data.add_argument('--chrom-split', type=str, required=True, help='Chromosome split method for training and testing dataset')
+    parser_create_data.add_argument('--biotype', type=str, default='protein-coding', choices=['protein-coding', 'non-coding'], help='Biotype of transcript processing')
+    parser_create_data.add_argument('--chr-split', type=str, default='train-test', choices=['train-test', 'test'], help='The chromosome splitting approach for training and testing')
 
 
 def parse_args_train(subparsers):
@@ -50,6 +51,7 @@ def parse_args_fine_tune(subparsers):
     parser_fine_tune.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_fine_tune.add_argument('--project-name', '-s', type=str)
     parser_fine_tune.add_argument('--flanking-size', '-f', type=int, default=80)
+    parser_fine_tune.add_argument('--random-seed', '-r', type=int, default=42)
     parser_fine_tune.add_argument('--exp-num', '-e', type=str, default=0)
     parser_fine_tune.add_argument('--train-dataset', '-train', type=str)
     parser_fine_tune.add_argument('--test-dataset', '-test', type=str)
