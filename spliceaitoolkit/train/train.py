@@ -159,6 +159,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     criterion = torch.nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+    
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
 
     return model, criterion, optimizer, scheduler, params
@@ -410,6 +411,7 @@ def train(args):
         - test_dataset (str): Path to the testing dataset file.
         - disable_wandb (bool): Flag to disable logging to Weights & Biases.
     """
+
     print("Running SpliceAI-toolkit with 'train' mode")
 
     output_dir = args.output_dir
@@ -444,7 +446,7 @@ def train(args):
 
     train_h5f = h5py.File(training_dataset, 'r')
     test_h5f = h5py.File(testing_dataset, 'r')
-    batch_num = len(train_h5f.keys()) // 2
+    batch_num = len(train_h5f.keys()) // 2 # about num genes
     print("Batch_num: ", batch_num, file=sys.stderr)
 
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
