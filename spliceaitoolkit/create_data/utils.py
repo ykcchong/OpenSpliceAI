@@ -1,5 +1,5 @@
 ###############################################################################
-'''This code has functions to process sequences into .h5 datasets.'''
+'''This code has functions to process sequences to/from .h5 datasets.'''
 ###############################################################################
 
 import numpy as np
@@ -56,6 +56,58 @@ def one_hot_encode(Xd, Yd):
     - numpy.ndarray: the one-hot encoded output label data.
     """
     return IN_MAP[Xd.astype('int8')], [OUT_MAP[Yd[t].astype('int8')] for t in range(1)]
+
+def replace_non_acgt_to_n(input_string):
+    """
+    Use a generator expression to go through each character in the input string.
+    If the character is in the set of allowed characters, keep it as is.
+    Otherwise, replace it with 'N'.
+
+    Parameters:
+    - input_string (str): The nucleotide sequence.
+
+    Returns:
+    - str: The modified sequence with non-ACGT nucleotides replaced by 'N'.
+    """
+
+    # Define the set of allowed characters
+    allowed_chars = {'A', 'C', 'G', 'T'}    
+    return ''.join(char if char in allowed_chars else 'N' for char in input_string)
+
+
+def create_datapoints(seq, strand, label):
+    """
+    This function first converts the sequence into an integer array, where
+    A, C, G, T, N are mapped to 1, 2, 3, 4, 0 respectively. If the strand is
+    negative, then reverse complementing is done. The labels 
+    are directly used as they are, converted into an array of integers,
+    where 0, 1, 2 correspond to no splicing, acceptor, donor 
+    respectively. It then calls reformat_data and one_hot_encode
+    and returns X, Y which can be used by Pytorch Model.
+
+    Parameters:
+    - seq (str): The nucleotide sequence.
+    - strand (str): The strand information ('+' or '-').
+    - label (str): A string representation of labels for each nucleotide.
+
+    Returns:
+    - tuple: A tuple containing the one-hot encoded sequence and labels.
+    """
+
+    # No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
+    seq = 'N' * (CL_max // 2) + seq + 'N' * (CL_max // 2)
+    seq = seq.upper().replace('A', '1').replace('C', '2')
+    seq = seq.replace('G', '3').replace('T', '4').replace('N', '0')
+
+    # Convert label string to array of integers
+    label_array = np.array(list(map(int, list(label))))
+    X0 = np.asarray(list(map(int, list(seq))))
+    Y0 = label_array
+    Y0 = [Y0]
+    Xd, Yd = reformat_data(X0, Y0)
+    X, Y = one_hot_encode(Xd, Yd)
+
+    return X, Y
 
 def check_and_count_motifs(seq, labels, strand):
     """
