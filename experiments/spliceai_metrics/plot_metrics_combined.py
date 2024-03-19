@@ -16,8 +16,9 @@ def initialize_paths(output_dir, flanking_size, sequence_length, idx, species, t
     if target == "spliceai_keras":
         MODEL_VERSION = f"spliceai{idx}_{species}_{sequence_length}_{flanking_size}"
     elif target == "spliceai_pytorch":
-        # MODEL_VERSION = f"spliceai_{species}_rs{idx}_{sequence_length}_{flanking_size}"
-        MODEL_VERSION = f"RefSeq_noncoding_fine-tune_unfreeze_last_residual_{sequence_length}_{flanking_size}"
+        MODEL_VERSION = f"spliceai_{species}_rs{idx}_{sequence_length}_{flanking_size}"
+        # MODEL_VERSION = f"RefSeq_noncoding_fine-tune_unfreeze_last_residual_{sequence_length}_{flanking_size}"
+        # MODEL_VERSION = f"RefSeq_noncoding_rs22_{sequence_length}_{flanking_size}"
     ####################################
     # Modify the model verson here!!
     ####################################
@@ -184,6 +185,9 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
                         metrics_across_spliceai_pytorch[metric].append((rs, value, flanking_size))
                 except FileNotFoundError:
                     print(f"File not found: {filepath}")
+
+    # print("metrics_across_spliceai_keras: ", metrics_across_spliceai_keras)
+    # print("metrics_across_spliceai_pytorch: ", metrics_across_spliceai_pytorch)
     return metrics_across_spliceai_keras, metrics_across_spliceai_pytorch
 
 
@@ -238,22 +242,23 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
 #     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_sizes, species):
     key_mappings = {
-        'donor_topk': 'Donor Top-K',
-        'donor_auprc': 'Donor AUPRC',
-        'donor_accuracy': 'Donor Accuracy',
+        # 'donor_topk': 'Donor Top-K',
+        # 'donor_auprc': 'Donor AUPRC',
+        # 'donor_accuracy': 'Donor Accuracy',
         'donor_precision': 'Donor Precision',
         'donor_recall': 'Donor Recall',
-        'donor_f1': 'Donor F1',
-        'acceptor_topk': 'Acceptor Top-K',
-        'acceptor_auprc': 'Acceptor AUPRC',
-        'acceptor_accuracy': 'Acceptor Accuracy',
+        # 'donor_f1': 'Donor F1',
+        # 'acceptor_topk': 'Acceptor Top-K',
+        # 'acceptor_auprc': 'Acceptor AUPRC',
+        # 'acceptor_accuracy': 'Acceptor Accuracy',
         'acceptor_precision': 'Acceptor Precision',
         'acceptor_recall': 'Acceptor Recall',
-        'acceptor_f1': 'Acceptor F1'
+        # 'acceptor_f1': 'Acceptor F1'
     }
     metrics_keys = list(key_mappings.keys())
+    # print("metrics_keys: ", metrics_keys)
     n_metrics = len(metrics_keys)
-    fig, axs = plt.subplots(2, 6, figsize=(28,8), sharey=True) 
+    fig, axs = plt.subplots(2, 2, figsize=(10,8), sharey=True) 
     # fig, axs = plt.subplots(n_metrics, 1, figsize=(10, 5 * n_metrics), constrained_layout=True)
     
     if n_metrics == 1:  # If there's only one metric, axs will not be an array
@@ -265,7 +270,7 @@ def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_s
     
     for i, key in enumerate(metrics_keys):
         # Convert linear index to 2D index
-        row, col = divmod(i, 6)
+        row, col = divmod(i, 2)
         print(f"Row: {row}, Col: {col}")
         ax = axs[row, col]
         
@@ -276,7 +281,10 @@ def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_s
         for flanking_size in flanking_sizes:
             keras_samples = [value for idx, value, fs in metrics_across_spliceai_keras[key] if fs == flanking_size]
             pytorch_samples = [value for idx, value, fs in metrics_across_spliceai_pytorch[key] if fs == flanking_size]
-            
+
+            print("keras_samples: ", keras_samples)
+            print("pytorch_samples: ", pytorch_samples)
+
             mean_values_keras.append(np.mean(keras_samples) if keras_samples else np.nan)
             std_dev_values_keras.append(np.std(keras_samples) if keras_samples else np.nan)
             values_pytorch.append(np.mean(pytorch_samples) if pytorch_samples else np.nan)
