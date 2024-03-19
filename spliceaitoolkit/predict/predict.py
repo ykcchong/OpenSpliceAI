@@ -76,8 +76,10 @@ def load_model(device, flanking_size, model_arch):
     
     # GET MODEL
     model = SpliceAI(L, W, AR).to(device)
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
+
     print(model, file=sys.stderr)
-    return model
+    return model, params
 
 
 # don't need?
@@ -162,17 +164,23 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
 
 def predict(args):
     print("Running SpliceAI-toolkit with 'predict' mode")
+    # inputs: model, output_dir, flanking_size, input sequence (fasta file), 
+    # outputs: the log files, bed files with scores for all splice sites
 
-    # one-hot encode input sequence -> to DataLoader -> model.eval() -> get predictions -> return
-    
+    # one-hot encode input sequence -> to DataLoader (as tensor) -> model.eval() -> get predictions / calculate loss
+    # iterate over FASTA -> chunk -> if input sequence >5k, put in hdf5 format
+    # generate BED file with scores for all splice sites -> visualize in IGV
+
     # get args
     output_dir = args.output_dir
     sequence_length = SL
     flanking_size = int(args.flanking_size)
     model_arch = args.model
+    input_sequence = args.input_sequence
 
     assert int(flanking_size) in [80, 400, 2000, 10000]
 
+    
     # get device for model
     device = setup_device()
     print("device: ", device, file=sys.stderr)
@@ -197,7 +205,7 @@ def predict(args):
     # print("val_idxs: ", val_idxs, file=sys.stderr)
     # print("test_idxs: ", test_idxs, file=sys.stderr)
 
-    model = load_model(device, flanking_size, model_arch)
+    model, params = load_model(device, flanking_size, model_arch)
 
     # train_metric_files = {
     #     'topk_donor': f'{log_output_train_base}/donor_topk.txt',
@@ -213,7 +221,7 @@ def predict(args):
         'topk_acceptor': f'{log_output_val_base}/acceptor_topk.txt',
         'auprc_acceptor': f'{log_output_val_base}/acceptor_accuracy.txt',
         'loss_batch': f'{log_output_val_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_val_base}/loss_every_update.txt'
+        'loss_every_update': f'{log_output_val_base}/loss_every_update.txt' #!
     }
     # test_metric_files = {
     #     'topk_donor': f'{log_output_test_base}/donor_topk.txt',

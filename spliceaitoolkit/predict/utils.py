@@ -34,6 +34,7 @@ def one_hot_encode(Xd):
     """
     return IN_MAP[Xd.astype('int8')]
 
+
 def calculate_metrics(y_true, y_pred):
     """Calculate metrics including precision, recall, f1-score, and accuracy."""
     precision, recall, f1, _ = precision_recall_fscore_support(y_true, y_pred, average='binary', zero_division=0)
