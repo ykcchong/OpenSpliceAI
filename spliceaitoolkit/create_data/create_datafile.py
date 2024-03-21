@@ -120,7 +120,17 @@ def create_datafile(args):
     os.makedirs(args.output_dir, exist_ok=True)
     db = utils.create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
     seq_dict = SeqIO.to_dict(SeqIO.parse(args.genome_fasta, "fasta"))
-    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(seq_dict, split_ratio=0.8, chr_split=args.chr_split)
+    # TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(seq_dict, split_ratio=0.8, chr_split=args.chr_split)
+    TRAIN_CHROM_GROUP = {
+        'chr2': 0, 'chr4': 0, 'chr6': 0, 'chr8': 0, 
+        'chr10': 0, 'chr11': 0, 'chr12': 0, 'chr13': 0,
+        'chr14': 0, 'chr15': 0, 'chr16': 0, 'chr17': 0, 
+        'chr18': 0, 'chr19': 0, 'chr20': 0, 'chr21': 0, 
+        'chr22': 0, 'chrX': 0, 'chrY': 0
+    }
+    TEST_CHROM_GROUP = {
+        'chr1': 0, 'chr3': 0, 'chr5': 0, 'chr7': 0, 'chr9': 0
+    }
     print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
     print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
     print("--- Step 1: Creating datafile.h5 ... ---")

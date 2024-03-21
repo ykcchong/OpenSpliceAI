@@ -25,13 +25,15 @@ python -c "import sys; print(sys.path)"
 
 for FLANKING_SIZE in 80 400 2000 10000; do
     SPECIES=RefSeq_noncoding
-    RANDOPM_SEED=22
+    RANDOPM_SEED=12
     LOSS_FUNC=cross_entropy_loss
     EXP_NUM=full_dataset
-    PROJECT_NAME=${SPECIES}_rs${RANDOPM_SEED}
-    python predict_spliceaitoolkit.py --flanking-size ${FLANKING_SIZE} \
-    --project-name ${PROJECT_NAME} \
-    --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test_ncRNA.h5 \
-    --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
-    --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_human_MANE_adeptive_lr_5000_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/${EXP_NUM}/models/best_model.pt
+    for num in 1 2 3 4 5; do
+        python predict_spliceai27.py --flanking-size ${FLANKING_SIZE} \
+        --project-name spliceai${num}_${SPECIES} \
+        --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test_ncRNA.h5 \
+        --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
+        --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai/${FLANKING_SIZE}nt/spliceai$num.h5 -d
+    done
 done
+
