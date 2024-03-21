@@ -60,7 +60,7 @@ spliceai-toolkit fine-tune --flanking-size 80 \
 --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_RefSeq_noncoding/dataset_test.h5 \
 --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
 --project-name human_RefSeq_noncoding_fine-tune \
---random-seed 12 \
+--random-seed 22 \
 --input-model  /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/10000nt/model_10000nt_rs12.pt \
 --loss cross_entropy_loss > train_splan_MANE_adeptive_lr_2_80.log 2> train_splan_MANE_adeptive_lr_2_error_80.log
 

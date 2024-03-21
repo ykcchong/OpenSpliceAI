@@ -62,6 +62,6 @@ spliceai-toolkit train --flanking-size 80 \
 --project-name human_MANE_adeptive_lr \
 --random-seed 11 \
 --model SpliceAI \
---loss cross_entropy_loss > train_splan_MANE_adeptive_lr_2_80.log 2> train_splan_MANE_adeptive_lr_2_error_80.log
+--loss focal_loss > train_splan_MANE_adeptive_lr_2_80.log 2> train_splan_MANE_adeptive_lr_2_error_80.log
 
 # --loss focal_loss \ 

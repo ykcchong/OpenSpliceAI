@@ -82,7 +82,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     # Replace the existing scheduler with ReduceLROnPlateau
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=2, verbose=True)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, len(train_loader)*EPOCH_NUM)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
     return model, None, optimizer, scheduler, params
@@ -170,16 +170,10 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
         subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
         batch_ylabel = batch_ylabel[is_expr][subset_indices, :, :]
         batch_ypred = batch_ypred[is_expr][subset_indices, :, :]
-
         Y_true_1 = batch_ylabel[:, 1, :].flatten().cpu().detach().numpy()
         Y_true_2 = batch_ylabel[:, 2, :].flatten().cpu().detach().numpy()
         Y_pred_1 = batch_ypred[:, 1, :].flatten().cpu().detach().numpy()
         Y_pred_2 = batch_ypred[:, 2, :].flatten().cpu().detach().numpy()
-
-        # Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        # Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        # Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        # Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
         acceptor_topk_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
                             np.asarray(Y_pred_1), metric_files["acceptor_topk"], type='acceptor', print_top_k=True)
         donor_topk_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
