@@ -30,7 +30,6 @@ def initialize_paths(output_dir, flanking_size, sequence_length, idx, species, t
     for path in [model_output_base, log_output_test_base]:
         if not os.path.exists(path):
             sys.exit(f"Path does not exist: {path}")
-    #     os.makedirs(path, exist_ok=True)
     return model_output_base, log_output_test_base
 
 
@@ -120,7 +119,6 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
         'acceptor_recall': [],
         'acceptor_f1': []
     }
-
     # Plot SpliceAI-Keras
     for flanking_size in [80, 400, 2000, 10000]:
         for idx in range(1,6):
@@ -134,7 +132,6 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
                 'donor_precision': f'{log_output_test_base}/donor_precision.txt',
                 'donor_recall': f'{log_output_test_base}/donor_recall.txt',
                 'donor_f1': f'{log_output_test_base}/donor_f1.txt',
-
                 'acceptor_topk': f'{log_output_test_base}/acceptor_topk.txt',
                 'acceptor_auprc': f'{log_output_test_base}/acceptor_auprc.txt',
                 'acceptor_auroc': f'{log_output_test_base}/acceptor_auroc.txt',
@@ -157,7 +154,6 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
     for flanking_size in [80, 400, 2000, 10000]:
         for idx, rs in enumerate(random_seeds):
             _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, rs, species, target="spliceai_pytorch")
-            
             metrics_for_spliceai_pytorch = {
                 'donor_topk': f'{log_output_test_base}/donor_topk.txt',
                 'donor_auprc': f'{log_output_test_base}/donor_auprc.txt',
@@ -175,7 +171,6 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
                 'acceptor_recall': f'{log_output_test_base}/acceptor_recall.txt',
                 'acceptor_f1': f'{log_output_test_base}/acceptor_f1.txt',
             }
-            
             print("metrics_for_spliceai_pytorch: ", metrics_for_spliceai_pytorch)
             for metric, filepath in metrics_for_spliceai_pytorch.items():
                 try:
@@ -185,117 +180,66 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
                         metrics_across_spliceai_pytorch[metric].append((rs, value, flanking_size))
                 except FileNotFoundError:
                     print(f"File not found: {filepath}")
-
     # print("metrics_across_spliceai_keras: ", metrics_across_spliceai_keras)
     # print("metrics_across_spliceai_pytorch: ", metrics_across_spliceai_pytorch)
     return metrics_across_spliceai_keras, metrics_across_spliceai_pytorch
 
-
-# def plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_sizes, species):
-#     metrics_keys = list(metrics_across_spliceai_keras.keys())
-#     n_metrics = len(metrics_keys)
-#     n_cols = 2
-#     n_rows = (n_metrics + n_cols - 1) // n_cols
-#     fig, axs = plt.subplots(n_rows, n_cols, figsize=(20, 10), sharex='col', sharey='row')
-#     axs = axs.flatten()
-#     fig.suptitle(f"Metrics Comparison for {species}", fontsize=16)
-    
-#     for i, key in enumerate(metrics_keys):
-#         ax = axs[i]
-#         # Gather values for both models and all flanking sizes
-#         values_keras = []
-#         values_pytorch = []
-#         labels = []
         
-#         for flanking_size in flanking_sizes:
-#             keras_values = [value for idx, value, fs in metrics_across_spliceai_keras[key] if fs == flanking_size]
-#             pytorch_values = [value for idx, value, fs in metrics_across_spliceai_pytorch[key] if fs == flanking_size]
-            
-#             # Debugging output
-#             print(f"Metric: {key}, Flanking Size: {flanking_size}, Keras Values: {keras_values}, PyTorch Values: {pytorch_values}")
-            
-#             if keras_values and pytorch_values:
-#                 values_keras.extend(keras_values)
-#                 values_pytorch.extend(pytorch_values)
-#                 labels.append(flanking_size)
-                
-#         if not values_keras or not values_pytorch:
-#             print(f"Skipping {key} due to missing data.")
-#             continue
-        
-#         # Plot
-#         barWidth = 0.35
-#         r1 = np.arange(len(values_keras))
-#         r2 = [x + barWidth for x in r1]
-
-#         print(f"r1: {r1}, r2: {r2}, values_keras: {values_keras}, values_pytorch: {values_pytorch}")
-        
-#         ax.bar(r1, values_keras, color='blue', width=barWidth, edgecolor='grey', label='SpliceAI-Keras')
-#         ax.bar(r2, values_pytorch, color='green', width=barWidth, edgecolor='grey', label='SpliceAI-Pytorch')
-        
-#         ax.set_xlabel('Flanking Size', fontweight='bold')
-#         ax.set_xticks([r + barWidth/2 for r in range(len(labels))])
-#         ax.set_xticklabels(labels)
-#         ax.set_ylabel(key)
-#         ax.legend()
-        
-#     plt.tight_layout(rect=[0, 0.03, 1, 0.95])
 def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_sizes, species):
     key_mappings = {
-        # 'donor_topk': 'Donor Top-K',
-        # 'donor_auprc': 'Donor AUPRC',
-        # 'donor_accuracy': 'Donor Accuracy',
+        'donor_topk': 'Donor Top-K',
+        'donor_auprc': 'Donor AUPRC',
+        'donor_accuracy': 'Donor Accuracy',
+        
+        'acceptor_topk': 'Acceptor Top-K',
+        'acceptor_auprc': 'Acceptor AUPRC',
+        'acceptor_accuracy': 'Acceptor Accuracy',
+        
         'donor_precision': 'Donor Precision',
         'donor_recall': 'Donor Recall',
-        # 'donor_f1': 'Donor F1',
-        # 'acceptor_topk': 'Acceptor Top-K',
-        # 'acceptor_auprc': 'Acceptor AUPRC',
-        # 'acceptor_accuracy': 'Acceptor Accuracy',
+        'donor_f1': 'Donor F1',
+        
         'acceptor_precision': 'Acceptor Precision',
         'acceptor_recall': 'Acceptor Recall',
-        # 'acceptor_f1': 'Acceptor F1'
+        'acceptor_f1': 'Acceptor F1'
     }
     metrics_keys = list(key_mappings.keys())
     # print("metrics_keys: ", metrics_keys)
-    n_metrics = len(metrics_keys)
-    fig, axs = plt.subplots(2, 2, figsize=(10,8), sharey=True) 
-    # fig, axs = plt.subplots(n_metrics, 1, figsize=(10, 5 * n_metrics), constrained_layout=True)
-    
-    if n_metrics == 1:  # If there's only one metric, axs will not be an array
-        axs = [axs]
-    
+    n_metrics = len(metrics_keys) // 4
+    fig, axs = plt.subplots(4, n_metrics, figsize=(15,15), sharey=True)     
+    # fig, axs = plt.subplots(2, n_metrics, figsize=(10,8), sharey=True)     
+    # if n_metrics == 1:  # If there's only one metric, axs will not be an array
+    #     axs = [axs]
     fig.suptitle(f"Splice site prediction metrics for {species}", fontsize=24)
     # After creating subplots, adjust layout manually
     plt.tight_layout(pad=3.0, h_pad=5.0)  # h_pad is the padding (height) between rows of subplots
-    
+    plt.subplots_adjust(hspace=0.5)  # Adjust the height of the space between subplots
     for i, key in enumerate(metrics_keys):
         # Convert linear index to 2D index
-        row, col = divmod(i, 2)
-        print(f"Row: {row}, Col: {col}")
+        row, col = divmod(i, n_metrics)
+        print(f"key: {key};  Row: {row}, Col: {col}")
         ax = axs[row, col]
-        
         mean_values_keras = []
         std_dev_values_keras = []
         values_pytorch = []
-        
+        std_dev_values_pytorch = []
         for flanking_size in flanking_sizes:
             keras_samples = [value for idx, value, fs in metrics_across_spliceai_keras[key] if fs == flanking_size]
             pytorch_samples = [value for idx, value, fs in metrics_across_spliceai_pytorch[key] if fs == flanking_size]
-
             print("keras_samples: ", keras_samples)
             print("pytorch_samples: ", pytorch_samples)
-
             mean_values_keras.append(np.mean(keras_samples) if keras_samples else np.nan)
             std_dev_values_keras.append(np.std(keras_samples) if keras_samples else np.nan)
             values_pytorch.append(np.mean(pytorch_samples) if pytorch_samples else np.nan)
-        
+            std_dev_values_pytorch.append(np.std(pytorch_samples) if keras_samples else np.nan)
+
         # Setting x-ticks to be categorical
         x_ticks = np.arange(len(flanking_sizes))
         
         # Plotting
-        ax.errorbar(x_ticks, mean_values_keras, yerr=std_dev_values_keras, fmt='-o', capsize=5, label='SpliceAI-Keras(Human)', color='blue')
-        ax.plot(x_ticks, values_pytorch, '-X', label=f'SpliceAI-Pytorch ({species})', color='green', markersize=10)
-        
+        ax.errorbar(x_ticks, mean_values_keras, yerr=std_dev_values_pytorch, fmt='-o', capsize=5, label='SpliceAI-Keras(Human)')#, color='blue')
+
+        ax.errorbar(x_ticks, values_pytorch, yerr=std_dev_values_keras, fmt='-X', capsize=5, label='SpliceAI-Pytorch(Human)')#, color='green')        
         ax.set_xticks(x_ticks)
         ax.set_xticklabels(flanking_sizes)
         ax.set_xlabel('Flanking Size')
@@ -321,7 +265,7 @@ def predict():
     random_seeds = args.random_seeds
     # random_seeds = [15, 22, 30, 40]
     # random_seeds = [11, 12, 22, 40]
-    random_seeds = [12]
+    random_seeds = [1, 2, 22, 40]
 
     metrics_across_spliceai_keras, metrics_across_spliceai_pytorch = collect_metrics(output_dir, sequence_length, random_seeds, args.species)
 

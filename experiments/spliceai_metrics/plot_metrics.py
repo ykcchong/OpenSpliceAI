@@ -176,6 +176,7 @@ def collect_metrics(output_dir, flanking_size, sequence_length, random_seeds, sp
         print("metrics_for_spliceai_pytorch: ", metrics_for_spliceai_pytorch)
         for metric, filepath in metrics_for_spliceai_pytorch.items():
             try:
+                print(f"filepath: {filepath}")
                 with open(filepath, 'r') as f:
                     value = float(f.read().strip())
                     print(f"Value for {metric} at seed {rs}: {value}")
@@ -285,8 +286,8 @@ def predict():
     sequence_length = 5000
     flanking_size = int(args.flanking_size)
     random_seeds = args.random_seeds
-    # random_seeds = [15, 22, 30, 40]
-    random_seeds = [11, 12, 22, 40]
+    random_seeds = [15, 22, 30, 40]
+    # random_seeds = [11, 12, 22, 40]
 
     metrics_across_spliceai_keras, metrics_across_spliceai_pytorch = collect_metrics(output_dir, flanking_size, sequence_length, random_seeds, args.species)
     plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_size, args.species)
