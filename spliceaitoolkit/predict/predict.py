@@ -34,7 +34,6 @@ def initialize_paths(output_dir, flanking_size, sequence_length, model_arch):
 
     return model_pred_outdir, log_output_base
 
-# needed
 def setup_device():
     """Select computation device based on availability."""
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
@@ -100,8 +99,26 @@ def get_sequences(fasta_file, output_dir):
     Parameters:
     - fasta_file: Path to the FASTA file.
     - output_dir: Directory to save the output files.
+
+    Returns:
+    - Path to output file
     """
 
+    # detect sequence length
+    total_length = 0
+    use_hdf = False
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        total_length += len(record.seq)
+        if total_length > HDF_THRESHOLD_LEN:
+            use_hdf = True
+            break
+
+    # write sequence information to temp custom file
+    if not use_hdf:
+        pass
+
+    
+    # write sequence to compressed hdf format
     seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
     fw_stats = open(f"{output_dir}stats.txt", "w")
     h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
@@ -350,6 +367,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     """
 
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
+    # put model in evaluation mode
     model.eval()
 
     running_loss = 0.0
@@ -404,15 +422,30 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
 ################
 
 def predict(args):
+    '''
+    Parameters:
+    - args (argparse.args): 
+        - model: SpliceAI (default)
+        - output_dir
+        - flanking_size
+        - input_sequence
+
+    '''
     print("Running SpliceAI-toolkit with 'predict' mode")
-    # inputs: model, output_dir, flanking_size, input sequence (fasta file), 
+    # inputs args.: model, output_dir, flanking_size, input sequence (fasta file), 
     # outputs: the log files, bed files with scores for all splice sites
 
-    # one-hot encode input sequence -> to DataLoader (as tensor) -> model.eval() -> get predictions / calculate loss
+    # one-hot encode input sequence -> to DataLoader (as tensor) -> model.eval() -> get predictions (donor and acceptor sites only) / calculate loss
     # iterate over FASTA -> chunk -> if input sequence >5k, put in hdf5 format
     # generate BED file with scores for all splice sites -> visualize in IGV
 
-    # get args
+    
+
+    # PART 1: Extracting input sequence
+    print("--- Step 1: Extracting input sequence ... ---")
+    start_time = time.time()
+    
+    # get all input args
     output_dir = args.output_dir
     sequence_length = SL
     flanking_size = int(args.flanking_size)
@@ -420,12 +453,13 @@ def predict(args):
     input_sequence = args.input_sequence
 
     assert int(flanking_size) in [80, 400, 2000, 10000]
-
+   
     # setup
     device = setup_device()
     print("device: ", device, file=sys.stderr)
 
-    # initialize output directory
+    # create output directory
+    os.makedirs(output_dir, exist_ok=True)
     output_base, log_output_base = initialize_paths(output_dir, flanking_size, sequence_length, model_arch)
     print("* Project name: ", args.project_name, file=sys.stderr)
     print("* log_output_base: ", log_output_base, file=sys.stderr)
@@ -433,26 +467,12 @@ def predict(args):
     print("Model architecture: ", model_arch, file=sys.stderr)
     print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
 
-    ### PART 1: creating datafile hdf5
-
-    # Use gffutils to parse annotation file
-    os.makedirs(args.output_dir, exist_ok=True)
-    db = create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
-
-    # Find all distinct chromosomes and split them
-    all_chromosomes = get_all_chromosomes(db)
-    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = split_chromosomes(all_chromosomes, method='random')  # Or any other method you prefer
-    print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
-    print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
-
-    # Collect sequences and labels
-    print("--- Step 1: Creating datafile.h5 ... ---")
-    start_time = time.time()
-    get_sequences_and_labels(db, args.genome_fasta, args.output_dir, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type)
-    get_sequences_and_labels(db, args.genome_fasta, args.output_dir, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type)
+    # collect sequences
+    _,_,_ = get_sequences(input_sequence, output_dir)
+    
     print_motif_counts()
-    print("--- %s seconds ---" % (time.time() - start_time))
 
+    print("--- %s seconds ---" % (time.time() - start_time))
 
     ### PART 2: converting to tensor foramt
 
@@ -504,19 +524,15 @@ def predict(args):
                     tx_end_decode = TX_END[idx].decode('ascii')
                     label_decode = LABEL[idx].decode('ascii')
 
-                    fixed_seq = replace_non_acgt_to_n(seq_decode)
-                    X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)   
+                    X = create_datapoints(seq_decode, strand_decode, label_decode)   
 
                     X_batch.extend(X)
-                    Y_batch[0].extend(Y[0])
 
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
                 print("X_batch.shape: ", X_batch.shape)
-                Y_batch[0] = np.asarray(Y_batch[0]).astype('int8')
-                print("len(Y_batch[0]): ", len(Y_batch[0]))
+             
                 h5f2.create_dataset('X' + str(i), data=X_batch)
-                h5f2.create_dataset('Y' + str(i), data=Y_batch)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
