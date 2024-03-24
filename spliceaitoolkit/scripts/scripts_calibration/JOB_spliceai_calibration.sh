@@ -24,10 +24,10 @@
 
 python calibrate_spliceaitoolkit.py --flanking-size 10000 \
 --project-name spliceai1_prediction \
---train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_train.h5 \
---test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
---output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
---model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/10000nt/model_10000nt_rs30.pt -d
+--train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_clean/dataset_train.h5 \
+--test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE_clean/dataset_test.h5 \
+--output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_fine_tune_outdir/ \
+--model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/10000nt/model_10000nt_rs1.pt -d
 
 
 # # \ > train_splan_LocalTransformer_MANE_80.log 2> train_splan_LocalTransformer_MANE_80_error.log
@@ -35,5 +35,5 @@ python calibrate_spliceaitoolkit.py --flanking-size 10000 \
 # python predict_spliceaitoolkit.py --flanking-size 10000 \
 # --project-name spliceai1_prediction \
 # --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_MANE/dataset_test.h5 \
-# --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
+# --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_fine_tune_outdir/ \
 # --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/model_10000nt.pt -d
