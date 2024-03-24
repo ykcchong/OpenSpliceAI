@@ -15,8 +15,8 @@ from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
 import wandb
 
-RANDOM_SEED = 42
-
+RANDOM_SEED = 42 # for replicability
+HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
 
 #####################
 ##      SETUP      ##
@@ -89,43 +89,22 @@ def load_model(device, flanking_size, model_arch):
 #########################
 ##   DATA PROCESSING   ##
 #########################
-
-def create_or_load_db(gff_file, db_file='gff.db'):
-    """
-    Create a gffutils database from a GFF file, or load it if it already exists.
-
-    Parameters:
-    - gff_file: Path to GFF file
-    - db_file: Path to save or load the database file (default: 'gff.db')
-
-    Returns:
-    - db: gffutils FeatureDB object
-    """
-
-    if not os.path.exists(db_file):
-        print("Creating new database...")
-        db = gffutils.create_db(gff_file, dbfn=db_file, force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
-    else:
-        print("Loading existing database...")
-        db = gffutils.FeatureDB(db_file)
-    return db
     
-def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="maximum"):
+'''MODIFY TO JUST GET SEQUENCES, BUILD SEP FUNCTION THAT READS INTO TEMPFILE IF SIZE <=5K'''
+def get_sequences(fasta_file, output_dir):
     """
     Extract sequences for each protein-coding gene, process them based on strand orientation,
-    label donor and acceptor sites, and save the data in an HDF5 file.
+    and save data in file depending on the sequence size (HDF file if sequence >HDF_THRESHOLD_LEN, 
+    else temp file).
 
     Parameters:
-    - db: The gffutils database object.
     - fasta_file: Path to the FASTA file.
     - output_dir: Directory to save the output files.
-    - type: Type of dataset being processed ('train' or 'test').
-    - chrom_dict: Dictionary of chromosomes to process.
-    - parse_type: Mode of parsing transcripts ('maximum' or 'all_isoforms').
     """
 
     seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
     fw_stats = open(f"{output_dir}stats.txt", "w")
+    h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
     NAME = []      # Gene Name
     CHROM = []     # Chromosome
     STRAND = []    # Strand in which the gene lies (+ or -)
@@ -133,7 +112,6 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
     TX_END = []    # Position where transcription ends
     SEQ = []       # Nucleotide sequence
     LABEL = []     # Label for each nucleotide in the sequence
-    h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
     GENE_COUNTER = 0
     for gene in db.features_of_type('gene'):
         if gene.attributes["gene_biotype"][0] == "protein_coding" and gene.seqid in chrom_dict:
@@ -158,7 +136,7 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
                         max_trans = transcript
                         max_len = transcript.end - transcript.start + 1
                 transcripts_ls = [max_trans]
-            elif parse_type == 'all_isoforms':
+            elif parse_type == 'all_isoforms': # leave in?
                 transcripts_ls = transcripts
             # Process transcripts
             for transcript in transcripts_ls:
@@ -203,95 +181,80 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
     h5f.create_dataset('TX_END', data=np.asarray(TX_END, dtype=dt) , dtype=dt)
     h5f.create_dataset('SEQ', data=np.asarray(SEQ, dtype=dt) , dtype=dt)
     h5f.create_dataset('LABEL', data=np.asarray(LABEL, dtype=dt) , dtype=dt)
-    h5f.close()
+    h5f.close()   
 
-def replace_non_acgt_to_n(input_string):
+
+def create_datapoints(input_string):
     """
-    Use a generator expression to go through each character in the input string.
-    If the character is in the set of allowed characters, keep it as is.
-    Otherwise, replace it with 'N'.
-
     Parameters:
     - input_string (str): The nucleotide sequence.
 
     Returns:
-    - str: The modified sequence with non-ACGT nucleotides replaced by 'N'.
+    - X (np.ndarray): The one-hot encoded input nucleotide sequence.
     """
 
-    # Define the set of allowed characters
-    allowed_chars = {'A', 'C', 'G', 'T'}    
-    return ''.join(char if char in allowed_chars else 'N' for char in input_string)
-
-
-def create_datapoints(seq, strand, label):
-    """
-    This function first converts the sequence into an integer array, where
-    A, C, G, T, N are mapped to 1, 2, 3, 4, 0 respectively. If the strand is
-    negative, then reverse complementing is done. The labels 
-    are directly used as they are, converted into an array of integers,
-    where 0, 1, 2 correspond to no splicing, acceptor, donor 
-    respectively. It then calls reformat_data and one_hot_encode
-    and returns X, Y which can be used by Pytorch Model.
-
-    Parameters:
-    - seq (str): The nucleotide sequence.
-    - strand (str): The strand information ('+' or '-').
-    - label (str): A string representation of labels for each nucleotide.
-
-    Returns:
-    - tuple: A tuple containing the one-hot encoded sequence and labels.
-    """
-
-    # No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
+    # NOTE: No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
+    
+    # Replace all non-ACTG to N
+    allowed_chars = {'A', 'C', 'G', 'T'} # NOTE: this will turn all lowercase actg into N!
+    seq = ''.join(char if char in allowed_chars else 'N' for char in input_string) 
+    
+    # Convert to vector array
     seq = 'N' * (CL_max // 2) + seq + 'N' * (CL_max // 2)
-    seq = seq.upper().replace('A', '1').replace('C', '2')
-    seq = seq.replace('G', '3').replace('T', '4').replace('N', '0')
+    seq = seq.replace('A', '1').replace('C', '2').replace('G', '3').replace('T', '4').replace('N', '0')
 
-    # Convert label string to array of integers
-    label_array = np.array(list(map(int, list(label))))
+    # One-hot-encode the inputs
     X0 = np.asarray(list(map(int, list(seq))))
-    Y0 = label_array
-    Y0 = [Y0]
-    Xd, Yd = reformat_data(X0, Y0)
-    X, Y = one_hot_encode(Xd, Yd)
+    Xd = reformat_data(X0)
+    X = one_hot_encode(Xd)
 
-    return X, Y
+    return X
 
-def reformat_data(X0, Y0):
+'''REMOVED ALL DEPENDENCY ON LABEL FOR PREDICT.PY'''
+def reformat_data(X0):
     """
-    Reformat sequence and label data into fixed-size blocks for processing.
-    This function converts X0, Y0 of the create_datapoints function into
-    blocks such that the data is broken down into data points where the
-    input is a sequence of length SL+CL_max corresponding to SL nucleotides
-    of interest and CL_max context nucleotides, the output is a sequence of
-    length SL corresponding to the splicing information of the nucleotides
-    of interest. The CL_max context nucleotides are such that they are
-    CL_max/2 on either side of the SL nucleotides of interest.
-
     Parameters:
     - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
-    - Y0 (list of numpy.ndarray): Original label data as a list containing a single array of integer encodings.
 
     Returns:
     - numpy.ndarray: Reformatted sequence data.
-    - list of numpy.ndarray: Reformatted label data, wrapped in a list.
     """
     # Calculate the number of data points needed
     num_points = ceil_div(len(Y0[0]), SL)
     # Initialize arrays to hold the reformatted data
     Xd = np.zeros((num_points, SL + CL_max))
-    Yd = [-np.ones((num_points, SL)) for _ in range(1)]
     # Pad the sequence and labels to ensure divisibility
     X0 = np.pad(X0, (0, SL), 'constant', constant_values=0)
-    Y0 = [np.pad(Y0[t], (0, SL), 'constant', constant_values=-1) for t in range(1)]
-
     # Fill the initialized arrays with data in blocks
     for i in range(num_points):
         Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
-        Yd[0][i] = Y0[0][SL * i : SL * (i + 1)]
+
+    return Xd    
+
+# One-hot encoding of the inputs: 
+# 1: A;  2: C;  3: G;  4: T;  0: padding
+IN_MAP = np.asarray([[0, 0, 0, 0],
+                     [1, 0, 0, 0],
+                     [0, 1, 0, 0],
+                     [0, 0, 1, 0],
+                     [0, 0, 0, 1]])
+
+def one_hot_encode(Xd):
+    """
+    Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
+    predefined mappings (IN_MAP for inputs and OUT_MAP for outputs).
+
+    Parameters:
+    - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
+        is encoded as an integer (1 for 'A', 2 for 'C', 3 for 'G', 4 for 'T', and 0 for padding).
+
+    Returns:
+    - numpy.ndarray: the one-hot encoded input sequence data.
+    """
+    return IN_MAP[Xd.astype('int8')]
 
 
-# if input sequence >5k, put into hdf5 format
+'''if input sequence >5k, put into hdf5 format'''
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
     X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
     Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
