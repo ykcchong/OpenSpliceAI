@@ -13,6 +13,7 @@ from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from spliceaitoolkit.predict.spliceai import *
 from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
+from Bio import SeqIO
 import wandb
 
 RANDOM_SEED = 42 # for replicability
@@ -116,12 +117,12 @@ def get_sequences(fasta_file, output_dir):
     # write sequence information to temp custom file
     if not use_hdf:
         pass
-
     
     # write sequence to compressed hdf format
     seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
-    fw_stats = open(f"{output_dir}stats.txt", "w")
-    h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
+    fw_stats = open(f"{output_dir}stats.txt", "w") # statistics file
+    h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w') # hdf5 information file
+
     NAME = []      # Gene Name
     CHROM = []     # Chromosome
     STRAND = []    # Strand in which the gene lies (+ or -)
@@ -130,10 +131,23 @@ def get_sequences(fasta_file, output_dir):
     SEQ = []       # Nucleotide sequence
     LABEL = []     # Label for each nucleotide in the sequence
     GENE_COUNTER = 0
+
+    for record in SeqIO.parse(fasta_file, "fasta"):
+        header = record.id
+        print(header)
+        # Assuming the header is formatted like: chromosome:start-end
+        # Adjust this parsing to fit your specific header format
+        try:
+            chromosome, positions = header.split(":")
+            start, end = positions.split("-")
+        except ValueError:
+            print(f"Skipping {header}: cannot parse into chrom, start, and end.")
+
+    # no gff file? can't just do this
     for gene in db.features_of_type('gene'):
         if gene.attributes["gene_biotype"][0] == "protein_coding" and gene.seqid in chrom_dict:
-            chrom_dict[gene.seqid] += 1
-            gene_id = gene.id
+            chrom_dict[gene.seqid] += 1 
+            gene_id = gene.id 
             gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
             labels = [0] * len(gene_seq)  # Initialize all labels to 0
             transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
@@ -396,13 +410,15 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
                 loss = categorical_crossentropy_2d(labels, yp)
             elif criterion == "focal_loss":
                 loss = focal_loss(labels, yp)
-            # Logging loss for every update.
+                
+            # Logging loss for every update!!! IMPORTANT
             with open(metric_files["loss_every_update"], 'a') as f:
                 f.write(f"{loss.item()}\n")
             wandb.log({
                 f'{run_mode}/loss_every_update': loss.item(),
             })
             running_loss += loss.item()
+
             # print("loss: ", loss.item())
             batch_ylabel.append(labels.detach().cpu())
             batch_ypred.append(yp.detach().cpu())
@@ -414,7 +430,6 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
-
 
 
 ################
