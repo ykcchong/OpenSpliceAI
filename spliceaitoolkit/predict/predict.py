@@ -570,6 +570,7 @@ def predict(args):
 
     model, params = load_model(device, flanking_size, model_arch)
 
+    ## log files
     predict_metric_files = {
         'topk_donor': f'{log_output_base}/donor_topk.txt',
         'auprc_donor': f'{log_output_base}/donor_accuracy.txt',
@@ -578,7 +579,6 @@ def predict(args):
         'loss_batch': f'{log_output_base}/loss_batch.txt',
         'loss_every_update': f'{log_output_base}/loss_every_update.txt' #only rly important one!
     } 
-
 
     SAMPLE_FREQ = 1000
     for epoch in range(EPOCH_NUM):
@@ -590,4 +590,5 @@ def predict(args):
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
 
+    #??? 
     valid_epoch(model)
