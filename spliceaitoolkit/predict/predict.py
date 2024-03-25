@@ -13,7 +13,7 @@ from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from spliceaitoolkit.predict.spliceai import *
 from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
-from Bio import SeqIO
+from pyfaidx import Fasta
 import wandb
 
 RANDOM_SEED = 42 # for replicability
@@ -91,7 +91,7 @@ def load_model(device, flanking_size, model_arch):
 #########################
     
 '''MODIFY TO JUST GET SEQUENCES, BUILD SEP FUNCTION THAT READS INTO TEMPFILE IF SIZE <=5K'''
-def get_sequences(fasta_file, output_dir):
+def get_sequences(fasta_file, output_dir, neg_strands=None):
     """
     Extract sequences for each protein-coding gene, process them based on strand orientation,
     and save data in file depending on the sequence size (HDF file if sequence >HDF_THRESHOLD_LEN, 
@@ -100,48 +100,40 @@ def get_sequences(fasta_file, output_dir):
     Parameters:
     - fasta_file: Path to the FASTA file.
     - output_dir: Directory to save the output files.
+    - neg_strands (list): List of IDs for fasta entries where the sequence is on the reverse strand. Default is None.
 
     Returns:
     - Path to output file
     """
 
-    # detect sequence length
+    # detect sequence length, determine file saving method to use
     total_length = 0
     use_hdf = False
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        total_length += len(record.seq)
+    genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) # always creates uppercase sequence
+
+    for record in genes:
+        total_length += len(genes[record.name])
         if total_length > HDF_THRESHOLD_LEN:
             use_hdf = True
             break
 
-    # write sequence information to temp custom file
-    if not use_hdf:
-        pass
-    
-    # write sequence to compressed hdf format
-    seq_dict = SeqIO.to_dict(SeqIO.parse(fasta_file, "fasta"))
-    fw_stats = open(f"{output_dir}stats.txt", "w") # statistics file
-    h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w') # hdf5 information file
+    if use_hdf:
+        datafile = h5py.File(f'{output_dir}datafile.h5', 'w') # hdf5 information file
+    else:
+        datafile = open(f'{output_dir}datafile.txt', 'w') # temp sequence file
 
-    NAME = []      # Gene Name
-    CHROM = []     # Chromosome
-    STRAND = []    # Strand in which the gene lies (+ or -)
-    TX_START = []  # Position where transcription starts
-    TX_END = []    # Position where transcription ends
-    SEQ = []       # Nucleotide sequence
-    LABEL = []     # Label for each nucleotide in the sequence
-    GENE_COUNTER = 0
 
-    for record in SeqIO.parse(fasta_file, "fasta"):
-        header = record.id
-        print(header)
-        # Assuming the header is formatted like: chromosome:start-end
-        # Adjust this parsing to fit your specific header format
-        try:
-            chromosome, positions = header.split(":")
-            start, end = positions.split("-")
-        except ValueError:
-            print(f"Skipping {header}: cannot parse into chrom, start, and end.")
+    NAME = [] # Gene Names
+
+    for record in genes:
+        seq_id = record.fancy_name
+        sequence = record.seq
+        # reverse strand if explicitly specified
+        if record.name in neg_strands:
+            sequence = sequence.reverse.complement
+        
+        
+        
 
     # no gff file? can't just do this
     for gene in db.features_of_type('gene'):
@@ -149,7 +141,7 @@ def get_sequences(fasta_file, output_dir):
             chrom_dict[gene.seqid] += 1 
             gene_id = gene.id 
             gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
-            labels = [0] * len(gene_seq)  # Initialize all labels to 0
+
             transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
             if len(transcripts) == 0:
                 continue
@@ -173,7 +165,6 @@ def get_sequences(fasta_file, output_dir):
             for transcript in transcripts_ls:
                 exons = list(db.children(transcript, featuretype='exon', order_by='start'))
                 if len(exons) > 1:
-                    GENE_COUNTER += 1
                     for i in range(len(exons) - 1):
                         # Donor site is one base after the end of the current exon
                         first_site = exons[i].end - gene.start  # Adjusted for python indexing
@@ -196,14 +187,10 @@ def get_sequences(fasta_file, output_dir):
             labels_str = ''.join(str(num) for num in labels)
             NAME.append(gene_id)
             CHROM.append(gene.seqid)
-            STRAND.append(gene.strand)
-            TX_START.append(str(gene.start))
-            TX_END.append(str(gene.end))
-            SEQ.append(gene_seq)
-            LABEL.append(labels_str)
-            fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
-            check_and_count_motifs(gene_seq, labels, gene.strand)
-    fw_stats.close()
+
+            # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
+
+
     dt = h5py.string_dtype(encoding='utf-8')
     h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
     h5f.create_dataset('CHROM', data=np.asarray(CHROM, dtype=dt) , dtype=dt)
@@ -212,7 +199,71 @@ def get_sequences(fasta_file, output_dir):
     h5f.create_dataset('TX_END', data=np.asarray(TX_END, dtype=dt) , dtype=dt)
     h5f.create_dataset('SEQ', data=np.asarray(SEQ, dtype=dt) , dtype=dt)
     h5f.create_dataset('LABEL', data=np.asarray(LABEL, dtype=dt) , dtype=dt)
-    h5f.close()   
+    
+    datafile.close() 
+
+
+def convert_sequence(datafile, output_dir):
+
+    # determine whether to convert an h5 or txt file
+    if os.path.splitext(datafile)[1] == 'h5':
+        pass # do the standard datafile thing
+    
+    else:
+        pass
+
+    input_file = f"{output_dir}/datafile.h5"
+    output_file = f"{output_dir}/dataset.h5"
+
+    print(f"\tReading {input_file} ... ")
+    with h5py.File(input_file, 'r') as h5f:
+        SEQ = h5f['SEQ'][:]
+        LABEL = h5f['LABEL'][:]
+        STRAND = h5f['STRAND'][:]
+        TX_START = h5f['TX_START'][:]
+        TX_END = h5f['TX_END'][:]
+        SEQ = h5f['SEQ'][:]
+        LABEL = h5f['LABEL'][:]
+
+    print(f"\tWriting {output_file} ... ")
+    with h5py.File(output_file, 'w') as h5f2:
+        seq_num = len(SEQ)
+        CHUNK_SIZE = 100
+
+        print("seq_num: ", seq_num)
+        print("STRAND.shape[0]: ", STRAND.shape[0])
+        print("TX_START.shape[0]: ", TX_START.shape[0])
+        print("TX_END.shape[0]: ", TX_END.shape[0])
+        print("LABEL.shape[0]: ", LABEL.shape[0])
+
+        # Create dataset
+        for i in range(seq_num // CHUNK_SIZE):
+
+            # Each dataset has CHUNK_SIZE genes
+            if (i+1) == seq_num // CHUNK_SIZE:
+                NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
+            else:
+                NEW_CHUNK_SIZE = CHUNK_SIZE
+
+            X_batch, Y_batch = [], [[] for _ in range(1)]
+
+            for j in range(NEW_CHUNK_SIZE):
+                idx = i * CHUNK_SIZE + j
+
+                seq_decode = SEQ[idx].decode('ascii')
+                strand_decode = STRAND[idx].decode('ascii')
+                tx_start_decode = TX_START[idx].decode('ascii')
+                tx_end_decode = TX_END[idx].decode('ascii')
+                label_decode = LABEL[idx].decode('ascii')
+
+                X = create_datapoints(seq_decode)   
+                X_batch.extend(X)
+
+            # Convert batches to arrays and save as HDF5
+            X_batch = np.asarray(X_batch).astype('int8')
+            print("X_batch.shape: ", X_batch.shape)
+            
+            h5f2.create_dataset('X' + str(i), data=X_batch)
 
 
 def create_datapoints(input_string):
@@ -227,7 +278,7 @@ def create_datapoints(input_string):
     # NOTE: No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     
     # Replace all non-ACTG to N
-    allowed_chars = {'A', 'C', 'G', 'T'} # NOTE: this will turn all lowercase actg into N!
+    allowed_chars = {'A', 'C', 'G', 'T'} # NOTE: this will turn all lowercase actg into N! (will not happen in here as seq already uppered)
     seq = ''.join(char if char in allowed_chars else 'N' for char in input_string) 
     
     # Convert to vector array
@@ -241,7 +292,6 @@ def create_datapoints(input_string):
 
     return X
 
-'''REMOVED ALL DEPENDENCY ON LABEL FOR PREDICT.PY'''
 def reformat_data(X0):
     """
     Parameters:
@@ -262,14 +312,6 @@ def reformat_data(X0):
 
     return Xd    
 
-# One-hot encoding of the inputs: 
-# 1: A;  2: C;  3: G;  4: T;  0: padding
-IN_MAP = np.asarray([[0, 0, 0, 0],
-                     [1, 0, 0, 0],
-                     [0, 1, 0, 0],
-                     [0, 0, 1, 0],
-                     [0, 0, 0, 1]])
-
 def one_hot_encode(Xd):
     """
     Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
@@ -282,8 +324,16 @@ def one_hot_encode(Xd):
     Returns:
     - numpy.ndarray: the one-hot encoded input sequence data.
     """
-    return IN_MAP[Xd.astype('int8')]
 
+    # One-hot encoding of the inputs: 
+    # 1: A;  2: C;  3: G;  4: T;  0: padding
+    IN_MAP = np.asarray([[0, 0, 0, 0],
+                        [1, 0, 0, 0],
+                        [0, 1, 0, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, 1]])
+
+    return IN_MAP[Xd.astype('int8')]
 
 '''if input sequence >5k, put into hdf5 format'''
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
@@ -482,72 +532,19 @@ def predict(args):
     print("Model architecture: ", model_arch, file=sys.stderr)
     print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
 
-    # collect sequences
+    # collect sequences into file
     _,_,_ = get_sequences(input_sequence, output_dir)
     
     print_motif_counts()
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
-    ### PART 2: converting to tensor foramt
+    ### PART 2: Getting one-hot encoding of inputs
 
-    print("--- Step 2: Creating dataset.h5 ... ---")
+    print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
-    for data_type in ['train', 'test']:
-        print(("\tProcessing %s ..." % data_type))
-        input_file = f"{args.output_dir}/datafile_{data_type}.h5"
-        output_file = f"{args.output_dir}/dataset_{data_type}.h5"
 
-        print(f"\tReading {input_file} ... ")
-        with h5py.File(input_file, 'r') as h5f:
-            SEQ = h5f['SEQ'][:]
-            LABEL = h5f['LABEL'][:]
-            STRAND = h5f['STRAND'][:]
-            TX_START = h5f['TX_START'][:]
-            TX_END = h5f['TX_END'][:]
-            SEQ = h5f['SEQ'][:]
-            LABEL = h5f['LABEL'][:]
-
-        print(f"\tWriting {output_file} ... ")
-        with h5py.File(output_file, 'w') as h5f2:
-            seq_num = len(SEQ)
-            CHUNK_SIZE = 100
-
-            print("seq_num: ", seq_num)
-            print("STRAND.shape[0]: ", STRAND.shape[0])
-            print("TX_START.shape[0]: ", TX_START.shape[0])
-            print("TX_END.shape[0]: ", TX_END.shape[0])
-            print("LABEL.shape[0]: ", LABEL.shape[0])
-
-            # Create dataset
-            for i in range(seq_num // CHUNK_SIZE):
-
-                # Each dataset has CHUNK_SIZE genes
-                if (i+1) == seq_num // CHUNK_SIZE:
-                    NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
-                else:
-                    NEW_CHUNK_SIZE = CHUNK_SIZE
-
-                X_batch, Y_batch = [], [[] for _ in range(1)]
-
-                for j in range(NEW_CHUNK_SIZE):
-                    idx = i * CHUNK_SIZE + j
-
-                    seq_decode = SEQ[idx].decode('ascii')
-                    strand_decode = STRAND[idx].decode('ascii')
-                    tx_start_decode = TX_START[idx].decode('ascii')
-                    tx_end_decode = TX_END[idx].decode('ascii')
-                    label_decode = LABEL[idx].decode('ascii')
-
-                    X = create_datapoints(seq_decode, strand_decode, label_decode)   
-
-                    X_batch.extend(X)
-
-                # Convert batches to arrays and save as HDF5
-                X_batch = np.asarray(X_batch).astype('int8')
-                print("X_batch.shape: ", X_batch.shape)
-             
-                h5f2.create_dataset('X' + str(i), data=X_batch)
+    
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
