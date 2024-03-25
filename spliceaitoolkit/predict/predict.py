@@ -18,6 +18,7 @@ import wandb
 
 RANDOM_SEED = 42 # for replicability
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
+CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 
 #####################
 ##      SETUP      ##
@@ -149,71 +150,97 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
             for name, seq in zip(NAME, SEQ):
                 datafile.write(f'{name}\n{seq}\n')
     
-    return datafile_path
+    return datafile_path, NAME, SEQ
 
     # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
 
-def convert_sequence(datafile, output_dir):
+def convert_sequences(datafile_path, output_dir, NAME=None, SEQ=None):
+    '''
+    Script to convert datafile into a one-hot encoded dataset ready to input to model. 
+    If HDF5 file used, data is chunked for loading. 
+
+    Parameters:
+    - datafile_path: path to the datafile
+    - output_dir: output directory path
+
+    Returns:
+    - Path to the dataset.
+    '''
 
     # determine whether to convert an h5 or txt file
-    if os.path.splitext(datafile)[1] == 'h5':
-        pass # do the standard datafile thing
-    
+    use_h5 = os.path.splitext(datafile_path)[1] == 'h5'
+
+    # read the given input file if both datastreams were not provided
+    if NAME == None or SEQ == None or len(NAME) != len(SEQ):
+        print(f"\tReading {datafile_path} ... ")
+        if use_h5:
+            with h5py.File(datafile_path, 'r') as in_h5f:
+                NAME = in_h5f['NAME'][:]
+                SEQ = in_h5f['SEQ'][:]
+        else:
+            NAME = []
+            SEQ = []
+            with open(datafile_path, 'r') as in_file:
+                lines = in_file.readlines()
+                for i, line in enumerate(lines):
+                    if i % 2 == 0: 
+                        NAME.append(line)
+                    else:  
+                        SEQ.append(line)
     else:
-        pass
+        print('\tNAME and SEQ data provided, skipping reading ...')
 
-    input_file = f"{output_dir}/datafile.h5"
-    output_file = f"{output_dir}/dataset.h5"
+    assert len(NAME) == len(SEQ) # sanity checking files
 
-    print(f"\tReading {input_file} ... ")
-    with h5py.File(input_file, 'r') as h5f:
-        SEQ = h5f['SEQ'][:]
-        LABEL = h5f['LABEL'][:]
-        STRAND = h5f['STRAND'][:]
-        TX_START = h5f['TX_START'][:]
-        TX_END = h5f['TX_END'][:]
-        SEQ = h5f['SEQ'][:]
-        LABEL = h5f['LABEL'][:]
+    num_seqs = len(SEQ)
+    print("num_seqs: ", num_seqs)
 
-    print(f"\tWriting {output_file} ... ")
-    with h5py.File(output_file, 'w') as h5f2:
-        seq_num = len(SEQ)
-        CHUNK_SIZE = 100
+    # write to h5 file by chunking and one-hot encoding inputs
+    if use_h5:
+        dataset_path = f'{output_dir}/dataset.h5'
 
-        print("seq_num: ", seq_num)
-        print("STRAND.shape[0]: ", STRAND.shape[0])
-        print("TX_START.shape[0]: ", TX_START.shape[0])
-        print("TX_END.shape[0]: ", TX_END.shape[0])
-        print("LABEL.shape[0]: ", LABEL.shape[0])
+        print(f"\tWriting {dataset_path} ... ")
+        with h5py.File(dataset_path, 'w') as out_h5f:
+               
+            # Create dataset
+            for i in range(num_seqs // CHUNK_SIZE):
 
-        # Create dataset
-        for i in range(seq_num // CHUNK_SIZE):
+                # Each dataset has CHUNK_SIZE genes
+                if (i+1) == num_seqs // CHUNK_SIZE: # if last chunk, will add on all leftovers
+                    NEW_CHUNK_SIZE = CHUNK_SIZE + num_seqs % CHUNK_SIZE
+                else:
+                    NEW_CHUNK_SIZE = CHUNK_SIZE
 
-            # Each dataset has CHUNK_SIZE genes
-            if (i+1) == seq_num // CHUNK_SIZE:
-                NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
-            else:
-                NEW_CHUNK_SIZE = CHUNK_SIZE
+                X_batch = []
+                for j in range(NEW_CHUNK_SIZE):
+                    idx = i * CHUNK_SIZE + j
 
-            X_batch, Y_batch = [], [[] for _ in range(1)]
+                    seq_decode = SEQ[idx].decode('ascii')
+                    X = create_datapoints(seq_decode)   
+                    X_batch.extend(X)
 
-            for j in range(NEW_CHUNK_SIZE):
-                idx = i * CHUNK_SIZE + j
+                # Convert batches to arrays and save as HDF5
+                X_batch = np.asarray(X_batch).astype('int8')
+                print("X_batch.shape: ", X_batch.shape)
+                
+                out_h5f.create_dataset('X' + str(i), data=X_batch)
+    
+    # convert to tensor and write directly to a binary PyTorch file for quick loading
+    else:
+        dataset_path = f'{output_dir}/dataset.pt'
 
-                seq_decode = SEQ[idx].decode('ascii')
-                strand_decode = STRAND[idx].decode('ascii')
-                tx_start_decode = TX_START[idx].decode('ascii')
-                tx_end_decode = TX_END[idx].decode('ascii')
-                label_decode = LABEL[idx].decode('ascii')
+        print(f"\tWriting {dataset_path} ... ")
+        X_all = []
+        for idx in range(len(SEQ)):
+            seq_decode = SEQ[idx].decode('ascii')
+            X = create_datapoints(seq_decode)
+            X_all.extend(X)
 
-                X = create_datapoints(seq_decode)   
-                X_batch.extend(X)
+        # convert batches to a tensor
+        X_tensor = torch.tensor(X_all, dtype=torch.int8)
 
-            # Convert batches to arrays and save as HDF5
-            X_batch = np.asarray(X_batch).astype('int8')
-            print("X_batch.shape: ", X_batch.shape)
-            
-            h5f2.create_dataset('X' + str(i), data=X_batch)
+        # save as a binary file
+        torch.save(X_tensor, dataset_path)         
 
 
 def create_datapoints(input_string):
@@ -288,13 +315,14 @@ def one_hot_encode(Xd):
 '''if input sequence >5k, put into hdf5 format'''
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
     X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
-    Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
+    # Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
     # print("\n\tX.shape: ", X.shape)
     # print("\tY.shape: ", Y.shape)
     X = torch.tensor(X, dtype=torch.float32)
-    Y = torch.tensor(Y, dtype=torch.float32)
-    ds = TensorDataset(X, Y)
+    # Y = torch.tensor(Y, dtype=torch.float32)
+    ds = TensorDataset(X)
 
+    # NOTE: THIS IS LOSSY?? drop_last = True
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
 
 ####################
@@ -468,22 +496,18 @@ def predict(args):
     input_sequence = args.input_sequence
 
     assert int(flanking_size) in [80, 400, 2000, 10000]
-   
-    # setup
-    device = setup_device()
-    print("device: ", device, file=sys.stderr)
 
     # create output directory
     os.makedirs(output_dir, exist_ok=True)
     output_base, log_output_base = initialize_paths(output_dir, flanking_size, sequence_length, model_arch)
-    print("* Project name: ", args.project_name, file=sys.stderr)
+    print("* output_base: ", output_base, file=sys.stderr)
     print("* log_output_base: ", log_output_base, file=sys.stderr)
-
     print("Model architecture: ", model_arch, file=sys.stderr)
-    print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
+    print("Flanking sequence size: ", flanking_size, file=sys.stderr)
+    print("Sequence length: ", sequence_length, file=sys.stderr)
 
     # collect sequences into file
-    _,_,_ = get_sequences(input_sequence, output_dir)
+    datafile_path, NAME, SEQ = get_sequences(input_sequence, output_dir)
     
     print_motif_counts()
 
@@ -494,7 +518,7 @@ def predict(args):
     print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
 
-    
+    dataset_path = convert_sequences(datafile_path, output_dir, NAME, SEQ)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -509,6 +533,14 @@ def predict(args):
     # print("val_idxs: ", val_idxs, file=sys.stderr)
     # print("test_idxs: ", test_idxs, file=sys.stderr)
 
+    ### PART 3: Loading data into model
+    print("--- Step 3: Load model ... ---")
+    start_time = time.time()
+
+    # setup device
+    device = setup_device()
+    print("device: ", device, file=sys.stderr)
+
     model, params = load_model(device, flanking_size, model_arch)
 
     ## log files
@@ -521,6 +553,11 @@ def predict(args):
         'loss_every_update': f'{log_output_base}/loss_every_update.txt' #only rly important one!
     } 
 
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+    ### PART 4: Get predictions
+    print("--- Step 4: Get predictions ... ---")
+
     SAMPLE_FREQ = 1000
     for epoch in range(EPOCH_NUM):
         print("\n--------------------------------------------------------------")
@@ -530,6 +567,7 @@ def predict(args):
         torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
-
+    
+    
     #??? 
     valid_epoch(model)
