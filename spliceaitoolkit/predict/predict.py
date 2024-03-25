@@ -328,6 +328,7 @@ def load_shard(h5f, batch_size, shard_idx):
 
     return DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
+# custom for this implementation (removed dependency on Y)
 def clip_datapoints(X, CL, N_GPUS):
     """
     This function is necessary to make sure of the following:
@@ -419,7 +420,7 @@ def clip_datapoints(X, CL, N_GPUS):
 #     batch_ypred = []
 
 
-def get_prediction(model, dataset_file, criterion, device, params, metric_files):
+def get_prediction(model, dataset_file, criterion, device, params, metric_files, output_dir):
     """
 s    Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
@@ -428,7 +429,7 @@ s    Parameters:
     - device (torch.device): The computational device (CUDA, MPS, CPU).
     - params (dict): Dictionary of parameters related to model and validation/testing.
     - metric_files (dict): Dictionary containing paths to log files for various metrics.
-
+    - output_dir (str): Root of output directory for predict file.
 
     Returns:
     - Path to predictions
@@ -513,7 +514,12 @@ s    Parameters:
         pbar.close()
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
-    return predict_file
+
+    # write all predictions to a predict_file
+    predict_path = f'{output_dir}predict.pt'
+    batch_ypred = torch.cat(batch_ypred, dim=0)
+    torch.save(batch_ypred, predict_path)    
+    return predict_path
 
 def generate_bed(predict_file, NAME):
     ''' 
@@ -600,14 +606,14 @@ def predict(args):
     print("params: ", params, file=sys.stderr)
 
     ## log files
-    predict_metric_files = {
-        'topk_donor': f'{log_output_base}/donor_topk.txt',
-        'auprc_donor': f'{log_output_base}/donor_accuracy.txt',
-        'topk_acceptor': f'{log_output_base}/acceptor_topk.txt',
-        'auprc_acceptor': f'{log_output_base}/acceptor_accuracy.txt',
-        'loss_batch': f'{log_output_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_base}/loss_every_update.txt' #only rly important one!
-    } 
+    # predict_metric_files = {
+    #     'topk_donor': f'{log_output_base}/donor_topk.txt',
+    #     'auprc_donor': f'{log_output_base}/donor_accuracy.txt',
+    #     'topk_acceptor': f'{log_output_base}/acceptor_topk.txt',
+    #     'auprc_acceptor': f'{log_output_base}/acceptor_accuracy.txt',
+    #     'loss_batch': f'{log_output_base}/loss_batch.txt',
+    #     'loss_every_update': f'{log_output_base}/loss_every_update.txt' #only rly important one!
+    # } 
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -618,7 +624,7 @@ def predict(args):
 
 
     predict_file = get_h5_prediction(model, dataset_file, device, 
-                                    params, predict_metric_files)
+                                    params, predict_metric_files, output_base)
 
 
     print("--- %s seconds ---" % (time.time() - start_time))
