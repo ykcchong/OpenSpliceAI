@@ -25,7 +25,7 @@ CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 #####################
 
 # initialize output directory for log files, predict.bed file
-def initialize_paths(output_dir, flanking_size, sequence_length, model_arch):
+def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='SpliceAI'):
     """Initialize project directories and create them if they don't exist."""
 
     BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
@@ -42,7 +42,7 @@ def setup_device():
     return torch.device(device_str)
 
 # load given model and get params
-def load_model(device, flanking_size, model_arch):
+def load_model(device, flanking_size):
     """Loads the given model."""
     # Hyper-parameters:
     # L: Number of convolution kernels
@@ -313,95 +313,117 @@ def one_hot_encode(Xd):
 ##   PREDICTION   ##
 ####################
 
-'''if input sequence >5k, put into hdf5 format'''
-def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
-    # should probably have shuffle on to false (this was for training??)
-    
+# only used when file in hdf5
+def load_shard(h5f, batch_size, shard_idx):
+    '''
+    Loads a selected shard from HDF5 file.
+
+    Parameters: 
+    - h5f: an OPEN dataset file in read mode
+    '''
+
     X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
-    # Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
-    # print("\n\tX.shape: ", X.shape)
-    # print("\tY.shape: ", Y.shape)
     X = torch.tensor(X, dtype=torch.float32)
-    # Y = torch.tensor(Y, dtype=torch.float32)
     ds = TensorDataset(X)
 
-    # NOTE: THIS IS LOSSY?? drop_last = True
-    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
+    return DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
-def load_data(dataset_file):
-    # for the binary pt file instance
-    X_tensor = torch.load(dataset_file)
-
-
-def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
+def clip_datapoints(X, CL, N_GPUS):
     """
-    Evaluates the model's performance on a batch of data and logs the metrics.
-    Calculates various metrics, such as top-kL accuracy and AUPRC, for a given set of predictions and true labels.
-    The results are written to specified log files and can also be logged to Weights & Biases if enabled.
-
-    Parameters:
-    - batch_ylabel (list of torch.Tensor): A list of tensors containing the true labels for each batch.
-    - batch_ypred (list of torch.Tensor): A list of tensors containing the predicted labels for each batch.
-    - metric_files (dict): A dictionary containing paths to files where metrics should be logged.
-    - run_mode (str): The current phase of model usage ('train', 'validation', 'test') indicating where to log the metrics.
-    - criterion (str): The loss function that was used during training or evaluation, for appropriate metric calculation.
+    This function is necessary to make sure of the following:
+    (i) Each time model_m.fit is called, the number of datapoints is a
+    multiple of N_GPUS. Failure to ensure this often results in crashes.
+    (ii) If the required context length is less than CL_max, then
+    appropriate clipping is done below.
+    Additionally, Y is also converted to a list (the .h5 files store 
+    them as an array).
     """
+    
+    print("\n\tX.shape: ", X.shape)
+    print("\tCL: ", CL)
+    print("\tN_GPUS: ", N_GPUS)
 
-    # batch_ylabel = torch.cat(batch_ylabel, dim=0)
-    batch_ypred = torch.cat(batch_ypred, dim=0)
-    is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
-    if np.any(is_expr):
-        ############################
-        # Topk SpliceAI assessment approach
-        ############################
-        subset_size = 1000
-        indices = np.arange(batch_ylabel[is_expr].shape[0])
-        subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-        # Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        # Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-        acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-                            np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-        donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-                            np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-        # if criterion == "cross_entropy_loss":
-        #     loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
-        # elif criterion == "focal_loss":
-        #     loss = focal_loss(batch_ylabel, batch_ypred)
-        for k, v in metric_files.items():
-            with open(v, 'a') as f:
-                if k == "loss_batch":
-                    f.write(f"{loss.item()}\n")
-                elif k == "topk_acceptor":
-                    f.write(f"{acceptor_topkl_accuracy}\n")
-                elif k == "topk_donor":
-                    f.write(f"{donor_topkl_accuracy}\n")
-                elif k == "auprc_acceptor":
-                    f.write(f"{acceptor_auprc}\n")
-                elif k == "auprc_donor":
-                    f.write(f"{donor_auprc}\n")
-        wandb.log({
-            f'{run_mode}/loss_batch': loss.item(),
-            f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-            f'{run_mode}/topk_donor': donor_topkl_accuracy,
-            f'{run_mode}/auprc_acceptor': acceptor_auprc,
-            f'{run_mode}/auprc_donor': donor_auprc,
-        })
-        print("***************************************\n\n")
-    # batch_ylabel = []
-    batch_ypred = []
+    rem = X.shape[0] % N_GPUS
+    clip = (CL_max-CL)//2
+
+    print("\trem: ", rem)
+    print("\tclip: ", clip)
+
+    if rem != 0 and clip != 0:
+        return X[:-rem, :, clip:-clip]
+    elif rem == 0 and clip != 0:
+        return X[:, :, clip:-clip]
+    elif rem != 0 and clip == 0:
+        return X[:-rem]
+    else:
+        return X
 
 
-# definitely need
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
+# def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
+#     """
+#     Evaluates the model's performance on a batch of data and logs the metrics.
+#     Calculates various metrics, such as top-kL accuracy and AUPRC, for a given set of predictions and true labels.
+#     The results are written to specified log files and can also be logged to Weights & Biases if enabled.
+
+#     Parameters:
+#     - batch_ylabel (list of torch.Tensor): A list of tensors containing the true labels for each batch.
+#     - batch_ypred (list of torch.Tensor): A list of tensors containing the predicted labels for each batch.
+#     - metric_files (dict): A dictionary containing paths to files where metrics should be logged.
+#     - run_mode (str): The current phase of model usage ('train', 'validation', 'test') indicating where to log the metrics.
+#     - criterion (str): The loss function that was used during training or evaluation, for appropriate metric calculation.
+#     """
+
+#     # batch_ylabel = torch.cat(batch_ylabel, dim=0)
+#     batch_ypred = torch.cat(batch_ypred, dim=0)
+#     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
+#     if np.any(is_expr):
+#         ############################
+#         # Topk SpliceAI assessment approach
+#         ############################
+#         subset_size = 1000
+#         indices = np.arange(batch_ylabel[is_expr].shape[0])
+#         subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
+#         # Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
+#         # Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
+#         Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
+#         Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
+#         acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
+#                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
+#         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
+#                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
+#         # if criterion == "cross_entropy_loss":
+#         #     loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
+#         # elif criterion == "focal_loss":
+#         #     loss = focal_loss(batch_ylabel, batch_ypred)
+#         for k, v in metric_files.items():
+#             with open(v, 'a') as f:
+#                 if k == "loss_batch":
+#                     f.write(f"{loss.item()}\n")
+#                 elif k == "topk_acceptor":
+#                     f.write(f"{acceptor_topkl_accuracy}\n")
+#                 elif k == "topk_donor":
+#                     f.write(f"{donor_topkl_accuracy}\n")
+#                 elif k == "auprc_acceptor":
+#                     f.write(f"{acceptor_auprc}\n")
+#                 elif k == "auprc_donor":
+#                     f.write(f"{donor_auprc}\n")
+#         wandb.log({
+#             f'{run_mode}/loss_batch': loss.item(),
+#             f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
+#             f'{run_mode}/topk_donor': donor_topkl_accuracy,
+#             f'{run_mode}/auprc_acceptor': acceptor_auprc,
+#             f'{run_mode}/auprc_donor': donor_auprc,
+#         })
+#         print("***************************************\n\n")
+#     # batch_ylabel = []
+#     batch_ypred = []
+
+
+def get_prediction(model, dataset_file, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
     """
-    Validates the SpliceAI model on a given dataset.
-    (Similar to train_epoch, but without performing backpropagation or updating model parameters)
-
-    Parameters:
+s    Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
-    - h5f (h5py.File): HDF5 file object containing the validation or test data.
+    - dataset_file (path): Path to the selected dataset.
     - idxs (np.array): Array of indices for the batches to be used in validation/testing.
     - batch_size (int): Size of each batch.
     - criterion (str): The loss function used for validation/testing.
@@ -410,66 +432,92 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     - metric_files (dict): Dictionary containing paths to log files for various metrics.
     - run_mode (str): Indicates the phase (e.g., "validation", "test").
     - sample_freq (int): Frequency of sampling for evaluation and logging.
-    """
 
-    print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
+    Returns:
+    - Path to predictions
+    """
     # put model in evaluation mode
     model.eval()
 
-    running_loss = 0.0
-    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    # determine which file to proceed with
+    file_ext = os.path.splitext(dataset_path)[1]
+    assert file_ext in ['h5', 'pt']
+    use_h5 = file_ext == 'h5'
 
-    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
-    print("shuffled_idxs: ", shuffled_idxs)
-    batch_ylabel = []
+    if use_h5:
+        h5f = h5py.File(dataset_path, 'r')
+        # need to load shards using dataset
+    else:
+        # all data should be loaded
+        X = torch.load(dataset_file)
+        X = torch.tensor(X, dtype=torch.float32)
+        ds = TensorDataset(X)
+        loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
+
+    ## ALL FOLLOWING IS ASSUMING USE_H5
+
+    
+    # np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    # running_loss = 0.0
+    
+    idxs = np.arange(len(h5f.keys()) // 2)
+
     batch_ypred = []
     print_dict = {}
     batch_idx = 0
 
     # iterate over shards in shuffled index 
-    for i, shard_idx in enumerate(shuffled_idxs, 1):
-        print(f"Shard {i}/{len(shuffled_idxs)}")
-        loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
-        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
+    for i, shard_idx in enumerate(idxs, 1):
+        print(f"Shard {i}/{len(idxs)}")
+        loader = load_shard(h5f, batch_size, shard_idx)
+        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
         for batch in pbar:
-            DNAs, labels = batch[0].to(device), batch[1].to(device)
-            # print("\n\tDNAs.shape: ", DNAs.shape)
-            # print("\tlabels.shape: ", labels.shape)
-            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
-            DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
-            # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
-            # print("\tAfter clipping labels.shape: ", labels.shape)
-            yp = model(DNAs)
-            if criterion == "cross_entropy_loss":
-                loss = categorical_crossentropy_2d(labels, yp)
-            elif criterion == "focal_loss":
-                loss = focal_loss(labels, yp)
+            DNAs = batch[0].to(device)
+
+            print("\n\tDNAs.shape: ", DNAs.shape)
+            DNAs = clip_datapoints(DNAs, params["CL"], 2)
+            DNAs = DNAs.to(torch.float32).to(device)
+            print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
+
+            y_pred = model(DNAs)
+
+            # if criterion == "cross_entropy_loss":
+            #     loss = categorical_crossentropy_2d(labels, y_pred)
+            # elif criterion == "focal_loss":
+            #     loss = focal_loss(labels, y_pred)
                 
             # Logging loss for every update!!! IMPORTANT
-            with open(metric_files["loss_every_update"], 'a') as f:
-                f.write(f"{loss.item()}\n")
-            wandb.log({
-                f'{run_mode}/loss_every_update': loss.item(),
-            })
-            running_loss += loss.item()
+            # with open(metric_files["loss_every_update"], 'a') as f:
+            #     f.write(f"{loss.item()}\n")
+            # wandb.log({
+            #     f'{run_mode}/loss_every_update': loss.item(),
+            # })
+            # running_loss += loss.item()
 
             # print("loss: ", loss.item())
-            batch_ylabel.append(labels.detach().cpu())
-            batch_ypred.append(yp.detach().cpu())
-            print_dict["loss"] = loss.item()
+
+            # batch_ylabel.append(labels.detach().cpu())
+
+            batch_ypred.append(y_pred.detach().cpu())
+
+            # print_dict["loss"] = loss.item()
+
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
+
             # if batch_idx % sample_freq == 0:
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
-    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
 
-def generate_bed(predict_file):
+    # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    return predict_file
+
+def generate_bed(predict_file, NAME):
     ''' 
     Generates the BED file pertaining to the predictions 
     '''
-
+    pass
 
 ################
 ##   DRIVER   ##
@@ -479,7 +527,7 @@ def predict(args):
     '''
     Parameters:
     - args (argparse.args): 
-        - model: SpliceAI (default)
+        - model: Path to SpliceAI model
         - output_dir
         - flanking_size
         - input_sequence
@@ -502,17 +550,17 @@ def predict(args):
     output_dir = args.output_dir
     sequence_length = SL
     flanking_size = int(args.flanking_size)
-    model_arch = args.model
+    model_path = args.model
     input_sequence = args.input_sequence
 
     assert int(flanking_size) in [80, 400, 2000, 10000]
 
     # create output directory
     os.makedirs(output_dir, exist_ok=True)
-    output_base, log_output_base = initialize_paths(output_dir, flanking_size, sequence_length, model_arch)
+    output_base, log_output_base = initialize_paths(output_dir, flanking_size, sequence_length)
     print("* output_base: ", output_base, file=sys.stderr)
     print("* log_output_base: ", log_output_base, file=sys.stderr)
-    print("Model architecture: ", model_arch, file=sys.stderr)
+    print("Model path: ", model_path, file=sys.stderr)
     print("Flanking sequence size: ", flanking_size, file=sys.stderr)
     print("Sequence length: ", sequence_length, file=sys.stderr)
 
@@ -532,19 +580,8 @@ def predict(args):
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
-    # batch_num = len(train_h5f.keys()) // 2
-    # print("Batch_num: ", batch_num, file=sys.stderr)
-    # np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
-    # idxs = np.random.permutation(batch_num)
-    # train_idxs = idxs[:int(0.9 * batch_num)]
-    # val_idxs = idxs[int(0.9 * batch_num):]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    # print("train_idxs: ", train_idxs, file=sys.stderr)
-    # print("val_idxs: ", val_idxs, file=sys.stderr)
-    # print("test_idxs: ", test_idxs, file=sys.stderr)
 
-
-    ### PART 3: Loading data into model
+    ### PART 3: Loading model
     print("--- Step 3: Load model ... ---")
     start_time = time.time()
 
@@ -552,8 +589,11 @@ def predict(args):
     device = setup_device()
     print("device: ", device, file=sys.stderr)
 
-    # load model 
-    model, params = load_model(device, flanking_size, model_arch)
+    # load model from current state
+    model, params = load_model(device, flanking_size)
+    model.load_state_dict(torch.load(model_path))
+    model = model.to(device)
+
     print("model: ", model, file=sys.stderr)
     print("params: ", params, file=sys.stderr)
 
@@ -577,9 +617,20 @@ def predict(args):
     # define necessary parameters
     SAMPLE_FREQ = 1000
     batch_size = params["BATCH_SIZE"]
-    
-    # perform the model prediction
-    valid_epoch(model, train_h5f, val_idxs, batch_size, args.loss, device, params, predict_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+
+
+    predict_file = get_h5_prediction(model, train_h5f,batch_size, args.loss, device, 
+                                    params, predict_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+
+    ### PART 5: Generate BED report
+    print("--- Step 4: Generating BED report ... ---")
+    start_time = time.time()
+
+    generate_bed(predict_file, NAME)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
