@@ -90,8 +90,8 @@ def create_dataset(args):
             STRAND = h5f['STRAND'][:]
             TX_START = h5f['TX_START'][:]
             TX_END = h5f['TX_END'][:]
-            SEQ = h5f['SEQ'][:]
-            LABEL = h5f['LABEL'][:]
+            # SEQ = h5f['SEQ'][:]
+            # LABEL = h5f['LABEL'][:]
 
         print(f"\tWriting {output_file} ... ")
         with h5py.File(output_file, 'w') as h5f2:
