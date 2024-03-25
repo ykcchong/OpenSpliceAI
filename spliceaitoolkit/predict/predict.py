@@ -103,13 +103,15 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
     - neg_strands (list): List of IDs for fasta entries where the sequence is on the reverse strand. Default is None.
 
     Returns:
-    - Path to output file
+    - Path to datafile.
     """
 
     # detect sequence length, determine file saving method to use
     total_length = 0
     use_hdf = False
-    genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) # always creates uppercase sequence
+
+    # NOTE: always creates uppercase sequence, uses [1,0]-indexed sequences, takes simple name from FASTA
+    genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
 
     for record in genes:
         total_length += len(genes[record.name])
@@ -117,91 +119,39 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
             use_hdf = True
             break
 
-    if use_hdf:
-        datafile = h5py.File(f'{output_dir}datafile.h5', 'w') # hdf5 information file
-    else:
-        datafile = open(f'{output_dir}datafile.txt', 'w') # temp sequence file
+    NAME = [] # Gene Header
+    SEQ  = [] # Sequences
 
-
-    NAME = [] # Gene Names
-
+    # obtain the headers and sequences from FASTA file
     for record in genes:
         seq_id = record.fancy_name
         sequence = record.seq
         # reverse strand if explicitly specified
         if record.name in neg_strands:
+            seq_id = str(seq_id) + ':-'
             sequence = sequence.reverse.complement
+        else:
+            seq_id = str(seq_id) + ':+'
         
-        
-        
-
-    # no gff file? can't just do this
-    for gene in db.features_of_type('gene'):
-        if gene.attributes["gene_biotype"][0] == "protein_coding" and gene.seqid in chrom_dict:
-            chrom_dict[gene.seqid] += 1 
-            gene_id = gene.id 
-            gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
-
-            transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
-            if len(transcripts) == 0:
-                continue
-            elif len(transcripts) > 1:
-                print(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
-            ############################################
-            # Selecting which mode to process the data
-            ############################################
-            transcripts_ls = []
-            if parse_type == 'maximum':
-                max_trans = transcripts[0]
-                max_len = max_trans.end - max_trans.start + 1
-                for transcript in transcripts:
-                    if transcript.end - transcript.start + 1 > max_len:
-                        max_trans = transcript
-                        max_len = transcript.end - transcript.start + 1
-                transcripts_ls = [max_trans]
-            elif parse_type == 'all_isoforms': # leave in?
-                transcripts_ls = transcripts
-            # Process transcripts
-            for transcript in transcripts_ls:
-                exons = list(db.children(transcript, featuretype='exon', order_by='start'))
-                if len(exons) > 1:
-                    for i in range(len(exons) - 1):
-                        # Donor site is one base after the end of the current exon
-                        first_site = exons[i].end - gene.start  # Adjusted for python indexing
-                        # Acceptor site is at the start of the next exon
-                        second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
-                        if gene.strand == '+':
-                            labels[first_site] = 2  # Mark donor site
-                            labels[second_site] = 1  # Mark acceptor site
-                        elif gene.strand == '-':
-                            d_idx = len(labels) - second_site-1
-                            a_idx = len(labels) - first_site-1
-                            labels[d_idx] = 2   # Mark donor site
-                            labels[a_idx] = 1  # Mark acceptor site
-                            seq = gene_seq.reverse_complement()
-                            print("D: ", seq[d_idx-3:  d_idx+4])
-                            print("A: ", seq[a_idx-6: a_idx+3])
-            if gene.strand == '-':
-                gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
-            gene_seq = str(gene_seq.upper())
-            labels_str = ''.join(str(num) for num in labels)
-            NAME.append(gene_id)
-            CHROM.append(gene.seqid)
-
-            # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
-
-
-    dt = h5py.string_dtype(encoding='utf-8')
-    h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
-    h5f.create_dataset('CHROM', data=np.asarray(CHROM, dtype=dt) , dtype=dt)
-    h5f.create_dataset('STRAND', data=np.asarray(STRAND, dtype=dt) , dtype=dt)
-    h5f.create_dataset('TX_START', data=np.asarray(TX_START, dtype=dt) , dtype=dt)
-    h5f.create_dataset('TX_END', data=np.asarray(TX_END, dtype=dt) , dtype=dt)
-    h5f.create_dataset('SEQ', data=np.asarray(SEQ, dtype=dt) , dtype=dt)
-    h5f.create_dataset('LABEL', data=np.asarray(LABEL, dtype=dt) , dtype=dt)
+        NAME.append(seq_id)
+        SEQ.append(str(sequence))
     
-    datafile.close() 
+    # write the sequences to datafile
+    if use_hdf:
+        datafile_path = f'{output_dir}datafile.h5'
+        dt = h5py.string_dtype(encoding='utf-8')
+        with h5py.File(datafile_path, 'w') as datafile: # hdf5 information file
+            datafile.create_dataset('NAME', data=np.asarray(NAME, dtype=dt), dtype=dt)
+            datafile.create_dataset('SEQ', data=np.asarray(SEQ, dtype=dt), dtype=dt)
+    else:
+        datafile_path = f'{output_dir}datafile.txt'
+        with open(datafile_path, 'w') as datafile: # temp sequence file
+            for name, seq in zip(NAME, SEQ):
+                datafile.write(f'{name}\n{seq}\n')
+    
+    return datafile_path
 
+    # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
 
 def convert_sequence(datafile, output_dir):
 
