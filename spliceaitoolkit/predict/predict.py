@@ -154,7 +154,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
 
-def convert_sequences(datafile_path, output_dir, NAME=None, SEQ=None):
+def convert_sequences(datafile_path, output_dir, SEQ=None):
     '''
     Script to convert datafile into a one-hot encoded dataset ready to input to model. 
     If HDF5 file used, data is chunked for loading. 
@@ -162,6 +162,7 @@ def convert_sequences(datafile_path, output_dir, NAME=None, SEQ=None):
     Parameters:
     - datafile_path: path to the datafile
     - output_dir: output directory path
+    - SEQ: list of sequences 
 
     Returns:
     - Path to the dataset.
@@ -171,26 +172,20 @@ def convert_sequences(datafile_path, output_dir, NAME=None, SEQ=None):
     use_h5 = os.path.splitext(datafile_path)[1] == 'h5'
 
     # read the given input file if both datastreams were not provided
-    if NAME == None or SEQ == None or len(NAME) != len(SEQ):
+    if SEQ == None:
         print(f"\tReading {datafile_path} ... ")
         if use_h5:
             with h5py.File(datafile_path, 'r') as in_h5f:
-                NAME = in_h5f['NAME'][:]
                 SEQ = in_h5f['SEQ'][:]
         else:
-            NAME = []
             SEQ = []
             with open(datafile_path, 'r') as in_file:
                 lines = in_file.readlines()
                 for i, line in enumerate(lines):
-                    if i % 2 == 0: 
-                        NAME.append(line)
-                    else:  
+                    if i % 2 == 1: 
                         SEQ.append(line)
     else:
         print('\tNAME and SEQ data provided, skipping reading ...')
-
-    assert len(NAME) == len(SEQ) # sanity checking files
 
     num_seqs = len(SEQ)
     print("num_seqs: ", num_seqs)
@@ -231,7 +226,7 @@ def convert_sequences(datafile_path, output_dir, NAME=None, SEQ=None):
 
         print(f"\tWriting {dataset_path} ... ")
         X_all = []
-        for idx in range(len(SEQ)):
+        for idx in range(num_seqs):
             seq_decode = SEQ[idx].decode('ascii')
             X = create_datapoints(seq_decode)
             X_all.extend(X)
@@ -518,7 +513,7 @@ def predict(args):
     print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
 
-    dataset_path = convert_sequences(datafile_path, output_dir, NAME, SEQ)
+    dataset_path = convert_sequences(datafile_path, output_dir, SEQ)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
