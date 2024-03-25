@@ -169,7 +169,9 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
     '''
 
     # determine whether to convert an h5 or txt file
-    use_h5 = os.path.splitext(datafile_path)[1] == 'h5'
+    file_ext = os.path.splitext(datafile_path)[1]
+    assert file_ext in ['h5', 'txt']
+    use_h5 = file_ext == 'h5'
 
     # read the given input file if both datastreams were not provided
     if SEQ == None:
@@ -307,8 +309,14 @@ def one_hot_encode(Xd):
 
     return IN_MAP[Xd.astype('int8')]
 
+####################
+##   PREDICTION   ##
+####################
+
 '''if input sequence >5k, put into hdf5 format'''
 def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
+    # should probably have shuffle on to false (this was for training??)
+    
     X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
     # Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
     # print("\n\tX.shape: ", X.shape)
@@ -320,9 +328,10 @@ def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=Fal
     # NOTE: THIS IS LOSSY?? drop_last = True
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
 
-####################
-##   PREDICTION   ##
-####################
+def load_data(dataset_file):
+    # for the binary pt file instance
+    X_tensor = torch.load(dataset_file)
+
 
 def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
     """
@@ -338,7 +347,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
     - criterion (str): The loss function that was used during training or evaluation, for appropriate metric calculation.
     """
 
-    batch_ylabel = torch.cat(batch_ylabel, dim=0)
+    # batch_ylabel = torch.cat(batch_ylabel, dim=0)
     batch_ypred = torch.cat(batch_ypred, dim=0)
     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
     if np.any(is_expr):
@@ -348,18 +357,18 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
         subset_size = 1000
         indices = np.arange(batch_ylabel[is_expr].shape[0])
         subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-        Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-        Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
+        # Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
+        # Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
         Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
         Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
         acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-        if criterion == "cross_entropy_loss":
-            loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
-        elif criterion == "focal_loss":
-            loss = focal_loss(batch_ylabel, batch_ypred)
+        # if criterion == "cross_entropy_loss":
+        #     loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
+        # elif criterion == "focal_loss":
+        #     loss = focal_loss(batch_ylabel, batch_ypred)
         for k, v in metric_files.items():
             with open(v, 'a') as f:
                 if k == "loss_batch":
@@ -380,7 +389,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
             f'{run_mode}/auprc_donor': donor_auprc,
         })
         print("***************************************\n\n")
-    batch_ylabel = []
+    # batch_ylabel = []
     batch_ypred = []
 
 
@@ -416,6 +425,8 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     batch_ypred = []
     print_dict = {}
     batch_idx = 0
+
+    # iterate over shards in shuffled index 
     for i, shard_idx in enumerate(shuffled_idxs, 1):
         print(f"Shard {i}/{len(shuffled_idxs)}")
         loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
@@ -454,6 +465,11 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
         pbar.close()
     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
 
+def generate_bed(predict_file):
+    ''' 
+    Generates the BED file pertaining to the predictions 
+    '''
+
 
 ################
 ##   DRIVER   ##
@@ -478,7 +494,6 @@ def predict(args):
     # generate BED file with scores for all splice sites -> visualize in IGV
 
     
-
     # PART 1: Extracting input sequence
     print("--- Step 1: Extracting input sequence ... ---")
     start_time = time.time()
@@ -502,18 +517,18 @@ def predict(args):
     print("Sequence length: ", sequence_length, file=sys.stderr)
 
     # collect sequences into file
-    datafile_path, NAME, SEQ = get_sequences(input_sequence, output_dir)
+    datafile_path, NAME, SEQ = get_sequences(input_sequence, output_base)
     
     print_motif_counts()
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
-    ### PART 2: Getting one-hot encoding of inputs
 
+    ### PART 2: Getting one-hot encoding of inputs
     print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
 
-    dataset_path = convert_sequences(datafile_path, output_dir, SEQ)
+    dataset_path = convert_sequences(datafile_path, output_base, SEQ)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -528,6 +543,7 @@ def predict(args):
     # print("val_idxs: ", val_idxs, file=sys.stderr)
     # print("test_idxs: ", test_idxs, file=sys.stderr)
 
+
     ### PART 3: Loading data into model
     print("--- Step 3: Load model ... ---")
     start_time = time.time()
@@ -536,7 +552,10 @@ def predict(args):
     device = setup_device()
     print("device: ", device, file=sys.stderr)
 
+    # load model 
     model, params = load_model(device, flanking_size, model_arch)
+    print("model: ", model, file=sys.stderr)
+    print("params: ", params, file=sys.stderr)
 
     ## log files
     predict_metric_files = {
@@ -550,19 +569,17 @@ def predict(args):
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
+
     ### PART 4: Get predictions
     print("--- Step 4: Get predictions ... ---")
+    start_time = time.time()
 
+    # define necessary parameters
     SAMPLE_FREQ = 1000
-    for epoch in range(EPOCH_NUM):
-        print("\n--------------------------------------------------------------")
-        print(f">> Epoch {epoch + 1}")
-        start_time = time.time()
-        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, predict_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
-        torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
-        print("--- %s seconds ---" % (time.time() - start_time))
-        print("--------------------------------------------------------------")
+    batch_size = params["BATCH_SIZE"]
     
-    
-    #??? 
-    valid_epoch(model)
+    # perform the model prediction
+    valid_epoch(model, train_h5f, val_idxs, batch_size, args.loss, device, params, predict_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
