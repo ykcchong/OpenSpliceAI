@@ -81,7 +81,7 @@ def load_model(device, flanking_size):
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     
     model = SpliceAI(L, W, AR).to(device)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
 
     print(model, file=sys.stderr)
     return model, params
@@ -419,23 +419,23 @@ def clip_datapoints(X, CL, N_GPUS):
 #     batch_ypred = []
 
 
-def get_prediction(model, dataset_file, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
+def get_prediction(model, dataset_file, criterion, device, params, metric_files):
     """
 s    Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
     - dataset_file (path): Path to the selected dataset.
-    - idxs (np.array): Array of indices for the batches to be used in validation/testing.
-    - batch_size (int): Size of each batch.
     - criterion (str): The loss function used for validation/testing.
     - device (torch.device): The computational device (CUDA, MPS, CPU).
     - params (dict): Dictionary of parameters related to model and validation/testing.
     - metric_files (dict): Dictionary containing paths to log files for various metrics.
-    - run_mode (str): Indicates the phase (e.g., "validation", "test").
-    - sample_freq (int): Frequency of sampling for evaluation and logging.
+
 
     Returns:
     - Path to predictions
     """
+    # define batch size
+    batch_size = params["BATCH_SIZE"]
+
     # put model in evaluation mode
     model.eval()
 
@@ -454,15 +454,16 @@ s    Parameters:
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
-    ## ALL FOLLOWING IS ASSUMING USE_H5
+    # will it fully predict on last batch? 
 
+    ## ALL FOLLOWING IS ASSUMING USE_H5
     
     # np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     # running_loss = 0.0
     
     idxs = np.arange(len(h5f.keys()) // 2)
 
-    batch_ypred = []
+    batch_ypred = [] # list of tensors containing the predictions from model
     print_dict = {}
     batch_idx = 0
 
@@ -475,7 +476,7 @@ s    Parameters:
             DNAs = batch[0].to(device)
 
             print("\n\tDNAs.shape: ", DNAs.shape)
-            DNAs = clip_datapoints(DNAs, params["CL"], 2)
+            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"])
             DNAs = DNAs.to(torch.float32).to(device)
             print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
 
@@ -508,6 +509,7 @@ s    Parameters:
 
             # if batch_idx % sample_freq == 0:
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
+
         pbar.close()
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
@@ -614,13 +616,9 @@ def predict(args):
     print("--- Step 4: Get predictions ... ---")
     start_time = time.time()
 
-    # define necessary parameters
-    SAMPLE_FREQ = 1000
-    batch_size = params["BATCH_SIZE"]
 
-
-    predict_file = get_h5_prediction(model, train_h5f,batch_size, args.loss, device, 
-                                    params, predict_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
+    predict_file = get_h5_prediction(model, dataset_file, device, 
+                                    params, predict_metric_files)
 
 
     print("--- %s seconds ---" % (time.time() - start_time))
