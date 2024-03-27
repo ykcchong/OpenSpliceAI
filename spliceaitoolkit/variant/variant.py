@@ -36,3 +36,7 @@ def variant(args):
 
     vcf.close()
     output.close()
+
+    # need to test first
+    # vcf file -> extract sequence at every coordinate -> predict on every variant -> generate vcf file with scores for each variant
+    

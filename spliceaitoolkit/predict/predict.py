@@ -422,7 +422,7 @@ def clip_datapoints(X, CL, N_GPUS):
 
 def get_prediction(model, dataset_file, criterion, device, params, metric_files, output_dir):
     """
-s    Parameters:
+    Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
     - dataset_file (path): Path to the selected dataset.
     - criterion (str): The loss function used for validation/testing.
@@ -444,7 +444,6 @@ s    Parameters:
     file_ext = os.path.splitext(dataset_path)[1]
     assert file_ext in ['h5', 'pt']
     use_h5 = file_ext == 'h5'
-
 
     # define used constants 
 
@@ -523,8 +522,6 @@ s    Parameters:
             pbar.update(1)
         
         pbar.close()
-
-    
     
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
@@ -537,8 +534,13 @@ s    Parameters:
 
 def generate_bed(predict_file, NAME):
     ''' 
-    Generates the BED file pertaining to the predictions 
+    Generates the BEDgraph file pertaining to the predictions 
     '''
+
+    # set threshold for low values
+    # write a separate file for donor and acceptor 
+    # compress the ranges for same prediction score
+
     pass
 
 ################
@@ -552,7 +554,7 @@ def predict(args):
         - model: Path to SpliceAI model
         - output_dir
         - flanking_size
-        - input_sequence
+        - input_sequence: FASTA File
 
     '''
     print("Running SpliceAI-toolkit with 'predict' mode")
@@ -636,19 +638,22 @@ def predict(args):
     print("--- Step 4: Get predictions ... ---")
     start_time = time.time()
 
-
-    predict_file = get_h5_prediction(model, dataset_file, device, 
+    predict_file = get_prediction(model, dataset_file, device, 
                                     params, predict_metric_files, output_base)
 
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
 
-    ### PART 5: Generate BED report
-    print("--- Step 4: Generating BED report ... ---")
+    ### PART 5: Generate BEDgraph report
+    print("--- Step 5: Generating BEDgraph report ... ---")
     start_time = time.time()
 
     generate_bed(predict_file, NAME)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
+    # other function: give BED coordinate file (optional arg) -> extract just those sequences from FASTA for prediction
+    #                   give GFF file + and what you want to extract -> go to gene-level 
+    #                   --coordinates (BED/GFF format) -> detect which extension
+    # genes[id][start:end] 
