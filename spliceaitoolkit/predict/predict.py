@@ -445,9 +445,61 @@ s    Parameters:
     assert file_ext in ['h5', 'pt']
     use_h5 = file_ext == 'h5'
 
+
+    # define used constants 
+
+    # np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    # running_loss = 0.0
+    
+    batch_ypred = [] # list of tensors containing the predictions from model
+    # print_dict = {}
+    # will it fully predict on last batch? 
+
     if use_h5:
         h5f = h5py.File(dataset_path, 'r')
-        # need to load shards using dataset
+
+        # iterate over shards in index 
+        idxs = np.arange(len(h5f.keys()) // 2)
+
+        for i, shard_idx in enumerate(idxs, 1):
+            print(f"Shard {i}/{len(idxs)}")
+            loader = load_shard(h5f, batch_size, shard_idx)
+            pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
+            for batch in pbar:
+                DNAs = batch[0].to(device)
+
+                print("\n\tDNAs.shape: ", DNAs.shape)
+                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"])
+                DNAs = DNAs.to(torch.float32).to(device)
+                print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
+
+                y_pred = model(DNAs)
+
+                # if criterion == "cross_entropy_loss":
+                #     loss = categorical_crossentropy_2d(labels, y_pred)
+                # elif criterion == "focal_loss":
+                #     loss = focal_loss(labels, y_pred)
+                    
+                # Logging loss for every update!!! IMPORTANT
+                # with open(metric_files["loss_every_update"], 'a') as f:
+                #     f.write(f"{loss.item()}\n")
+                # wandb.log({
+                #     f'{run_mode}/loss_every_update': loss.item(),
+                # })
+                # running_loss += loss.item()
+
+                # print("loss: ", loss.item())
+
+                # batch_ylabel.append(labels.detach().cpu())
+
+                batch_ypred.append(y_pred.detach().cpu())
+
+                # print_dict["loss"] = loss.item()
+
+                # pbar.set_postfix(print_dict)
+                pbar.update(1)
+            
+            pbar.close()
     else:
         # all data should be loaded
         X = torch.load(dataset_file)
@@ -455,24 +507,7 @@ s    Parameters:
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
-    # will it fully predict on last batch? 
-
-    ## ALL FOLLOWING IS ASSUMING USE_H5
-    
-    # np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
-    # running_loss = 0.0
-    
-    idxs = np.arange(len(h5f.keys()) // 2)
-
-    batch_ypred = [] # list of tensors containing the predictions from model
-    print_dict = {}
-    batch_idx = 0
-
-    # iterate over shards in shuffled index 
-    for i, shard_idx in enumerate(idxs, 1):
-        print(f"Shard {i}/{len(idxs)}")
-        loader = load_shard(h5f, batch_size, shard_idx)
-        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
+        pbar = tqdm(loader, leave=False, total=len(loader))
         for batch in pbar:
             DNAs = batch[0].to(device)
 
@@ -483,42 +518,21 @@ s    Parameters:
 
             y_pred = model(DNAs)
 
-            # if criterion == "cross_entropy_loss":
-            #     loss = categorical_crossentropy_2d(labels, y_pred)
-            # elif criterion == "focal_loss":
-            #     loss = focal_loss(labels, y_pred)
-                
-            # Logging loss for every update!!! IMPORTANT
-            # with open(metric_files["loss_every_update"], 'a') as f:
-            #     f.write(f"{loss.item()}\n")
-            # wandb.log({
-            #     f'{run_mode}/loss_every_update': loss.item(),
-            # })
-            # running_loss += loss.item()
-
-            # print("loss: ", loss.item())
-
-            # batch_ylabel.append(labels.detach().cpu())
-
             batch_ypred.append(y_pred.detach().cpu())
 
-            # print_dict["loss"] = loss.item()
-
-            pbar.set_postfix(print_dict)
             pbar.update(1)
-            batch_idx += 1
-
-            # if batch_idx % sample_freq == 0:
-            #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
-
+        
         pbar.close()
+
+    
+    
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
 
     # write all predictions to a predict_file
     predict_path = f'{output_dir}predict.pt'
     batch_ypred = torch.cat(batch_ypred, dim=0)
-    torch.save(batch_ypred, predict_path)    
+    torch.save(batch_ypred, predict_path)  
     return predict_path
 
 def generate_bed(predict_file, NAME):
