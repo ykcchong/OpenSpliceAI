@@ -23,17 +23,17 @@ python -c "import sys; print(sys.path)"
 
 # FLANKING_SIZE=10000
 
-for FLANKING_SIZE in 80 400 2000 10000; do
-    SPECIES=MANE
-    RANDOPM_SEED=2
+for FLANKING_SIZE in 10000; do
+    SPECIES=SpliceAI27
+    RANDOPM_SEED=12
     LOSS_FUNC=cross_entropy_loss
     EXP_NUM=full_dataset
-
-    echo python predict_spliceaitoolkit.py --flanking-size ${FLANKING_SIZE} \
-    --project-name spliceai_${SPECIES}_rs${RANDOPM_SEED} \
-    --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}_clean/dataset_test.h5 \
-    --type test \
-    --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
-    --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/${FLANKING_SIZE}nt/model_${FLANKING_SIZE}nt_rs${RANDOPM_SEED}.pt
+    for num in 1 2 3 4 5; do
+        python predict_spliceai27.py --flanking-size ${FLANKING_SIZE} \
+        --project-name spliceai${num}_${SPECIES} \
+        --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test.h5 \
+        --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \
+        --model /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai/${FLANKING_SIZE}nt/spliceai$num.h5
+    done
 done
 
