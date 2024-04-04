@@ -24,13 +24,7 @@ def setup_device():
 
 def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun, random_seed):
     """Initialize project directories and create them if they don't exist."""
-    ####################################
-    # Modify the model verson here!!
-    ####################################
     MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{flanking_size}_{exp_num}_rs{random_seed}"
-    ####################################
-    # Modify the model verson here!!
-    ####################################
     model_train_outdir = f"{output_dir}/{MODEL_VERSION}/{exp_num}/"
     model_output_base = f"{model_train_outdir}models/"
     log_output_base = f"{model_train_outdir}LOG/"
@@ -44,10 +38,6 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
 
 def initialize_model_and_optim(device, flanking_size, model_arch):
     """Initialize the model, criterion, optimizer, and scheduler."""
-    # Hyper-parameters:
-    # L: Number of convolution kernels
-    # W: Convolution window size in each residual unit
-    # AR: Atrous rate in each residual unit
     L = 32
     N_GPUS = 2
     W = np.asarray([11, 11, 11, 11])
@@ -83,7 +73,6 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     # Replace the existing scheduler with ReduceLROnPlateau
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
-    # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, len(train_loader)*EPOCH_NUM)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
     return model, None, optimizer, scheduler, params
 
@@ -210,7 +199,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
     return loss
 
 
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
+def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
     running_loss = 0.0
@@ -317,7 +306,6 @@ def train(args):
     exp_num = args.exp_num
     model_arch = args.model
     assert int(flanking_size) in [80, 400, 2000, 10000]
-    # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
     wandb.init(project=f'{project_name}', reinit=True)
@@ -348,9 +336,6 @@ def train(args):
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    # train_idxs = idxs[:int(0.1*batch_num)]
-    # val_idxs = idxs[int(0.2*batch_num):int(0.25*batch_num)]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 10)
     print("train_idxs: ", train_idxs, file=sys.stderr)
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
@@ -422,16 +407,15 @@ def train(args):
     n_patience = 10  # For example, stop after 10 epochs with no improvement
     for epoch in range(1000):
         print("\n--------------------------------------------------------------")
-        # Print the current learning rate
         current_lr = optimizer.param_groups[0]['lr']
         print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
         wandb.log({
             f'train/learning_rate': current_lr,
         })
         start_time = time.time()
-        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
-        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
-        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
+        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
+        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation")
+        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test")
         # Scheduler step with validation loss
         scheduler.step(val_loss)
         # Check for early stopping or model improvement
