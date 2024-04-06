@@ -121,7 +121,7 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
     }
     # Plot SpliceAI-Keras
     for flanking_size in [80, 400, 2000, 10000]:
-        for idx in range(1,6):
+        for idx in range(1, 5):
             print(f"idx: {idx}")
             _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, idx, species, target="spliceai_keras")
             metrics_for_spliceai_keras = {
@@ -175,7 +175,8 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
             for metric, filepath in metrics_for_spliceai_pytorch.items():
                 try:
                     with open(filepath, 'r') as f:
-                        value = float(f.read().strip())
+                        print("filepath: ", filepath)
+                        value = float(f.read().strip().split('\n')[0])
                         print(f"Value for {metric} at seed {rs}: {value}. ({flanking_size})")
                         metrics_across_spliceai_pytorch[metric].append((rs, value, flanking_size))
                 except FileNotFoundError:
@@ -186,6 +187,7 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
 
         
 def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_sizes, species):
+    print("metrics_across_spliceai_keras: ", metrics_across_spliceai_keras)
     key_mappings = {
         'donor_topk': 'Donor Top-K',
         'donor_auprc': 'Donor AUPRC',
@@ -247,7 +249,7 @@ def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_s
         ax.set_title(f"{key_mappings[key]}", fontweight='bold')
         ax.grid(True)
         ax.legend()
-    plt.savefig(f"vis/combined_metrics_{species}.png", dpi=300)
+    plt.savefig(f"vis/combined_metrics_{species}_2.png", dpi=300)
 
 def predict():
     parser = argparse.ArgumentParser()
@@ -259,18 +261,13 @@ def predict():
     print("args: ", args, file=sys.stderr)
     print("Visualizing SpliceAI-toolkit results")
 
-    
     output_dir = args.output_dir
     sequence_length = 5000
     random_seeds = args.random_seeds
-    # random_seeds = [15, 22, 30, 40]
-    # random_seeds = [11, 12, 22, 40]
-    random_seeds = [1, 2, 22, 40]
+    random_seeds = [1]#, 22, 40]
 
     metrics_across_spliceai_keras, metrics_across_spliceai_pytorch = collect_metrics(output_dir, sequence_length, random_seeds, args.species)
 
-    # print("metrics_across_spliceai_keras: ", metrics_across_spliceai_keras)
-    # print("metrics_across_spliceai_pytorch: ", metrics_across_spliceai_pytorch)
     flanking_sizes = [80, 400, 2000, 10000]
     plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_sizes, args.species)
     # plot_combined_metrics(metrics_across_spliceai_keras, metrics_across_spliceai_pytorch, flanking_sizes, args.species)

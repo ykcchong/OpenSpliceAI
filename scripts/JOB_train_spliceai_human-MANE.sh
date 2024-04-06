@@ -17,21 +17,23 @@ source activate /home/kchao10/miniconda3/envs/pytorch_cuda
 which python
 python -c "import sys; print(sys.path)"
 
-FLANKING_SIZE=10000
-SPECIES=MANE
-RANDOPM_SEED=2
-LOSS_FUNC=cross_entropy_loss
-EXP_NUM=full_dataset
-WEIGHT=0
+for FLANKING_SIZE in 80 400 2000 10000
+do
+    SPECIES=MANE
+    RANDOPM_SEED=1
+    LOSS_FUNC=cross_entropy_loss
+    EXP_NUM=full_dataset
+    WEIGHT=0
 
-mkdir -p /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/
+    mkdir -p /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/
 
-echo "spliceai-toolkit train --flanking-size ${FLANKING_SIZE} \
---exp-num ${EXP_NUM} \
---train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}_clean/dataset_train.h5 \
---test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}_clean/dataset_test.h5 \
---output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
---project-name ${SPECIES}_${LOSS_FUNC}_w${WEIGHT} \
---random-seed ${RANDOPM_SEED} \
---model SpliceAI \
---loss ${LOSS_FUNC} > /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/train.log 2> /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/train_error.log"
+    echo "spliceai-toolkit train --flanking-size ${FLANKING_SIZE} \
+    --exp-num ${EXP_NUM} \
+    --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}_clean/dataset_train.h5 \
+    --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}_clean/dataset_test.h5 \
+    --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
+    --project-name ${SPECIES}_${LOSS_FUNC}_w${WEIGHT} \
+    --random-seed ${RANDOPM_SEED} \
+    --model SpliceAI \
+    --loss ${LOSS_FUNC} > /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/train.log 2> /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/train_error.log"
+done

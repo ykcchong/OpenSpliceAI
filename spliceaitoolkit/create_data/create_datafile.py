@@ -10,7 +10,7 @@ import spliceaitoolkit.create_data.utils as utils
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
 
-def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, type, chrom_dict, parse_type="maximum", biotype="protein-coding"):
+def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, data_type, chrom_dict, parse_type="maximum", biotype="protein-coding"):
     """
     Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
     and label donor and acceptor sites correctly based on strand orientation.
@@ -25,9 +25,9 @@ def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, type, chrom_d
     LABEL = []     # Label for each nucleotide in the sequence
     h5fname = None
     if biotype =="non-coding":
-        h5fname = output_dir + f'datafile_{type}_ncRNA.h5'
+        h5fname = output_dir + f'datafile_{data_type}_ncRNA.h5'
     elif biotype =="protein-coding":
-        h5fname = output_dir + f'datafile_{type}.h5'
+        h5fname = output_dir + f'datafile_{data_type}.h5'
     h5f = h5py.File(h5fname, 'w')
     GENE_COUNTER = 0
     for gene in db.features_of_type('gene'):
@@ -35,7 +35,6 @@ def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, type, chrom_d
             continue
         if gene.seqid not in chrom_dict:
             continue
-        # print(f'gene.attributes["gene_biotype"][0]: {gene.attributes["gene_biotype"][0]}')
         if biotype =="protein-coding":
             if gene.attributes["gene_biotype"][0] != "protein_coding":
                 continue
@@ -137,11 +136,11 @@ def create_datafile(args):
     start_time = time.time()
     if args.chr_split == 'test':
         print("Creating test datafile...")
-        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
+        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, data_type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
     elif args.chr_split == 'train-test':
         print("Creating train datafile...")
-        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
+        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, data_type="train", chrom_dict=TRAIN_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
         print("Creating test datafile...")
-        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
+        get_sequences_and_labels(db, args.genome_fasta, args.output_dir, seq_dict, data_type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype)
     utils.print_motif_counts(donor_motif_counts, acceptor_motif_counts)
     print("--- %s seconds ---" % (time.time() - start_time))
