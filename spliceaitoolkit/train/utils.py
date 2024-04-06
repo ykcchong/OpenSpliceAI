@@ -113,7 +113,7 @@ def categorical_crossentropy_2d(y_true, y_pred):
                         + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
                         + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+1e-10))
 
-def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
+def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0, weights=None):
     """
     Compute 2D focal loss.
     
@@ -131,8 +131,8 @@ def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
     epsilon = 1e-10
     weights = 1000
     return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 0, :]), gamma)
-                        + weights*y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 1, :]), gamma)
-                        + weights*y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 2, :]), gamma))
+                        + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 1, :]), gamma)
+                        + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 2, :]), gamma))
 
 
     # return - torch.mean(y_true[:, 0, :] * torch.pow(torch.sub(1, y_pred[:, 0, :]), gamma) * torch.log(y_pred[:, 0, :]+epsilon)

@@ -16,7 +16,7 @@ from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from keras.models import load_model
 import wandb
 
-RANDOM_SEED = 42
+RANDOM_SEED = 1
 
 def setup_device():
     """Select computation device based on availability."""
@@ -26,13 +26,7 @@ def setup_device():
 
 def initialize_paths(output_dir, project_name, flanking_size, sequence_length):
     """Initialize project directories and create them if they don't exist."""
-    ####################################
-    # Modify the model verson here!!
-    ####################################
     MODEL_VERSION = f"{project_name}_{sequence_length}_{flanking_size}"
-    ####################################
-    # Modify the model verson here!!
-    ####################################
     model_train_outdir = f"{output_dir}/{MODEL_VERSION}/"
     model_output_base = f"{model_train_outdir}models/"
     log_output_base = f"{model_train_outdir}LOG/"
@@ -52,19 +46,6 @@ def calculate_metrics(y_true, y_pred):
 def threshold_predictions(y_probs, threshold=0.5):
     """Threshold probabilities to get binary predictions."""
     return (y_probs > threshold).astype(int)
-
-
-def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
-    X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
-    Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
-    # print("\n\tX.shape: ", X.shape)
-    # print("\tY.shape: ", Y.shape)
-    X = torch.tensor(X, dtype=torch.float32)
-    Y = torch.tensor(Y, dtype=torch.float32)
-    ds = TensorDataset(X, Y)
-    # print("\rds: ", ds)
-    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
-    # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
 
 
 def classwise_accuracy(true_classes, predicted_classes, num_classes):
@@ -129,15 +110,13 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     Y_pred_2 = [[] for t in range(1)]
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
-    shuffled_idxs = idxs[:30]
+    print("shuffled_idxs: ", shuffled_idxs)
     for idx in shuffled_idxs[:30]:
         X = h5f['X' + str(idx)]
         Y = h5f['Y' + str(idx)]
         print("\n\tX.shape: ", X.shape)
         print("\tY.shape: ", Y.shape)
         Xc, Yc = clip_datapoints_spliceai27(X, Y, params['CL'], 2)
-        # print("\n\tXc.shape: ", Xc.shape)
-        # print("\tYc[0].shape: ", Yc[0].shape)
         Yp = model.predict(Xc, batch_size=params['BATCH_SIZE'])
         batch_ylabel.extend(Yc[0])
         batch_ypred.extend(Yp)

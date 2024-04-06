@@ -33,6 +33,7 @@ def print_motif_counts(donor_motif_counts, acceptor_motif_counts):
     for motif, count in acceptor_motif_counts.items():
         print(f"{motif}: {count}")
 
+
 ###################################################
 # Functions for create_datafile
 ###################################################
@@ -98,7 +99,6 @@ OUT_MAP = np.asarray([[1, 0, 0],
                       [0, 1, 0],
                       [0, 0, 1],
                       [0, 0, 0]])
-
 
 def ceil_div(x, y):
     return int(ceil(float(x)/y))
