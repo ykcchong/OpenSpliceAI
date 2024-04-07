@@ -264,7 +264,9 @@ def predict():
     output_dir = args.output_dir
     sequence_length = 5000
     random_seeds = args.random_seeds
-    random_seeds = [1]#, 22, 40]
+    # random_seeds = [15, 22, 30, 40]
+    # random_seeds = [11, 12, 22, 40]
+    random_seeds = [1, 2]#, 22, 40]
 
     metrics_across_spliceai_keras, metrics_across_spliceai_pytorch = collect_metrics(output_dir, sequence_length, random_seeds, args.species)
 

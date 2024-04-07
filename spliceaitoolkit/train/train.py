@@ -24,7 +24,11 @@ def setup_device():
 
 def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun, random_seed):
     """Initialize project directories and create them if they don't exist."""
+<<<<<<< HEAD
     MODEL_VERSION = f"{model_arch}_{project_name}_{flanking_size}_{exp_num}_rs{random_seed}"
+=======
+    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{flanking_size}_{exp_num}_rs{random_seed}"
+>>>>>>> 5d720e67b7b2cf0cdb6e255971dbc97cfd9ae606
     model_train_outdir = f"{output_dir}/{MODEL_VERSION}/{exp_num}/"
     model_output_base = f"{model_train_outdir}models/"
     log_output_base = f"{model_train_outdir}LOG/"
@@ -73,6 +77,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     ####################################
     optimizer = optim.AdamW(model.parameters(), lr=1e-3)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
+<<<<<<< HEAD
     # scheduler = CosineAnnealingLR(optimizer, T_max=20, eta_min=1e-6)
     # scheduler = optim.lr_scheduler.CyclicLR(optimizer, base_lr=0.001, max_lr=0.01, step_size_up=20, mode='triangular')
 
@@ -81,6 +86,8 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     # # Defaul optimizer and scheduler
     # optimizer = optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+=======
+>>>>>>> 5d720e67b7b2cf0cdb6e255971dbc97cfd9ae606
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
     return model, None, optimizer, scheduler, params
 
@@ -412,6 +419,7 @@ def train(args):
         train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
         val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation")
         test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test")
+<<<<<<< HEAD
         
         # # Scheduler step with validation loss
         # scheduler.step(test_loss)
@@ -433,6 +441,8 @@ def train(args):
         # print("--------------------------------------------------------------")
 
         
+=======
+>>>>>>> 5d720e67b7b2cf0cdb6e255971dbc97cfd9ae606
         # Scheduler step with validation loss
         scheduler.step(val_loss)
         # Check for early stopping or model improvement
