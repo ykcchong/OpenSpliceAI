@@ -45,7 +45,13 @@ def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, data_type, ch
             continue
         chrom_dict[gene.seqid] += 1
         gene_id = gene.id
+        ############################################
+        # Process the gene sequence
+        ############################################
         gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
+        if gene.strand == '-':
+            gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
+        gene_seq = str(gene_seq.upper())
         print(f"Processing gene {gene_id} on chromosome {gene.seqid}..., len(gene_seq): {len(gene_seq)}")
         labels = [0] * len(gene_seq)  # Initialize all labels to 0
         if biotype =="protein-coding":
@@ -70,6 +76,7 @@ def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, data_type, ch
             transcripts_ls = [max_trans]
         elif parse_type == 'all_isoforms':
             transcripts_ls = transcripts
+        
         # Process transcripts
         for transcript in transcripts_ls:
             exons = list(db.children(transcript, featuretype='exon', order_by='start'))
@@ -79,20 +86,24 @@ def get_sequences_and_labels(db, fasta_file, output_dir, seq_dict, data_type, ch
                     # Donor site is one base after the end of the current exon
                     first_site = exons[i].end - gene.start  # Adjusted for python indexing
                     # Acceptor site is at the start of the next exon
-                    second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
+                    second_site = exons[i + 1].start - gene.start  
+
+                    # Adjusted for python indexing
                     if gene.strand == '+':
-                        labels[first_site] = 2  # Mark donor site
-                        labels[second_site] = 1  # Mark acceptor site
+                        d_idx = first_site
+                        a_idx = second_site
                     elif gene.strand == '-':
                         d_idx = len(labels) - second_site-1
                         a_idx = len(labels) - first_site-1
                         # print(f"Gene {gene_id} is on the reverse strand, d_idx: {d_idx}, a_idx: {a_idx}; len(labels): {len(labels)}")
+                    ############################################
+                    # Check if the donor / acceptor sites are valid
+                    ############################################
+                    d_motif = str(gene_seq[d_idx+1:d_idx+3])
+                    a_motif = str(gene_seq[a_idx-2:a_idx])
+                    if (d_motif == "GT" and a_motif == "AG") or (d_motif == "GC" and a_motif == "AG") or (d_motif == "AT" and a_motif == "AC"):
                         labels[d_idx] = 2   # Mark donor site
                         labels[a_idx] = 1  # Mark acceptor site
-                        seq = gene_seq.reverse_complement()
-            if gene.strand == '-':
-                gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
-            gene_seq = str(gene_seq.upper())
             labels_str = ''.join(str(num) for num in labels)
             NAME.append(gene_id)
             CHROM.append(gene.seqid)

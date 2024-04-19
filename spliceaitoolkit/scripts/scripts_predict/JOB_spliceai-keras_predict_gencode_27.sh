@@ -23,13 +23,14 @@ python -c "import sys; print(sys.path)"
 
 # FLANKING_SIZE=10000
 
-for FLANKING_SIZE in 10000; do
+for FLANKING_SIZE in 80 400 2000 10000; do
     SPECIES=SpliceAI27
     RANDOPM_SEED=12
     LOSS_FUNC=cross_entropy_loss
     EXP_NUM=full_dataset
-    for num in 1 2 3 4 5; do
-        python predict_spliceai27.py --flanking-size ${FLANKING_SIZE} \
+    # for num in 1 2 3 4 5; do
+    for num in 3; do
+        echo python predict_spliceai27.py --flanking-size ${FLANKING_SIZE} \
         --project-name spliceai${num}_${SPECIES} \
         --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test.h5 \
         --output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_predict_outdir/ \

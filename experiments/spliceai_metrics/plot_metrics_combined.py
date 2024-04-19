@@ -121,7 +121,7 @@ def collect_metrics(output_dir, sequence_length, random_seeds, species):
     }
     # Plot SpliceAI-Keras
     for flanking_size in [80, 400, 2000, 10000]:
-        for idx in range(1, 5):
+        for idx in range(1, 4):
             print(f"idx: {idx}")
             _, log_output_test_base = initialize_paths(output_dir, flanking_size, sequence_length, idx, species, target="spliceai_keras")
             metrics_for_spliceai_keras = {
@@ -249,7 +249,7 @@ def plot_metrics_with_error_bars(metrics_across_spliceai_keras, metrics_across_s
         ax.set_title(f"{key_mappings[key]}", fontweight='bold')
         ax.grid(True)
         ax.legend()
-    plt.savefig(f"vis/combined_metrics_{species}_2.png", dpi=300)
+    plt.savefig(f"vis/combined_metrics_{species}.png", dpi=300)
 
 def predict():
     parser = argparse.ArgumentParser()
