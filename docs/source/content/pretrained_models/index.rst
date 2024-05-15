@@ -40,6 +40,23 @@
 Release SpliceAI-toolkit models
 ====================================
 
+
+.. admonition:: LiftOn examples
+    :class: note
+
+    * :ref:`human_mane_spliceai`
+    * :ref:`human_refseq_spliceai`
+
+.. toctree::
+    :hidden:
+
+    GRCh38_MANE
+    GRCh38_RefSeq
+    mouse
+    zebrafish
+    bee_insect
+    arabidopsis_plant
+
 |
 |
 |
