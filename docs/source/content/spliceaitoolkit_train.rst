@@ -29,15 +29,19 @@ The main output file is the trained model in `PT` file, storing the model weight
 Processing Steps
 +++++++++++++++++++++++++++++++++++
 
+Following are some of the processing steps for the :code:`train` subcommand:
 The SpliceAI-pytorch is trained using the following steps with hyperparameters:
 
-1. **Optimization**:
+1. **Model architecture**:
+   - 
+
+3. **Optimization**:
    - The model utilizes the AdamW optimizer with initial learning rate 1e-3, and the `ReduceLROnPlateau` adaptive learning rate scheduler, with :code:`mode='min'`, :code:`factor=0.5`, and :code:`patience=2`. 
 
-2. **Dataset Split**:
+4. **Dataset Split**:
    - The training dataset is split into 90% for training and 10% for testing.
 
-3. **Training**:
+5. **Training**:
    - The model is trained for 20 epochs.
    - An early stopping condition is applied: if the validation loss does not improve for 5 consecutive epochs, the training stops early.
 
