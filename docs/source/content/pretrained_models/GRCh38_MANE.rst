@@ -36,7 +36,7 @@
 |
 
 
-.. _same_species_liftover_human:
+.. _human_mane_spliceai:
 
 Human (MANE)
 ===================================================================
@@ -115,7 +115,6 @@ Training / Validation / Testing report
 
     Here is the link to the <a href="https://api.wandb.ai/links/khchao/mnt4jczt" target="_blank">report</a>.
 
-    <iframe src="https://wandb.ai/khchao/SpliceAI_Human_MANE/reports/SpliceAI-MANE--Vmlldzo2OTgxMTE4" style="border:none;height:1024px;width:100%">    
 |
 |
 

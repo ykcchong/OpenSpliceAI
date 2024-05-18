@@ -39,38 +39,37 @@
 
 .. _same_species_liftover_thale:
 
-Thale cress
+Thale cress (*Arabidopsis thaliana*)
 =========================================================================
 
-*Arabidopsis thaliana*
 
 Released models
 +++++++++++++++++++++++++++++++++++
 
-We trained SpliceAI-PyTorch using four different flanking sequence lengths: 80 nt, 400 nt, 2000 nt, and 10000 nt. We strongly recommend using **SpliceAI-MANE-10000nt** for best performance. The other models are suitable for experimental / research purposes.
+We trained SpliceAI-PyTorch using four different flanking sequence lengths: 80 nt, 400 nt, 2000 nt, and 10000 nt. We strongly recommend using **SpliceAI-arabidopsis-10000nt** for best performance. The other models are suitable for experimental / research purposes.
 
 .. raw:: html
 
     <ul>
-        <li><b>SpliceAI-MANE-10000nt</b><a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-10000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a> </li>
-        <li>SpliceAI-MANE-2000nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-2000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
-        <li>SpliceAI-MANE-400nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-400nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
-        <li>SpliceAI-MANE-80nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-80nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li><b>SpliceAI-arabidopsis-10000nt</b><a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-arabidopsis/SpliceAI-arabidopsis-10000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a> </li>
+        <li>SpliceAI-arabidopsis-2000nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-arabidopsis/SpliceAI-arabidopsis-2000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li>SpliceAI-arabidopsis-400nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-arabidopsis/SpliceAI-arabidopsis-400nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li>SpliceAI-arabidopsis-80nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-arabidopsis/SpliceAI-arabidopsis-80nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
     </ul>
 
 |
 
-Train SpliceAI-MANE yourself
+Train SpliceAI-arabidopsis yourself
 +++++++++++++++++++++++++++++++++++
 
-This section provides detailed insights into the training process of models using the SpliceAI-toolkit. To train your own version of SpliceAI-MANE, you will need a Genome FASTA file and an Annotation GFF file. Below are the links to download these files:
+This section provides detailed insights into the training process of models using the SpliceAI-toolkit. To train your own version of SpliceAI-arabidopsis, you will need a Genome FASTA file and an Annotation GFF file. Below are the links to download these files:
 
 
 Files for training
 -----------------------------------------
-* **Genome** file in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/GCF_000001405.40_GRCh38.p14_genomic.fna>`_ 
+* **Genome** file in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-arabidopsis/GCF_000001405.40_GRCh38.p14_genomic.fna>`_ 
 
-* **Annotation** file in GFF : `MANE.GRCh38.v1.2.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/MANE.GRCh38.v1.2.refseq_genomic.gff>`_ 
+* **Annotation** file in GFF : `arabidopsis.GRCh38.v1.2.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-arabidopsis/arabidopsis.GRCh38.v1.2.refseq_genomic.gff>`_ 
 
 
 Creating Training & Testing Datasets
@@ -82,26 +81,26 @@ To create datasets for training and testing, use the following command:
 
     spliceai-toolkit create-data \
     --genome-fasta  GCF_000001405.40_GRCh38.p14_genomic.fna \
-    --annotation-gff MANE.GRCh38.v1.2.refseq_genomic.gff \
-    --output-dir ./MANE/ \
+    --annotation-gff arabidopsis.GRCh38.v1.2.refseq_genomic.gff \
+    --output-dir ./arabidopsis/ \
     --parse-type maximum
 
-Training the SpliceAI-MANE Model
+Training the SpliceAI-arabidopsis Model
 -----------------------------------------
 
-To train the SpliceAI-MANE model, run the following command:
+To train the SpliceAI-arabidopsis model, run the following command:
 
 .. code-block:: bash
 
     spliceai-toolkit train --flanking-size 80 \
     --exp-num full_dataset_h5py_version \
-    --training-target MANE \
-    --train-dataset ./MANE/dataset_train.h5 \
-    --test-dataset ./MANE/dataset_test.h5 \
-    --project-name MANE_h5py_dataset \
-    --output-dir ./MANE/ \
+    --training-target arabidopsis \
+    --train-dataset ./arabidopsis/dataset_train.h5 \
+    --test-dataset ./arabidopsis/dataset_test.h5 \
+    --project-name arabidopsis_h5py_dataset \
+    --output-dir ./arabidopsis/ \
     --model SpliceAI \
-    > train_SpliceAI_MANE.log 2> train_SpliceAI_MANE_error.log
+    > train_SpliceAI_arabidopsis.log 2> train_SpliceAI_arabidopsis_error.log
 
 
 |
@@ -117,7 +116,6 @@ Training / Validation / Testing report
 
     Here is the link to the <a href="https://api.wandb.ai/links/khchao/mnt4jczt" target="_blank">report</a>.
 
-    <iframe src="https://wandb.ai/khchao/SpliceAI_Human_MANE/reports/SpliceAI-MANE--Vmlldzo2OTgxMTE4" style="border:none;height:1024px;width:100%">    
 |
 |
 

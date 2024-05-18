@@ -59,7 +59,11 @@
 } */
 
 
-pre {                                 
+/* pre {                                 
     white-space: pre-wrap !important; 
     word-break: break-all;            
-}
+} */
+
+/* .no-wrap {
+    white-space: pre-wrap !important;
+} */
