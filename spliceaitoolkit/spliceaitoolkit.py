@@ -6,6 +6,7 @@ import numpy as np
 from spliceaitoolkit import header
 from spliceaitoolkit.create_data import create_datafile, create_dataset
 from spliceaitoolkit.train import train
+from spliceaitoolkit.merge_data import merge_dataset
 from spliceaitoolkit.fine_tune import fine_tune
 from spliceaitoolkit.predict import predict
 from spliceaitoolkit.variant import variant
@@ -26,6 +27,13 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--parse-type', type=str, default='maximum', choices=['maximum', 'all_isoforms'], help='Type of transcript processing')
     parser_create_data.add_argument('--biotype', type=str, default='protein-coding', choices=['protein-coding', 'non-coding'], help='Biotype of transcript processing')
+    parser_create_data.add_argument('--chr-split', type=str, default='train-test', choices=['train-test', 'test'], help='The chromosome splitting approach for training and testing')
+
+
+def parse_args_merge_data(subparsers):
+    parser_create_data = subparsers.add_parser('merge-data', help='Create dataset for your genome for SpliceAI model training')
+    parser_create_data.add_argument('--input-dir', type=str, nargs='+', required=True, help='Path to the FASTA file')
+    parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--chr-split', type=str, default='train-test', choices=['train-test', 'test'], help='The chromosome splitting approach for training and testing')
 
 
@@ -94,6 +102,7 @@ def parse_args(arglist):
     # Create a parent subparser to house the common subcommands.
     subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, variant')
     parse_args_create_data(subparsers)
+    parse_args_merge_data(subparsers)
     parse_args_train(subparsers)
     parse_args_fine_tune(subparsers)
     parse_args_predict(subparsers)
@@ -129,6 +138,8 @@ Deep learning framework to train your own SpliceAI model
         os.makedirs(args.output_dir, exist_ok=True)
         create_datafile.create_datafile(args)
         create_dataset.create_dataset(args)
+    elif args.command == 'merge-data':
+        merge_dataset.merge_dataset(args)
     elif args.command == 'train':
         train.train(args)
     elif args.command == 'fine-tune':
@@ -137,5 +148,3 @@ Deep learning framework to train your own SpliceAI model
         predict.predict(args)
     elif args.command == 'variant':
         variant.variant(args)
-
-    # To-do adding logic to each subcommand.
