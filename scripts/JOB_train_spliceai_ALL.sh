@@ -20,7 +20,7 @@ python -c "import sys; print(sys.path)"
 for FLANKING_SIZE in 80 400 2000 10000
 do
     SPECIES=ALL
-    RANDOPM_SEED=1
+    RANDOPM_SEED=2
     LOSS_FUNC=cross_entropy_loss
     EXP_NUM=full_dataset
     WEIGHT=0
