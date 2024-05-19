@@ -33,30 +33,26 @@ def merge_dataset(args):
         h5f2 = h5py.File(output_file, 'w')
         print(f"\t output {output_file} ... ")
 
-        X_concat = []
-        Y_concat = [[] for _ in range(1)]
+        key_counter = 0
 
         for input_dir in args.input_dir:
             input_file = f"{input_dir}/dataset_{dataset_type}.h5"
             print(f"\tReading {input_file} ... ")
             with h5py.File(input_file, 'r') as h5f:
-                keys = list(h5f.keys())
-                print(f"\t keys: {keys}")
-                # for key in keys:
-                #     if key.startswith('X'):
-                #         X_data = h5f[key][:]
-                #         X_concat.append(X_data)
-                #     elif key.startswith('Y'):
-                #         Y_data = h5f[key][:]
-                #         Y_concat[0].append(Y_data)
-
-        X_concat = np.concatenate(X_concat, axis=0).astype('int8')
-        Y_concat = np.concatenate(Y_concat[0], axis=0).astype('int8')
-
-        h5f2.create_dataset('X', data=X_concat)
-        h5f2.create_dataset('Y', data=Y_concat)
-
+                x_keys = [key for key in h5f.keys() if key.startswith('X')]
+                y_keys = [key for key in h5f.keys() if key.startswith('Y')]
+                x_keys.sort(key=lambda x: int(x[1:]))  # Sort by numeric value
+                y_keys.sort(key=lambda y: int(y[1:]))  # Sort by numeric value
+                for x_key, y_key in zip(x_keys, y_keys):
+                    new_x_key = f'X{key_counter}'
+                    new_y_key = f'Y{key_counter}'
+                    h5f2.create_dataset(new_x_key, data=h5f[x_key][:])
+                    h5f2.create_dataset(new_y_key, data=h5f[y_key][:])
+                    key_counter += 1
         h5f2.close()
+    print(f"--- {time.time() - start_time} seconds ---")
+
+
 
 
 
