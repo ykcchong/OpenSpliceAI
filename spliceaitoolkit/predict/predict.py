@@ -10,11 +10,17 @@ import platform
 import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from pyfaidx import Fasta
+import wandb
 from spliceaitoolkit.predict.spliceai import *
 from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
-from pyfaidx import Fasta
-import wandb
+
+# # FOR TESTING PURPOSES
+# from spliceai import *
+# from utils import *
+
+
 
 RANDOM_SEED = 42 # for replicability
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
@@ -125,10 +131,12 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # obtain the headers and sequences from FASTA file
     for record in genes:
+        record = record[len(record)] # seems to be pyfaidx quirk? 
         seq_id = record.fancy_name
         sequence = record.seq
+
         # reverse strand if explicitly specified
-        if record.name in neg_strands:
+        if neg_strands is not None and record.name in neg_strands: 
             seq_id = str(seq_id) + ':-'
             sequence = sequence.reverse.complement
         else:
@@ -170,8 +178,8 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
 
     # determine whether to convert an h5 or txt file
     file_ext = os.path.splitext(datafile_path)[1]
-    assert file_ext in ['h5', 'txt']
-    use_h5 = file_ext == 'h5'
+    assert file_ext in ['.h5', '.txt']
+    use_h5 = file_ext == '.h5'
 
     # read the given input file if both datastreams were not provided
     if SEQ == None:
@@ -212,13 +220,13 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
                 for j in range(NEW_CHUNK_SIZE):
                     idx = i * CHUNK_SIZE + j
 
-                    seq_decode = SEQ[idx].decode('ascii')
+                    seq_decode = SEQ[idx]
                     X = create_datapoints(seq_decode)   
                     X_batch.extend(X)
 
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
-                print("X_batch.shape: ", X_batch.shape)
+                # print("X_batch.shape: ", X_batch.shape)
                 
                 out_h5f.create_dataset('X' + str(i), data=X_batch)
     
@@ -237,7 +245,9 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
         X_tensor = torch.tensor(X_all, dtype=torch.int8)
 
         # save as a binary file
-        torch.save(X_tensor, dataset_path)         
+        torch.save(X_tensor, dataset_path)     
+    
+    return dataset_path
 
 
 def create_datapoints(input_string):
@@ -248,6 +258,7 @@ def create_datapoints(input_string):
     Returns:
     - X (np.ndarray): The one-hot encoded input nucleotide sequence.
     """
+    global CL_max 
 
     # NOTE: No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     
@@ -274,12 +285,17 @@ def reformat_data(X0):
     Returns:
     - numpy.ndarray: Reformatted sequence data.
     """
+    global CL_max 
+
     # Calculate the number of data points needed
-    num_points = ceil_div(len(Y0[0]), SL)
+    num_points = ceil_div(len(X0), SL)
     # Initialize arrays to hold the reformatted data
     Xd = np.zeros((num_points, SL + CL_max))
     # Pad the sequence and labels to ensure divisibility
     X0 = np.pad(X0, (0, SL), 'constant', constant_values=0)
+    
+    # print(X0.shape, num_points, Xd.shape)    
+
     # Fill the initialized arrays with data in blocks
     for i in range(num_points):
         Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
@@ -339,6 +355,7 @@ def clip_datapoints(X, CL, N_GPUS):
     Additionally, Y is also converted to a list (the .h5 files store 
     them as an array).
     """
+    global CL_max 
     
     print("\n\tX.shape: ", X.shape)
     print("\tCL: ", CL)
@@ -420,11 +437,11 @@ def clip_datapoints(X, CL, N_GPUS):
 #     batch_ypred = []
 
 
-def get_prediction(model, dataset_file, criterion, device, params, metric_files, output_dir):
+def get_prediction(model, dataset_path, criterion, device, params, metric_files, output_dir):
     """
     Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
-    - dataset_file (path): Path to the selected dataset.
+    - dataset_path (path): Path to the selected dataset.
     - criterion (str): The loss function used for validation/testing.
     - device (torch.device): The computational device (CUDA, MPS, CPU).
     - params (dict): Dictionary of parameters related to model and validation/testing.
@@ -442,8 +459,8 @@ def get_prediction(model, dataset_file, criterion, device, params, metric_files,
 
     # determine which file to proceed with
     file_ext = os.path.splitext(dataset_path)[1]
-    assert file_ext in ['h5', 'pt']
-    use_h5 = file_ext == 'h5'
+    assert file_ext in ['.h5', '.pt']
+    use_h5 = file_ext == '.h5'
 
     # define used constants 
 
@@ -540,7 +557,7 @@ def generate_bed(predict_file, NAME):
     # set threshold for low values
     # write a separate file for donor and acceptor 
     # compress the ranges for same prediction score
-
+    # raise NotImplementedError('generate_bed not yet implemented.')
     pass
 
 ################
@@ -577,6 +594,9 @@ def predict(args):
     model_path = args.model
     input_sequence = args.input_sequence
 
+    global CL_max 
+    CL_max = flanking_size
+
     assert int(flanking_size) in [80, 400, 2000, 10000]
 
     # create output directory
@@ -591,7 +611,7 @@ def predict(args):
     # collect sequences into file
     datafile_path, NAME, SEQ = get_sequences(input_sequence, output_base)
     
-    print_motif_counts()
+    # print_motif_counts()
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -638,7 +658,11 @@ def predict(args):
     print("--- Step 4: Get predictions ... ---")
     start_time = time.time()
 
-    predict_file = get_prediction(model, dataset_file, device, 
+    # for testing
+    predict_metric_files = None
+    criterion = None
+
+    predict_file = get_prediction(model, dataset_path, criterion, device, 
                                     params, predict_metric_files, output_base)
 
 
@@ -657,3 +681,40 @@ def predict(args):
     #                   give GFF file + and what you want to extract -> go to gene-level 
     #                   --coordinates (BED/GFF format) -> detect which extension
     # genes[id][start:end] 
+
+
+
+### TODO: tests
+# predict on /models/spliceai-mane
+# input gff file, extract gene-level sequences, then predict score for each position in gene
+# later -> bedgraph file
+
+# if __name__ == '__main__':
+
+    # CL_max=400
+    # # Maximum nucleotide context length (CL_max/2 on either side of the 
+    # # position of interest)
+    # # CL_max should be an even number
+
+    # SL=5000
+    # # Sequence length of SpliceAIs (SL+CL will be the input length and
+    # # SL will be the output length)
+    # #############################
+    # # Global variable definition
+    # ############################## 
+    # EPOCH_NUM = 10
+
+    
+    # parser = argparse.ArgumentParser(description='SpliceAI toolkit to retrain your own splice site predictor')
+    # # Create a parent subparser to house the common subcommands.
+    # subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, variant')
+    # parser_predict = subparsers.add_parser('predict', help='Predict splice sites in a given sequence using the SpliceAI model')
+    # parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
+    # parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
+    # parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    # parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
+    # args = parser.parse_args()
+    # print(args)
+    # predict(args)         
+
+    

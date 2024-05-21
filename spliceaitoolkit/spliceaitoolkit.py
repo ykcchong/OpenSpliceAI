@@ -78,7 +78,7 @@ def parse_args_predict(subparsers):
     parser_predict = subparsers.add_parser('predict', help='Predict splice sites in a given sequence using the SpliceAI model')
     parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
     parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    parser_predict.add_argument('--flanking-size', '-f', type=int, default=80)
+    parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
 
 
@@ -108,7 +108,7 @@ def parse_args_variant(subparsers):
 def parse_args(arglist):
     parser = argparse.ArgumentParser(description='SpliceAI toolkit to retrain your own splice site predictor')
     # Create a parent subparser to house the common subcommands.
-    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, variant')
+    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, fine-tune, variant')
     parse_args_create_data(subparsers)
     parse_args_train(subparsers)
     parse_args_fine_tune(subparsers)
