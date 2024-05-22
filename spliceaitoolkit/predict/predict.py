@@ -20,8 +20,6 @@ from spliceaitoolkit.constants import *
 # from spliceai import *
 # from utils import *
 
-
-
 RANDOM_SEED = 42 # for replicability
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
@@ -89,13 +87,79 @@ def load_model(device, flanking_size):
     model = SpliceAI(L, W, AR).to(device)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
 
-    print(model, file=sys.stderr)
+    # print(model, file=sys.stderr)
     return model, params
 
 
 #########################
 ##   DATA PROCESSING   ##
 #########################
+
+def process_gff(fasta_file, gff_file, output_dir):
+    """
+    Processes a GFF file to extract gene regions and creates a new FASTA file
+    with the extracted gene sequences.
+
+    Parameters:
+    - gff_file: Path to the GFF file.
+    - fasta_file: Path to the input FASTA file.
+    - output_fasta_file: Path to the output FASTA file.
+    """
+    # define output FASTA file
+    output_fasta_file = f'{output_dir}genes.fa'
+
+    # read the input FASTA file
+    fasta = Fasta(fasta_file)
+
+    # open the output FASTA file for writing
+    count = 0
+    with open(output_fasta_file, 'w') as output_fasta:
+        # read the GFF file
+        with open(gff_file, 'r') as gff:
+            for line in gff:
+                if line.startswith('#'):
+                    continue
+                
+                # split the GFF line into fields
+                fields = line.strip().split('\t')
+                if len(fields) < 9:
+                    print(f'\t[ERR] line does not have enough fields:\n{line}')
+                    continue  # lines with not enough fields are erroneous? 
+                
+                # extract relevant information from the GFF fields
+                seqid = fields[0]
+                feature_type = fields[2]
+                start = int(fields[3])
+                end = int(fields[4])
+                strand = fields[6]
+                attributes = fields[8]
+
+                # process only gene features
+                if feature_type != 'gene':
+                    continue
+
+                # extract gene ID, or if not then Name, from the attributes
+                gene_id = 'unknown_gene'
+                for attribute in attributes.split(';'):
+                    if attribute.startswith('ID=') or attribute.startswith('Name='):
+                        gene_id = attribute.split('=')[1]
+                        break
+
+                # extract the gene sequence from the FASTA file
+                sequence = fasta[seqid][start-1:end]  # adjust for 0-based indexing
+
+                # reverse complement the sequence if on the negative strand
+                if strand == '-':
+                    sequence = sequence.reverse.complement
+
+                # write the gene sequence to the output FASTA file
+                output_fasta.write(f'>{gene_id} {seqid}:{start}-{end}({strand})\n')
+                output_fasta.write(str(sequence) + '\n')
+                count += 1
+
+    print(f"\t[INFO] {count} gene sequences have been extracted to {output_fasta_file}")
+
+    return output_fasta_file
     
 '''MODIFY TO JUST GET SEQUENCES, BUILD SEP FUNCTION THAT READS INTO TEMPFILE IF SIZE <=5K'''
 def get_sequences(fasta_file, output_dir, neg_strands=None):
@@ -119,22 +183,27 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # NOTE: always creates uppercase sequence, uses [1,0]-indexed sequences, takes simple name from FASTA
     genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
+    print(genes.keys())
 
     for record in genes:
         total_length += len(genes[record.name])
         if total_length > HDF_THRESHOLD_LEN:
+            print(f'\t[INFO] Input FASTA sequences over {HDF_THRESHOLD_LEN}: use_hdf = True.')
             use_hdf = True
             break
+    else:
+        print(f'\t[INFO] Input FASTA only {total_length} bases long: use_hdf = False.')
 
     NAME = [] # Gene Header
     SEQ  = [] # Sequences
 
     # obtain the headers and sequences from FASTA file
     for record in genes:
-        record = record[len(record)] # seems to be pyfaidx quirk? 
-        seq_id = record.fancy_name
-        sequence = record.seq
-
+        # record = record[len(record)] # seems to be pyfaidx quirk? 
+        seq_id = record.long_name
+        # print(record.long_name, record.name)
+        sequence = genes[record.name][:].seq    
+        
         # reverse strand if explicitly specified
         if neg_strands is not None and record.name in neg_strands: 
             seq_id = str(seq_id) + ':-'
@@ -157,6 +226,8 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
         with open(datafile_path, 'w') as datafile: # temp sequence file
             for name, seq in zip(NAME, SEQ):
                 datafile.write(f'{name}\n{seq}\n')
+    
+    print(f'\t[DEBUG] len(NAME): {len(NAME)}, len(SEQ): {len(SEQ)}')
     
     return datafile_path, NAME, SEQ
 
@@ -183,7 +254,7 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
 
     # read the given input file if both datastreams were not provided
     if SEQ == None:
-        print(f"\tReading {datafile_path} ... ")
+        print(f"\t[INFO] Reading {datafile_path} ... ")
         if use_h5:
             with h5py.File(datafile_path, 'r') as in_h5f:
                 SEQ = in_h5f['SEQ'][:]
@@ -195,16 +266,17 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
                     if i % 2 == 1: 
                         SEQ.append(line)
     else:
-        print('\tNAME and SEQ data provided, skipping reading ...')
+        print('\t[INFO] NAME and SEQ data provided, skipping reading ...')
 
     num_seqs = len(SEQ)
     print("num_seqs: ", num_seqs)
+    print('SEQ head', SEQ[:20])
 
     # write to h5 file by chunking and one-hot encoding inputs
     if use_h5:
         dataset_path = f'{output_dir}/dataset.h5'
 
-        print(f"\tWriting {dataset_path} ... ")
+        print(f"\t[INFO] Writing {dataset_path} ... ")
         with h5py.File(dataset_path, 'w') as out_h5f:
                
             # Create dataset
@@ -221,12 +293,15 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
                     idx = i * CHUNK_SIZE + j
 
                     seq_decode = SEQ[idx]
+                    print('seq_decode', seq_decode)
                     X = create_datapoints(seq_decode)   
+                    print('X: ', X)
+                    print('X.shape: ', X.shape)
                     X_batch.extend(X)
 
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
-                # print("X_batch.shape: ", X_batch.shape)
+                print("X_batch.shape: ", X_batch.shape)
                 
                 out_h5f.create_dataset('X' + str(i), data=X_batch)
     
@@ -234,7 +309,7 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
     else:
         dataset_path = f'{output_dir}/dataset.pt'
 
-        print(f"\tWriting {dataset_path} ... ")
+        print(f"\t[INFO] Writing {dataset_path} ... ")
         X_all = []
         for idx in range(num_seqs):
             seq_decode = SEQ[idx].decode('ascii')
@@ -271,9 +346,14 @@ def create_datapoints(input_string):
     seq = seq.replace('A', '1').replace('C', '2').replace('G', '3').replace('T', '4').replace('N', '0')
 
     # One-hot-encode the inputs
+    print('create datapoints')
+    print('input\tseq', seq)
     X0 = np.asarray(list(map(int, list(seq))))
+    print('nparray\tX0.shape', X0.shape)
     Xd = reformat_data(X0)
+    print('reformat\tXd.shape', Xd.shape)
     X = one_hot_encode(Xd)
+    print('one-hot\tX', X.shape)
 
     return X
 
@@ -298,6 +378,7 @@ def reformat_data(X0):
 
     # Fill the initialized arrays with data in blocks
     for i in range(num_points):
+        # print(SL * i, SL * (i + 1) + CL_max)
         Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
 
     return Xd    
@@ -345,7 +426,7 @@ def load_shard(h5f, batch_size, shard_idx):
     return DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
 # custom for this implementation (removed dependency on Y)
-def clip_datapoints(X, CL, N_GPUS):
+def clip_datapoints(X, CL, N_GPUS, debug=False):
     """
     This function is necessary to make sure of the following:
     (i) Each time model_m.fit is called, the number of datapoints is a
@@ -356,25 +437,30 @@ def clip_datapoints(X, CL, N_GPUS):
     them as an array).
     """
     global CL_max 
-    
-    print("\n\tX.shape: ", X.shape)
-    print("\tCL: ", CL)
-    print("\tN_GPUS: ", N_GPUS)
 
     rem = X.shape[0] % N_GPUS
     clip = (CL_max-CL)//2
 
-    print("\trem: ", rem)
-    print("\tclip: ", clip)
+    if debug: 
+        print("\n\tX.shape: ", X.shape)
+        print("\tCL: ", CL)
+        print("\tN_GPUS: ", N_GPUS)
+        print("\trem: ", rem)
+        print("\tclip: ", clip)
 
     if rem != 0 and clip != 0:
-        return X[:-rem, :, clip:-clip]
+        X_clipped = X[:-rem, :, clip:-clip]
     elif rem == 0 and clip != 0:
-        return X[:, :, clip:-clip]
+        X_clipped = X[:, :, clip:-clip]
     elif rem != 0 and clip == 0:
-        return X[:-rem]
+        X_clipped = X[:-rem]
     else:
-        return X
+        X_clipped = X
+    
+    if debug:
+        print("\tX_clipped.shape: ", X_clipped.shape)
+    
+    return X_clipped
 
 
 # def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
@@ -478,16 +564,13 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
         idxs = np.arange(len(h5f.keys()) // 2)
 
         for i, shard_idx in enumerate(idxs, 1):
-            print(f"Shard {i}/{len(idxs)}")
             loader = load_shard(h5f, batch_size, shard_idx)
             pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
             for batch in pbar:
                 DNAs = batch[0].to(device)
 
-                print("\n\tDNAs.shape: ", DNAs.shape)
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"])
+                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=True)
                 DNAs = DNAs.to(torch.float32).to(device)
-                print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
 
                 y_pred = model(DNAs)
 
@@ -527,10 +610,8 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
         for batch in pbar:
             DNAs = batch[0].to(device)
 
-            print("\n\tDNAs.shape: ", DNAs.shape)
-            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"])
+            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=False)
             DNAs = DNAs.to(torch.float32).to(device)
-            print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
 
             y_pred = model(DNAs)
 
@@ -539,20 +620,50 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
             pbar.update(1)
         
         pbar.close()
-    
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    
 
     # write all predictions to a predict_file
     predict_path = f'{output_dir}predict.pt'
     batch_ypred = torch.cat(batch_ypred, dim=0)
-    torch.save(batch_ypred, predict_path)  
+    torch.save(batch_ypred, predict_path)
+    
+    # preview information
+    head_length = 5 if len(batch_ypred) >=5 else len(batch_ypred)
+    print(f'\t[INFO] Batch predictions collected. Format: {batch_ypred.shape}. Preview: {batch_ypred[:head_length]}')
+    print(f'\t[INFO] Torch-compressed predictions saved to {predict_path}.')
+
     return predict_path
 
-def generate_bed(predict_file, NAME):
+def generate_bed(predict_file, NAME, output_dir, threshold=0.01):
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
     '''
+    
+    # load the predictions
+    batch_ypred = torch.load(predict_file)
+    print('\t[INFO] Batch predictions loaded.')
+
+    acceptor_bed_path = f'{output_dir}acceptor_predictions.bed'
+    donor_bed_path = f'{output_dir}donor_predictions.bed'
+
+    with open(acceptor_bed_path, 'w') as acceptor_bed, open(donor_bed_path, 'w') as donor_bed:
+        for i in tqdm(range(len(NAME)), desc='Generating BED files'):
+            seq_name = NAME[i]
+            acceptor_scores = batch_ypred[i, 1].numpy()  # Acceptor channel
+            donor_scores = batch_ypred[i, 2].numpy()     # Donor channel
+            
+            # iterate over the positions and write to the respective BED files
+            for pos in range(len(acceptor_scores)):
+                if acceptor_scores[pos] > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tAcceptor\t{acceptor_scores[pos]:.6f}\n")
+                if donor_scores[pos] > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tDonor\t{donor_scores[pos]:.6f}\n")
+
+    print(f"Acceptor BED file saved to {acceptor_bed_path}")
+    print(f"Donor BED file saved to {donor_bed_path}")
+
 
     # set threshold for low values
     # write a separate file for donor and acceptor 
@@ -574,7 +685,6 @@ def predict(args):
         - input_sequence: FASTA File
 
     '''
-    print("Running SpliceAI-toolkit with 'predict' mode")
     # inputs args.: model, output_dir, flanking_size, input sequence (fasta file), 
     # outputs: the log files, bed files with scores for all splice sites
 
@@ -582,22 +692,22 @@ def predict(args):
     # iterate over FASTA -> chunk -> if input sequence >5k, put in hdf5 format
     # generate BED file with scores for all splice sites -> visualize in IGV
 
-    
-    # PART 1: Extracting input sequence
-    print("--- Step 1: Extracting input sequence ... ---")
-    start_time = time.time()
-    
+    print("Running SpliceAI-toolkit with 'predict' mode")
+
     # get all input args
     output_dir = args.output_dir
     sequence_length = SL
     flanking_size = int(args.flanking_size)
     model_path = args.model
     input_sequence = args.input_sequence
+    gff_file = args.gff_file
 
     global CL_max 
     CL_max = flanking_size
 
     assert int(flanking_size) in [80, 400, 2000, 10000]
+
+    print(f'Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, model: {model_path}, input_sequence: {input_sequence}, gff_file: {gff_file}')
 
     # create output directory
     os.makedirs(output_dir, exist_ok=True)
@@ -607,9 +717,19 @@ def predict(args):
     print("Model path: ", model_path, file=sys.stderr)
     print("Flanking sequence size: ", flanking_size, file=sys.stderr)
     print("Sequence length: ", sequence_length, file=sys.stderr)
+    
+    # PART 1: Extracting input sequence
+    print("--- Step 1: Extracting input sequence ... ---")
+    start_time = time.time()
 
-    # collect sequences into file
-    datafile_path, NAME, SEQ = get_sequences(input_sequence, output_base)
+    # if gff file is provided, extract just the gene regions into a new FASTA file
+    if gff_file: 
+        print('\t[INFO] GFF file provided: extracting gene sequences.')
+        new_fasta = process_gff(input_sequence, gff_file, output_base) 
+        datafile_path, NAME, SEQ = get_sequences(new_fasta, output_base)
+    else:
+        # otherwise, collect all sequences from FASTA into file
+        datafile_path, NAME, SEQ = get_sequences(input_sequence, output_base)
     
     # print_motif_counts()
 
@@ -673,7 +793,7 @@ def predict(args):
     print("--- Step 5: Generating BEDgraph report ... ---")
     start_time = time.time()
 
-    generate_bed(predict_file, NAME)
+    generate_bed(predict_file, NAME, output_dir)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -716,5 +836,3 @@ def predict(args):
     # args = parser.parse_args()
     # print(args)
     # predict(args)         
-
-    
