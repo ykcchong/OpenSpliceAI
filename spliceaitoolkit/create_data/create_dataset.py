@@ -125,7 +125,8 @@ def create_dataset(args):
                     label_decode = LABEL[idx].decode('ascii')
 
                     fixed_seq = replace_non_acgt_to_n(seq_decode)
-                    X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)   
+                    X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)
+                    print('shapes', X.shape, Y.shape)   
 
                     X_batch.extend(X)
                     Y_batch[0].extend(Y[0])

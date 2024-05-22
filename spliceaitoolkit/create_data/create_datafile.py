@@ -34,7 +34,7 @@ import numpy as np
 import h5py
 import time
 import argparse
-from spliceaitoolkit.create_data.utils import check_and_count_motifs, print_motif_counts
+from spliceaitoolkit.create_data.utils import *
 
 def create_or_load_db(gff_file, db_file='gff.db'):
     """
@@ -171,7 +171,7 @@ def create_datafile(args):
 
     ''' 
     NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!
-    Where are the `get_all_chromosomes` and `split_chromosomes` functions?
+    Where are the `get_all_chromosomes` and `split_chromosomes` functions? nvm they're in the main spliceaitoolkit.py file
     '''
     # Use gffutils to parse annotation file
     os.makedirs(args.output_dir, exist_ok=True)

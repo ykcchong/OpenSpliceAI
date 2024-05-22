@@ -5,6 +5,7 @@
 import numpy as np
 import torch
 from math import ceil
+import random
 from sklearn.metrics import average_precision_score
 from spliceaitoolkit.constants import *
 
@@ -140,3 +141,22 @@ def print_motif_counts():
         print(f"{motif}: {count}")
     print("\nTotal donor motifs: ", sum(donor_motif_counts.values()))
     print("Total acceptor motifs: ", sum(acceptor_motif_counts.values()))
+
+def get_all_chromosomes(db):
+    """Extract all unique chromosomes from the GFF database."""
+    chromosomes = set()
+    for feature in db.all_features():
+        chromosomes.add(feature.seqid)
+    return list(chromosomes)
+
+def split_chromosomes(chromosomes, method='random', split_ratio=0.8):
+    """Split chromosomes into training and testing groups."""
+    if method == 'random':
+        random.shuffle(chromosomes)
+        split_point = int(len(chromosomes) * split_ratio)
+        train_chroms = {chrom: 0 for chrom in chromosomes[:split_point]}
+        test_chroms = {chrom: 0 for chrom in chromosomes[split_point:]}
+    else:
+        # Implement other methods if needed
+        train_chroms, test_chroms = {}, {}
+    return train_chroms, test_chroms
