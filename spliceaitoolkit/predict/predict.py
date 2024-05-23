@@ -1,5 +1,6 @@
 import argparse
 import os, sys
+import re
 import numpy as np
 import torch
 import torch.nn as nn
@@ -654,12 +655,40 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
                 print('\t',acceptor_scores[:5], donor_scores[:5])
 
             # iterate over the positions and write to the respective BED files
-            for pos in range(len(acceptor_scores)):
+            for pos in range(len(acceptor_scores)): # donor and acceptor have same scores 
+
+                # parse out key information from name
+                pattern = re.compile(r'.*chr\d+:(\d+)-(\d+)\(([-+])\):([+])')
+                match = pattern.match(seq_name)
+
+                if match:
+                    start = int(match.group(1))
+                    end = int(match.group(2))
+                    strand = match.group(3)
+                    name = seq_name[:-2] # remove endings
+                else:
+                    print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Skipping...')
+                    continue
                 
-                if acceptor_scores[pos] > threshold:
-                    acceptor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tAcceptor\t{acceptor_scores[pos]:.6f}\n")
-                if donor_scores[pos] > threshold:
-                    donor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tDonor\t{donor_scores[pos]:.6f}\n")
+                # get scores
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]                
+
+                # handle file writing based on strand
+                if strand == '+':
+                    if acceptor_score > threshold:
+                        acceptor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tAcceptor\t{acceptor_score:.6f}\n")
+                    if donor_score > threshold:
+                        donor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tDonor\t{donor_score:.6f}\n")
+                elif strand == '-':
+                    acceptor_score, donor_score = donor_score, acceptor_score # positions inverted
+                    if acceptor_score > threshold:
+                        acceptor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tAcceptor\t{acceptor_score:.6f}\n")
+                    if donor_score > threshold:
+                        donor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tDonor\t{donor_score:.6f}\n")
+                else:
+                    print(f'\t[ERR] Undefined strand {strand}. Skipping...')
+                    continue
             
             # update the start index for the next gene
             start_idx = end_idx
