@@ -489,7 +489,7 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
     return X_clipped
 
 
-def get_prediction(model, dataset_path, criterion, device, params, metric_files, output_dir):
+def get_prediction(model, dataset_path, criterion, device, params, metric_files, output_dir, debug=False):
     """
     Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
@@ -507,19 +507,17 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     # define batch size
     batch_size = params["BATCH_SIZE"]
     print(f'\t[INFO] Batch size: {batch_size}')
+    if debug:
+        print('\n\t[DEBUG] get_prediction')
 
     # put model in evaluation mode
     model.eval()
+    print('\t[INFO] Model in evaluation mode.')
 
     # determine which file to proceed with
     file_ext = os.path.splitext(dataset_path)[1]
     assert file_ext in ['.h5', '.pt']
     use_h5 = file_ext == '.h5'
-
-    # define used constants 
-
-    # np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
-    # running_loss = 0.0
     
     batch_ypred = [] # list of tensors containing the predictions from model
 
@@ -528,18 +526,22 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
 
         # iterate over shards in index 
         idxs = np.arange(len(h5f.keys()))
-        print(idxs)
+        if debug:
+            print('\th5 indices:', idxs)
 
         for i, shard_idx in enumerate(idxs, 1):
-            print('shard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']))
+            if debug:
+                print('\tshard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']))
             loader = load_shard(h5f, batch_size, shard_idx)
-            print('\tloader batches ', len(loader))
+            if debug:
+                print('\t\tloader batches ', len(loader))
 
             pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
             for batch in pbar:
                 DNAs = batch[0].to(device)
 
-                print('\t\tbatch DNA ', len(DNAs), end='')
+                if debug:
+                    print('\t\t\tbatch DNA ', len(DNAs), end='')
 
                 DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"]) # issue with clipping datapoints
 
@@ -547,7 +549,8 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
 
                 y_pred = model(DNAs)
 
-                print('\t\tbatch ', len(y_pred))
+                if debug:
+                    print('\tbatch ', len(y_pred))
 
                 # Logging loss for every update!!! IMPORTANT
                 # with open(metric_files["loss_every_update"], 'a') as f:
@@ -561,9 +564,6 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
 
                 batch_ypred.append(y_pred.detach().cpu())
 
-                # print_dict["loss"] = loss.item()
-
-                # pbar.set_postfix(print_dict)
                 pbar.update(1)
             
             pbar.close()
@@ -604,19 +604,22 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     return predict_path, batch_ypred
 
 
-def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshold=1e-6):
+def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshold=1e-6, debug=False):
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
     '''
     print(len(NAME), len(LEN), sum(LEN), len(batch_ypred))
     assert len(NAME) == len(LEN)
     assert sum(LEN) == len(batch_ypred)
+
     # load the predictions (if not already there)
     if batch_ypred is None:
         batch_ypred = torch.load(predict_file)
     print('\t[INFO] Batch predictions loaded.')
     print(f'\t[INFO] Shape of predictions: {batch_ypred.shape}')
     print(f'\t[INFO] {len(LEN)} targets detected.')
+    if debug:
+        print('\n\t[DEBUG] generate_bed')
 
     acceptor_bed_path = f'{output_dir}acceptor_predictions.bed'
     donor_bed_path = f'{output_dir}donor_predictions.bed'
@@ -625,32 +628,40 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
         start_idx = 0
         for i in tqdm(range(len(NAME)), desc='Generating BED files'):
             seq_name = NAME[i]
-            num_batches = LEN[i]  # Number of batches for this gene
+            num_batches = LEN[i]  # number of batches for this gene
             end_idx = start_idx + num_batches
             
-            # Extract predictions for the current gene
+            # extract predictions for the current gene
             gene_predictions = batch_ypred[start_idx:end_idx]
 
-            # Flatten the predictions to a 2D array [total positions, channels]
-            print(gene_predictions.shape)
-            print(gene_predictions[:5])
+            # flatten the predictions to a 2D array [total positions, channels]
+            if debug:
+                print('\traw prediction:')
+                print('\t',gene_predictions.shape)
+                print('\t',gene_predictions[:5])
             gene_predictions = gene_predictions.permute(0, 2, 1).contiguous().view(-1, gene_predictions.shape[1])
-            print(gene_predictions.shape)
-            print(gene_predictions[:5])
+            if debug:
+                print('\tflattened:')
+                print('\t',gene_predictions.shape)
+                print('\t',gene_predictions[:5])
 
             acceptor_scores = gene_predictions[:, 1].numpy()  # Acceptor channel
             donor_scores = gene_predictions[:, 2].numpy()     # Donor channel
-            print(acceptor_scores.shape, donor_scores.shape)
-            print(acceptor_scores[:5], donor_scores[:5])
+            
+            if debug:
+                print('\tacceptor\tdonor:')
+                print('\t',acceptor_scores.shape, donor_scores.shape)
+                print('\t',acceptor_scores[:5], donor_scores[:5])
 
-            # Iterate over the positions and write to the respective BED files
+            # iterate over the positions and write to the respective BED files
             for pos in range(len(acceptor_scores)):
+                
                 if acceptor_scores[pos] > threshold:
                     acceptor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tAcceptor\t{acceptor_scores[pos]:.6f}\n")
                 if donor_scores[pos] > threshold:
                     donor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tDonor\t{donor_scores[pos]:.6f}\n")
             
-            # Update the start index for the next gene
+            # update the start index for the next gene
             start_idx = end_idx
 
     print(f"Acceptor BED file saved to {acceptor_bed_path}")
