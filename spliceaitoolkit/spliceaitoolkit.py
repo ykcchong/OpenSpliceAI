@@ -62,6 +62,7 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
     parser_predict.add_argument('--gff-file', '-g', type=str, required=False, help="Path to GFF file of coordinates for genes")
+    parser_predict.add_argument('--threshold', '-t', type=str, required=False, help="Threshold to determine acceptor and donor sites")
 
 
 def parse_args_variant(subparsers):
