@@ -183,7 +183,6 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # NOTE: always creates uppercase sequence, uses [1,0]-indexed sequences, takes simple name from FASTA
     genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
-    print(genes.keys())
 
     for record in genes:
         total_length += len(genes[record.name])
@@ -199,9 +198,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # obtain the headers and sequences from FASTA file
     for record in genes:
-        # record = record[len(record)] # seems to be pyfaidx quirk? 
         seq_id = record.long_name
-        # print(record.long_name, record.name)
         sequence = genes[record.name][:].seq    
         
         # reverse strand if explicitly specified
@@ -233,7 +230,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
 
-def convert_sequences(datafile_path, output_dir, SEQ=None):
+def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
     '''
     Script to convert datafile into a one-hot encoded dataset ready to input to model. 
     If HDF5 file used, data is chunked for loading. 
@@ -245,6 +242,7 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
 
     Returns:
     - Path to the dataset.
+    - LEN: list of how many chunks each gene takes up
     '''
 
     # determine whether to convert an h5 or txt file
@@ -269,8 +267,11 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
         print('\t[INFO] NAME and SEQ data provided, skipping reading ...')
 
     num_seqs = len(SEQ)
-    print("num_seqs: ", num_seqs)
-    print('SEQ head', SEQ[:20])
+    if debug:
+        print('\n\t[DEBUG] convert_sequences')
+        print("\tnum_seqs: ", num_seqs)
+
+    LEN = [] # Number of batches for each sequence
 
     # write to h5 file by chunking and one-hot encoding inputs
     if use_h5:
@@ -293,16 +294,17 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
                     idx = i * CHUNK_SIZE + j
 
                     seq_decode = SEQ[idx]
-                    print('seq_decode', seq_decode)
-                    X = create_datapoints(seq_decode)   
-                    print('X: ', X)
-                    print('X.shape: ', X.shape)
+                    X = create_datapoints(seq_decode) 
+                    if debug:      
+                        print('\tX.shape:', X.shape)
+                    LEN.append(len(X))
                     X_batch.extend(X)
 
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
-                print("X_batch.shape: ", X_batch.shape)
-                
+                if debug:
+                    print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE)
+                    print("\tX_batch.shape:", X_batch.shape)
                 out_h5f.create_dataset('X' + str(i), data=X_batch)
     
     # convert to tensor and write directly to a binary PyTorch file for quick loading
@@ -314,6 +316,9 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
         for idx in range(num_seqs):
             seq_decode = SEQ[idx].decode('ascii')
             X = create_datapoints(seq_decode)
+            if debug:      
+                print('\tX.shape:', X.shape)
+            LEN.append(len(X))
             X_all.extend(X)
 
         # convert batches to a tensor
@@ -322,10 +327,10 @@ def convert_sequences(datafile_path, output_dir, SEQ=None):
         # save as a binary file
         torch.save(X_tensor, dataset_path)     
     
-    return dataset_path
+    return dataset_path, LEN
 
 
-def create_datapoints(input_string):
+def create_datapoints(input_string, debug=False):
     """
     Parameters:
     - input_string (str): The nucleotide sequence.
@@ -346,35 +351,50 @@ def create_datapoints(input_string):
     seq = seq.replace('A', '1').replace('C', '2').replace('G', '3').replace('T', '4').replace('N', '0')
 
     # One-hot-encode the inputs
-    print('create datapoints')
-    print('input\tseq', seq)
-    X0 = np.asarray(list(map(int, list(seq))))
-    print('nparray\tX0.shape', X0.shape)
-    Xd = reformat_data(X0)
-    print('reformat\tXd.shape', Xd.shape)
-    X = one_hot_encode(Xd)
-    print('one-hot\tX', X.shape)
+    if debug:
+        print('\n\t[DEBUG] create_datapoints:')
+        print('\tlen(seq):', len(seq))
+    X0 = np.asarray(list(map(int, list(seq)))) # convert string to np array
+    if debug:
+        print('\tX0.shape', X0.shape)
+    Xd = reformat_data(X0) # apply window size
+    if debug:
+        print('\tXd.shape', Xd.shape) 
+    X = one_hot_encode(Xd) # one-hot encode
+    if debug:
+        print('\tX', X.shape)
+    return X 
 
-    return X
-
-def reformat_data(X0):
+def reformat_data(X0, debug=False):
     """
     Parameters:
     - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
+    - (global) CL_max: Maximum context length for sequence prediction (flanking size sum).
+    - (global) SL: Sequence length for prediction, default = 5000. 
 
     Returns:
     - numpy.ndarray: Reformatted sequence data.
     """
     global CL_max 
-
+    
+    if debug:
+        print('\n\t[DEBUG] reformat_data')
+        print('\tlen(X0)', len(X0))
+        print('\tSL', SL, ' CL_max', CL_max)
     # Calculate the number of data points needed
-    num_points = ceil_div(len(X0), SL)
+    num_points = ceil_div(len(X0) - CL_max, SL) # NOTE: subtracting the flanking here because X0 is already padded at the ends by create_datapoints and only want window on actual sequence length 
+    if debug:
+        print('\tnum_points', num_points)
     # Initialize arrays to hold the reformatted data
     Xd = np.zeros((num_points, SL + CL_max))
-    # Pad the sequence and labels to ensure divisibility
-    X0 = np.pad(X0, (0, SL), 'constant', constant_values=0)
-    
-    # print(X0.shape, num_points, Xd.shape)    
+    if debug:
+        print('\tXd.shape', Xd.shape)
+    # Pad the end sequence to ensure divisibility
+    padding_length = ((SL + CL_max) * num_points) - len(X0)
+    X0 = np.pad(X0, (0, padding_length), 'constant', constant_values=0)
+    if debug:
+        print('\tpadding_length', padding_length)
+        print('\tnew len(X0)', len(X0))
 
     # Fill the initialized arrays with data in blocks
     for i in range(num_points):
@@ -425,7 +445,7 @@ def load_shard(h5f, batch_size, shard_idx):
 
     return DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
-# custom for this implementation (removed dependency on Y)
+# custom for this implementation (removed dependency on Y, removed clipping of N_GPUS)
 def clip_datapoints(X, CL, N_GPUS, debug=False):
     """
     This function is necessary to make sure of the following:
@@ -438,22 +458,28 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
     """
     global CL_max 
 
-    rem = X.shape[0] % N_GPUS
+    # rem = X.shape[0] % N_GPUS
     clip = (CL_max-CL)//2
 
     if debug: 
-        print("\n\tX.shape: ", X.shape)
+        print('\n\t[DEBUG] clip_datapoints')
+        print("\tX.shape: ", X.shape)
         print("\tCL: ", CL)
         print("\tN_GPUS: ", N_GPUS)
         print("\trem: ", rem)
         print("\tclip: ", clip)
 
-    if rem != 0 and clip != 0:
-        X_clipped = X[:-rem, :, clip:-clip]
-    elif rem == 0 and clip != 0:
+    # if rem != 0 and clip != 0:
+    #     X_clipped = X[:-rem, :, clip:-clip]
+    # elif rem == 0 and clip != 0:
+    #     X_clipped = X[:, :, clip:-clip]
+    # elif rem != 0 and clip == 0:
+    #     X_clipped = X[:-rem]
+    # else:
+    #     X_clipped = X
+
+    if clip != 0:
         X_clipped = X[:, :, clip:-clip]
-    elif rem != 0 and clip == 0:
-        X_clipped = X[:-rem]
     else:
         X_clipped = X
     
@@ -461,66 +487,6 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
         print("\tX_clipped.shape: ", X_clipped.shape)
     
     return X_clipped
-
-
-# def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
-#     """
-#     Evaluates the model's performance on a batch of data and logs the metrics.
-#     Calculates various metrics, such as top-kL accuracy and AUPRC, for a given set of predictions and true labels.
-#     The results are written to specified log files and can also be logged to Weights & Biases if enabled.
-
-#     Parameters:
-#     - batch_ylabel (list of torch.Tensor): A list of tensors containing the true labels for each batch.
-#     - batch_ypred (list of torch.Tensor): A list of tensors containing the predicted labels for each batch.
-#     - metric_files (dict): A dictionary containing paths to files where metrics should be logged.
-#     - run_mode (str): The current phase of model usage ('train', 'validation', 'test') indicating where to log the metrics.
-#     - criterion (str): The loss function that was used during training or evaluation, for appropriate metric calculation.
-#     """
-
-#     # batch_ylabel = torch.cat(batch_ylabel, dim=0)
-#     batch_ypred = torch.cat(batch_ypred, dim=0)
-#     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
-#     if np.any(is_expr):
-#         ############################
-#         # Topk SpliceAI assessment approach
-#         ############################
-#         subset_size = 1000
-#         indices = np.arange(batch_ylabel[is_expr].shape[0])
-#         subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-#         # Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-#         # Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-#         Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-#         Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-#         acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-#                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-#         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-#                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-#         # if criterion == "cross_entropy_loss":
-#         #     loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
-#         # elif criterion == "focal_loss":
-#         #     loss = focal_loss(batch_ylabel, batch_ypred)
-#         for k, v in metric_files.items():
-#             with open(v, 'a') as f:
-#                 if k == "loss_batch":
-#                     f.write(f"{loss.item()}\n")
-#                 elif k == "topk_acceptor":
-#                     f.write(f"{acceptor_topkl_accuracy}\n")
-#                 elif k == "topk_donor":
-#                     f.write(f"{donor_topkl_accuracy}\n")
-#                 elif k == "auprc_acceptor":
-#                     f.write(f"{acceptor_auprc}\n")
-#                 elif k == "auprc_donor":
-#                     f.write(f"{donor_auprc}\n")
-#         wandb.log({
-#             f'{run_mode}/loss_batch': loss.item(),
-#             f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-#             f'{run_mode}/topk_donor': donor_topkl_accuracy,
-#             f'{run_mode}/auprc_acceptor': acceptor_auprc,
-#             f'{run_mode}/auprc_donor': donor_auprc,
-#         })
-#         print("***************************************\n\n")
-#     # batch_ylabel = []
-#     batch_ypred = []
 
 
 def get_prediction(model, dataset_path, criterion, device, params, metric_files, output_dir):
@@ -535,10 +501,12 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     - output_dir (str): Root of output directory for predict file.
 
     Returns:
-    - Path to predictions
+    - Path to predictions binary file
+    - Raw predictions (saved in memory)
     """
     # define batch size
     batch_size = params["BATCH_SIZE"]
+    print(f'\t[INFO] Batch size: {batch_size}')
 
     # put model in evaluation mode
     model.eval()
@@ -554,31 +522,33 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     # running_loss = 0.0
     
     batch_ypred = [] # list of tensors containing the predictions from model
-    # print_dict = {}
-    # will it fully predict on last batch? 
 
     if use_h5:
         h5f = h5py.File(dataset_path, 'r')
 
         # iterate over shards in index 
-        idxs = np.arange(len(h5f.keys()) // 2)
+        idxs = np.arange(len(h5f.keys()))
+        print(idxs)
 
         for i, shard_idx in enumerate(idxs, 1):
+            print('shard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']))
             loader = load_shard(h5f, batch_size, shard_idx)
+            print('\tloader batches ', len(loader))
+
             pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
             for batch in pbar:
                 DNAs = batch[0].to(device)
 
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=True)
+                print('\t\tbatch DNA ', len(DNAs), end='')
+
+                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"]) # issue with clipping datapoints
+
                 DNAs = DNAs.to(torch.float32).to(device)
 
                 y_pred = model(DNAs)
 
-                # if criterion == "cross_entropy_loss":
-                #     loss = categorical_crossentropy_2d(labels, y_pred)
-                # elif criterion == "focal_loss":
-                #     loss = focal_loss(labels, y_pred)
-                    
+                print('\t\tbatch ', len(y_pred))
+
                 # Logging loss for every update!!! IMPORTANT
                 # with open(metric_files["loss_every_update"], 'a') as f:
                 #     f.write(f"{loss.item()}\n")
@@ -588,8 +558,6 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
                 # running_loss += loss.item()
 
                 # print("loss: ", loss.item())
-
-                # batch_ylabel.append(labels.detach().cpu())
 
                 batch_ypred.append(y_pred.detach().cpu())
 
@@ -610,20 +578,19 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
         for batch in pbar:
             DNAs = batch[0].to(device)
 
-            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=False)
+            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"])
             DNAs = DNAs.to(torch.float32).to(device)
 
             y_pred = model(DNAs)
 
             batch_ypred.append(y_pred.detach().cpu())
-
+            
             pbar.update(1)
         
         pbar.close()
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
     
-
     # write all predictions to a predict_file
     predict_path = f'{output_dir}predict.pt'
     batch_ypred = torch.cat(batch_ypred, dim=0)
@@ -634,32 +601,57 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     print(f'\t[INFO] Batch predictions collected. Format: {batch_ypred.shape}. Preview: {batch_ypred[:head_length]}')
     print(f'\t[INFO] Torch-compressed predictions saved to {predict_path}.')
 
-    return predict_path
+    return predict_path, batch_ypred
 
-def generate_bed(predict_file, NAME, output_dir, threshold=0.01):
+
+def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshold=1e-6):
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
     '''
-    
-    # load the predictions
-    batch_ypred = torch.load(predict_file)
+    print(len(NAME), len(LEN), sum(LEN), len(batch_ypred))
+    assert len(NAME) == len(LEN)
+    assert sum(LEN) == len(batch_ypred)
+    # load the predictions (if not already there)
+    if batch_ypred is None:
+        batch_ypred = torch.load(predict_file)
     print('\t[INFO] Batch predictions loaded.')
+    print(f'\t[INFO] Shape of predictions: {batch_ypred.shape}')
+    print(f'\t[INFO] {len(LEN)} targets detected.')
 
     acceptor_bed_path = f'{output_dir}acceptor_predictions.bed'
     donor_bed_path = f'{output_dir}donor_predictions.bed'
 
     with open(acceptor_bed_path, 'w') as acceptor_bed, open(donor_bed_path, 'w') as donor_bed:
+        start_idx = 0
         for i in tqdm(range(len(NAME)), desc='Generating BED files'):
             seq_name = NAME[i]
-            acceptor_scores = batch_ypred[i, 1].numpy()  # Acceptor channel
-            donor_scores = batch_ypred[i, 2].numpy()     # Donor channel
+            num_batches = LEN[i]  # Number of batches for this gene
+            end_idx = start_idx + num_batches
             
-            # iterate over the positions and write to the respective BED files
+            # Extract predictions for the current gene
+            gene_predictions = batch_ypred[start_idx:end_idx]
+
+            # Flatten the predictions to a 2D array [total positions, channels]
+            print(gene_predictions.shape)
+            print(gene_predictions[:5])
+            gene_predictions = gene_predictions.permute(0, 2, 1).contiguous().view(-1, gene_predictions.shape[1])
+            print(gene_predictions.shape)
+            print(gene_predictions[:5])
+
+            acceptor_scores = gene_predictions[:, 1].numpy()  # Acceptor channel
+            donor_scores = gene_predictions[:, 2].numpy()     # Donor channel
+            print(acceptor_scores.shape, donor_scores.shape)
+            print(acceptor_scores[:5], donor_scores[:5])
+
+            # Iterate over the positions and write to the respective BED files
             for pos in range(len(acceptor_scores)):
                 if acceptor_scores[pos] > threshold:
                     acceptor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tAcceptor\t{acceptor_scores[pos]:.6f}\n")
                 if donor_scores[pos] > threshold:
                     donor_bed.write(f"{seq_name}\t{pos}\t{pos+1}\tDonor\t{donor_scores[pos]:.6f}\n")
+            
+            # Update the start index for the next gene
+            start_idx = end_idx
 
     print(f"Acceptor BED file saved to {acceptor_bed_path}")
     print(f"Donor BED file saved to {donor_bed_path}")
@@ -701,6 +693,7 @@ def predict(args):
     model_path = args.model
     input_sequence = args.input_sequence
     gff_file = args.gff_file
+    threshold = float(args.threshold)
 
     global CL_max 
     CL_max = flanking_size
@@ -740,7 +733,7 @@ def predict(args):
     print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
 
-    dataset_path = convert_sequences(datafile_path, output_base, SEQ)
+    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -782,9 +775,8 @@ def predict(args):
     predict_metric_files = None
     criterion = None
 
-    predict_file = get_prediction(model, dataset_path, criterion, device, 
+    predict_file, batch_ypred = get_prediction(model, dataset_path, criterion, device, 
                                     params, predict_metric_files, output_base)
-
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -793,46 +785,15 @@ def predict(args):
     print("--- Step 5: Generating BEDgraph report ... ---")
     start_time = time.time()
 
-    generate_bed(predict_file, NAME, output_dir)
+    if threshold:
+        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred, threshold)
+    else:
+        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred)
 
     print("--- %s seconds ---" % (time.time() - start_time))
-
-    # other function: give BED coordinate file (optional arg) -> extract just those sequences from FASTA for prediction
-    #                   give GFF file + and what you want to extract -> go to gene-level 
-    #                   --coordinates (BED/GFF format) -> detect which extension
-    # genes[id][start:end] 
-
 
 
 ### TODO: tests
 # predict on /models/spliceai-mane
 # input gff file, extract gene-level sequences, then predict score for each position in gene
-# later -> bedgraph file
-
-# if __name__ == '__main__':
-
-    # CL_max=400
-    # # Maximum nucleotide context length (CL_max/2 on either side of the 
-    # # position of interest)
-    # # CL_max should be an even number
-
-    # SL=5000
-    # # Sequence length of SpliceAIs (SL+CL will be the input length and
-    # # SL will be the output length)
-    # #############################
-    # # Global variable definition
-    # ############################## 
-    # EPOCH_NUM = 10
-
-    
-    # parser = argparse.ArgumentParser(description='SpliceAI toolkit to retrain your own splice site predictor')
-    # # Create a parent subparser to house the common subcommands.
-    # subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, variant')
-    # parser_predict = subparsers.add_parser('predict', help='Predict splice sites in a given sequence using the SpliceAI model')
-    # parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
-    # parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    # parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
-    # parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
-    # args = parser.parse_args()
-    # print(args)
-    # predict(args)         
+# later -> bedgraph file     
