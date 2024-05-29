@@ -20,8 +20,11 @@ from spliceaitoolkit.constants import *
 # # FOR TESTING PURPOSES
 # from spliceai import *
 # from utils import *
+import psutil
+def log_memory_usage():
+    process = psutil.Process(os.getpid())
+    print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB")
 
-RANDOM_SEED = 42 # for replicability
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 
@@ -35,11 +38,9 @@ def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='Spl
 
     BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
     model_pred_outdir = f"{output_dir}/{BASENAME}/"
+    os.makedirs(model_pred_outdir, exist_ok=True)
 
-    log_output_base = f"{model_pred_outdir}LOG/"
-    os.makedirs(log_output_base, exist_ok=True)
-
-    return model_pred_outdir, log_output_base
+    return model_pred_outdir
 
 def setup_device():
     """Select computation device based on availability."""
@@ -88,7 +89,6 @@ def load_model(device, flanking_size):
     model = SpliceAI(L, W, AR).to(device)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
 
-    # print(model, file=sys.stderr)
     return model, params
 
 
@@ -269,14 +269,14 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
 
     num_seqs = len(SEQ)
     if debug:
-        print('\n\t[DEBUG] convert_sequences')
-        print("\tnum_seqs: ", num_seqs)
+        print('\n\t[DEBUG] convert_sequences', file=sys.stderr)
+        print("\tnum_seqs: ", num_seqs, file=sys.stderr)
 
     LEN = [] # Number of batches for each sequence
 
     # write to h5 file by chunking and one-hot encoding inputs
     if use_h5:
-        dataset_path = f'{output_dir}/dataset.h5'
+        dataset_path = f'{output_dir}dataset.h5'
 
         print(f"\t[INFO] Writing {dataset_path} ... ")
         with h5py.File(dataset_path, 'w') as out_h5f:
@@ -295,17 +295,17 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
                     idx = i * CHUNK_SIZE + j
 
                     seq_decode = SEQ[idx]
-                    X = create_datapoints(seq_decode) 
+                    X = create_datapoints(seq_decode, debug=debug) 
                     if debug:      
-                        print('\tX.shape:', X.shape)
+                        print('\tX.shape:', X.shape, file=sys.stderr)
                     LEN.append(len(X))
                     X_batch.extend(X)
 
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
                 if debug:
-                    print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE)
-                    print("\tX_batch.shape:", X_batch.shape)
+                    print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE, file=sys.stderr)
+                    print("\tX_batch.shape:", X_batch.shape, file=sys.stderr)
                 out_h5f.create_dataset('X' + str(i), data=X_batch)
     
     # convert to tensor and write directly to a binary PyTorch file for quick loading
@@ -316,9 +316,9 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
         X_all = []
         for idx in range(num_seqs):
             seq_decode = SEQ[idx].decode('ascii')
-            X = create_datapoints(seq_decode)
+            X = create_datapoints(seq_decode, debug=debug)
             if debug:      
-                print('\tX.shape:', X.shape)
+                print('\tX.shape:', X.shape, file=sys.stderr)
             LEN.append(len(X))
             X_all.extend(X)
 
@@ -353,17 +353,17 @@ def create_datapoints(input_string, debug=False):
 
     # One-hot-encode the inputs
     if debug:
-        print('\n\t[DEBUG] create_datapoints:')
-        print('\tlen(seq):', len(seq))
+        print('\n\t[DEBUG] create_datapoints:', file=sys.stderr)
+        print('\tlen(seq):', len(seq), file=sys.stderr)
     X0 = np.asarray(list(map(int, list(seq)))) # convert string to np array
     if debug:
-        print('\tX0.shape', X0.shape)
-    Xd = reformat_data(X0) # apply window size
+        print('\tX0.shape', X0.shape, file=sys.stderr)
+    Xd = reformat_data(X0, debug=debug) # apply window size
     if debug:
-        print('\tXd.shape', Xd.shape) 
+        print('\tXd.shape', Xd.shape, file=sys.stderr) 
     X = one_hot_encode(Xd) # one-hot encode
     if debug:
-        print('\tX', X.shape)
+        print('\tX', X.shape, file=sys.stderr)
     return X 
 
 def reformat_data(X0, debug=False):
@@ -379,27 +379,26 @@ def reformat_data(X0, debug=False):
     global CL_max 
     
     if debug:
-        print('\n\t[DEBUG] reformat_data')
-        print('\tlen(X0)', len(X0))
-        print('\tSL', SL, ' CL_max', CL_max)
+        print('\n\t[DEBUG] reformat_data', file=sys.stderr)
+        print('\tlen(X0)', len(X0), file=sys.stderr)
+        print('\tSL', SL, ' CL_max', CL_max, file=sys.stderr)
     # Calculate the number of data points needed
     num_points = ceil_div(len(X0) - CL_max, SL) # NOTE: subtracting the flanking here because X0 is already padded at the ends by create_datapoints and only want window on actual sequence length 
     if debug:
-        print('\tnum_points', num_points)
+        print('\tnum_points', num_points, file=sys.stderr)
     # Initialize arrays to hold the reformatted data
     Xd = np.zeros((num_points, SL + CL_max))
     if debug:
-        print('\tXd.shape', Xd.shape)
+        print('\tXd.shape', Xd.shape, file=sys.stderr)
     # Pad the end sequence to ensure divisibility
     padding_length = ((SL + CL_max) * num_points) - len(X0)
     X0 = np.pad(X0, (0, padding_length), 'constant', constant_values=0)
     if debug:
-        print('\tpadding_length', padding_length)
-        print('\tnew len(X0)', len(X0))
+        print('\tpadding_length', padding_length, file=sys.stderr)
+        print('\tnew len(X0)', len(X0), file=sys.stderr)
 
     # Fill the initialized arrays with data in blocks
     for i in range(num_points):
-        # print(SL * i, SL * (i + 1) + CL_max)
         Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
 
     return Xd    
@@ -459,16 +458,16 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
     """
     global CL_max 
 
-    # rem = X.shape[0] % N_GPUS
+    rem = X.shape[0] % N_GPUS
     clip = (CL_max-CL)//2
 
     if debug: 
-        print('\n\t[DEBUG] clip_datapoints')
-        print("\tX.shape: ", X.shape)
-        print("\tCL: ", CL)
-        print("\tN_GPUS: ", N_GPUS)
-        print("\trem: ", rem)
-        print("\tclip: ", clip)
+        print('\n\t[DEBUG] clip_datapoints', file=sys.stderr)
+        print("\tX.shape: ", X.shape, file=sys.stderr)
+        print("\tCL: ", CL, file=sys.stderr)
+        print("\tN_GPUS: ", N_GPUS, file=sys.stderr)
+        print("\trem: ", rem, file=sys.stderr)
+        print("\tclip: ", clip, file=sys.stderr)
 
     # if rem != 0 and clip != 0:
     #     X_clipped = X[:-rem, :, clip:-clip]
@@ -485,7 +484,7 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
         X_clipped = X
     
     if debug:
-        print("\tX_clipped.shape: ", X_clipped.shape)
+        print("\tX_clipped.shape: ", X_clipped.shape, file=sys.stderr)
     
     return X_clipped
 
@@ -509,7 +508,7 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     batch_size = params["BATCH_SIZE"]
     print(f'\t[INFO] Batch size: {batch_size}')
     if debug:
-        print('\n\t[DEBUG] get_prediction')
+        print('\n\t[DEBUG] get_prediction', file=sys.stderr)
 
     # put model in evaluation mode
     model.eval()
@@ -528,40 +527,30 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
         # iterate over shards in index 
         idxs = np.arange(len(h5f.keys()))
         if debug:
-            print('\th5 indices:', idxs)
+            print('\th5 indices:', idxs, file=sys.stderr)
 
         for i, shard_idx in enumerate(idxs, 1):
             if debug:
-                print('\tshard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']))
+                print('\tshard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']), file=sys.stderr)
             loader = load_shard(h5f, batch_size, shard_idx)
             if debug:
-                print('\t\tloader batches ', len(loader))
+                print('\t\tloader batches ', len(loader), file=sys.stderr)
 
             pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
             for batch in pbar:
                 DNAs = batch[0].to(device)
 
                 if debug:
-                    print('\t\t\tbatch DNA ', len(DNAs), end='')
+                    print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
 
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"]) # issue with clipping datapoints
+                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # issue with clipping datapoints
 
                 DNAs = DNAs.to(torch.float32).to(device)
 
                 y_pred = model(DNAs)
 
                 if debug:
-                    print('\tbatch ', len(y_pred))
-
-                # Logging loss for every update!!! IMPORTANT
-                # with open(metric_files["loss_every_update"], 'a') as f:
-                #     f.write(f"{loss.item()}\n")
-                # wandb.log({
-                #     f'{run_mode}/loss_every_update': loss.item(),
-                # })
-                # running_loss += loss.item()
-
-                # print("loss: ", loss.item())
+                    print('\tbatch ', len(y_pred), file=sys.stderr)
 
                 batch_ypred.append(y_pred.detach().cpu())
 
@@ -570,7 +559,7 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
             pbar.close()
     else:
         # all data should be loaded
-        X = torch.load(dataset_file)
+        X = torch.load(dataset_path)
         X = torch.tensor(X, dtype=torch.float32)
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
@@ -579,7 +568,7 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
         for batch in pbar:
             DNAs = batch[0].to(device)
 
-            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"])
+            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
 
             y_pred = model(DNAs)
@@ -598,7 +587,7 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     torch.save(batch_ypred, predict_path)
     
     # preview information
-    head_length = 5 if len(batch_ypred) >=5 else len(batch_ypred)
+    head_length = 5 if len(batch_ypred) >= 5 else len(batch_ypred)
     print(f'\t[INFO] Batch predictions collected. Format: {batch_ypred.shape}. Preview: {batch_ypred[:head_length]}')
     print(f'\t[INFO] Torch-compressed predictions saved to {predict_path}.')
 
@@ -609,7 +598,9 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
     '''
-    print(len(NAME), len(LEN), sum(LEN), len(batch_ypred))
+    if debug:
+        print('\n\t[DEBUG] generate_bed', file=sys.stderr)
+        print('\tlen(NAME)', len(NAME), 'len(LEN)', len(LEN), 'sum(LEN)', sum(LEN), 'len(batch_ypred)', len(batch_ypred), file=sys.stderr)
     assert len(NAME) == len(LEN)
     assert sum(LEN) == len(batch_ypred)
 
@@ -618,9 +609,7 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
         batch_ypred = torch.load(predict_file)
     print('\t[INFO] Batch predictions loaded.')
     print(f'\t[INFO] Shape of predictions: {batch_ypred.shape}')
-    print(f'\t[INFO] {len(LEN)} targets detected.')
-    if debug:
-        print('\n\t[DEBUG] generate_bed')
+    print(f'\t[INFO] {len(LEN)} targets detected.')        
 
     acceptor_bed_path = f'{output_dir}acceptor_predictions.bed'
     donor_bed_path = f'{output_dir}donor_predictions.bed'
@@ -637,22 +626,22 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
 
             # flatten the predictions to a 2D array [total positions, channels]
             if debug:
-                print('\traw prediction:')
-                print('\t',gene_predictions.shape)
-                print('\t',gene_predictions[:5])
+                print('\traw prediction:', file=sys.stderr)
+                print('\t',gene_predictions.shape, file=sys.stderr)
+                print('\t',gene_predictions[:5], file=sys.stderr)
             gene_predictions = gene_predictions.permute(0, 2, 1).contiguous().view(-1, gene_predictions.shape[1])
             if debug:
-                print('\tflattened:')
-                print('\t',gene_predictions.shape)
-                print('\t',gene_predictions[:5])
+                print('\tflattened:', file=sys.stderr)
+                print('\t',gene_predictions.shape, file=sys.stderr)
+                print('\t',gene_predictions[:5], file=sys.stderr)
 
             acceptor_scores = gene_predictions[:, 1].numpy()  # Acceptor channel
             donor_scores = gene_predictions[:, 2].numpy()     # Donor channel
             
             if debug:
-                print('\tacceptor\tdonor:')
-                print('\t',acceptor_scores.shape, donor_scores.shape)
-                print('\t',acceptor_scores[:5], donor_scores[:5])
+                print('\tacceptor\tdonor:', file=sys.stderr)
+                print('\t',acceptor_scores.shape, donor_scores.shape, file=sys.stderr)
+                print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
 
             # iterate over the positions and write to the respective BED files
             for pos in range(len(acceptor_scores)): # donor and acceptor have same scores 
@@ -696,11 +685,6 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
     print(f"Acceptor BED file saved to {acceptor_bed_path}")
     print(f"Donor BED file saved to {donor_bed_path}")
 
-
-    # set threshold for low values
-    # write a separate file for donor and acceptor 
-    # compress the ranges for same prediction score
-    # raise NotImplementedError('generate_bed not yet implemented.')
     pass
 
 ################
@@ -720,10 +704,6 @@ def predict(args):
     # inputs args.: model, output_dir, flanking_size, input sequence (fasta file), 
     # outputs: the log files, bed files with scores for all splice sites
 
-    # one-hot encode input sequence -> to DataLoader (as tensor) -> model.eval() -> get predictions (donor and acceptor sites only) / calculate loss
-    # iterate over FASTA -> chunk -> if input sequence >5k, put in hdf5 format
-    # generate BED file with scores for all splice sites -> visualize in IGV
-
     print("Running SpliceAI-toolkit with 'predict' mode")
 
     # get all input args
@@ -732,8 +712,9 @@ def predict(args):
     flanking_size = int(args.flanking_size)
     model_path = args.model
     input_sequence = args.input_sequence
-    gff_file = args.gff_file
+    gff_file = args.annotation_file
     threshold = float(args.threshold)
+    debug = args.debug
 
     global CL_max 
     CL_max = flanking_size
@@ -744,9 +725,8 @@ def predict(args):
 
     # create output directory
     os.makedirs(output_dir, exist_ok=True)
-    output_base, log_output_base = initialize_paths(output_dir, flanking_size, sequence_length)
+    output_base = initialize_paths(output_dir, flanking_size, sequence_length)
     print("* output_base: ", output_base, file=sys.stderr)
-    print("* log_output_base: ", log_output_base, file=sys.stderr)
     print("Model path: ", model_path, file=sys.stderr)
     print("Flanking sequence size: ", flanking_size, file=sys.stderr)
     print("Sequence length: ", sequence_length, file=sys.stderr)
@@ -773,7 +753,7 @@ def predict(args):
     print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
 
-    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ)
+    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -794,16 +774,6 @@ def predict(args):
     print("model: ", model, file=sys.stderr)
     print("params: ", params, file=sys.stderr)
 
-    ## log files
-    # predict_metric_files = {
-    #     'topk_donor': f'{log_output_base}/donor_topk.txt',
-    #     'auprc_donor': f'{log_output_base}/donor_accuracy.txt',
-    #     'topk_acceptor': f'{log_output_base}/acceptor_topk.txt',
-    #     'auprc_acceptor': f'{log_output_base}/acceptor_accuracy.txt',
-    #     'loss_batch': f'{log_output_base}/loss_batch.txt',
-    #     'loss_every_update': f'{log_output_base}/loss_every_update.txt' #only rly important one!
-    # } 
-
     print("--- %s seconds ---" % (time.time() - start_time))
 
 
@@ -816,7 +786,7 @@ def predict(args):
     criterion = None
 
     predict_file, batch_ypred = get_prediction(model, dataset_path, criterion, device, 
-                                    params, predict_metric_files, output_base)
+                                    params, predict_metric_files, output_base, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -826,9 +796,9 @@ def predict(args):
     start_time = time.time()
 
     if threshold:
-        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred, threshold)
+        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred, threshold, debug=debug)
     else:
-        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred)
+        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
