@@ -10,13 +10,6 @@ from spliceaitoolkit.fine_tune import fine_tune
 from spliceaitoolkit.predict import predict
 from spliceaitoolkit.variant import variant
 
-try:
-    from sys.stdin import buffer as std_in
-    from sys.stdout import buffer as std_out
-except ImportError:
-    from sys import stdin as std_in
-    from sys import stdout as std_out
-
 __VERSION__ = header.__version__
 
 def parse_args_create_data(subparsers):
@@ -61,16 +54,17 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
-    parser_predict.add_argument('--gff-file', '-g', type=str, required=False, help="Path to GFF file of coordinates for genes")
+    parser_predict.add_argument('--annotation-file', '-a', type=str, required=False, help="Path to GFF file of coordinates for genes")
     parser_predict.add_argument('--threshold', '-t', type=str, required=False, help="Threshold to determine acceptor and donor sites")
+    parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements directed to stderr)")
 
 
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
     parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str)
-    parser_variant.add_argument('-I', metavar='input', nargs='?', default=std_in,
+    parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin,
                         help='path to the input VCF file, defaults to standard in')
-    parser_variant.add_argument('-O', metavar='output', nargs='?', default=std_out,
+    parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout,
                         help='path to the output VCF file, defaults to standard out')
     parser_variant.add_argument('-R', metavar='reference', required=True,
                         help='path to the reference genome fasta file')
