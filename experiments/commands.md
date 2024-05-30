@@ -29,6 +29,10 @@ solutions:
 2. extract all useful information from predictions before saving into pt file, reducing file size -> but not as useful if needed for other applications
 3. find a different file format that can handle appending to files rather than reloading and recompressing... h5 files
 
+went with method 3 -> new issue, the prediction h5 file is 255.4 GIGABYTES
+- will try out method 2, need to dynamically detect this?
+    - instead, made flag with option to write info to file, otherwise will default to just extracting predictions without intermediate prediction file
+
 ### 3. full genome with toy annotation -> h5py file, smaller file
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
