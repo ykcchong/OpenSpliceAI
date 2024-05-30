@@ -23,7 +23,7 @@ from spliceaitoolkit.constants import *
 import psutil
 def log_memory_usage():
     process = psutil.Process(os.getpid())
-    print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB")
+    print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
 
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
@@ -306,6 +306,7 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
                 if debug:
                     print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE, file=sys.stderr)
                     print("\tX_batch.shape:", X_batch.shape, file=sys.stderr)
+                    log_memory_usage()
                 out_h5f.create_dataset('X' + str(i), data=X_batch)
     
     # convert to tensor and write directly to a binary PyTorch file for quick loading
@@ -555,6 +556,9 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
                 batch_ypred.append(y_pred.detach().cpu())
 
                 pbar.update(1)
+            
+            if debug:
+                log_memory_usage()
             
             pbar.close()
     else:

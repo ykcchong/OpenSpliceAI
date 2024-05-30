@@ -5,13 +5,13 @@ python setup.py install
 ## predict
 
 ### 1. full genome -> h5py file, predict on whole
-spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -t 0.9
+spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
 ### 2. full genome with full annotation -> h5py file, predicts on all genes
-spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff -t 0.9
+spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
 ### 3. full genome with toy annotation -> h5py file, smaller file
-spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9
+spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
 ### 4. toy genome -> no h5py file, predict on whole 
 
