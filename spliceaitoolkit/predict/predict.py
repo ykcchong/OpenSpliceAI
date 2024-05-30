@@ -26,7 +26,7 @@ def log_memory_usage():
     print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
 
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
-FLUSH_PREDICT_THRESHOLD = 200 # maximum number of predictions before flushing to file
+FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 
 #####################
@@ -176,7 +176,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
             for name, seq in zip(NAME, SEQ):
                 datafile.write(f'{name}\n{seq}\n')
     
-    print(f'\t[DEBUG] len(NAME): {len(NAME)}, len(SEQ): {len(SEQ)}')
+    print(f'\t[DEBUG] len(NAME): {len(NAME)}, len(SEQ): {len(SEQ)}', file=sys.stderr)
     
     return datafile_path, NAME, SEQ
 
@@ -589,6 +589,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
                 batch_ypred.append(y_pred)
 
                 if len(batch_ypred) > FLUSH_PREDICT_THRESHOLD: 
+                    print(f'\t[INFO] Reached {FLUSH_PREDICT_THRESHOLD} predictions. Flushing to file...')
                     batch_ypred_tensor = torch.cat(batch_ypred, dim=0)
                     flush_predictions(batch_ypred_tensor, predict_path)
                     batch_ypred = []  # reset the list after flushing
@@ -646,7 +647,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 ################
 
 # NOTE: need to handle naming when gff file not provided.
-def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshold=1e-6, debug=False):
+def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypred=None, debug=False):
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
     '''
@@ -838,7 +839,7 @@ def predict(args):
     print("--- Step 4: Get predictions ... ---")
     start_time = time.time()
 
-    predict_file, batch_ypred = get_prediction(model, dataset_path, device, params, output_base, debug=debug)
+    predict_file = get_prediction(model, dataset_path, device, params, output_base, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -848,9 +849,9 @@ def predict(args):
     start_time = time.time()
 
     if threshold:
-        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred, threshold, debug=debug)
+        generate_bed(predict_file, NAME, LEN, output_base, threshold=threshold, debug=debug)
     else:
-        generate_bed(predict_file, NAME, LEN, output_base, batch_ypred, debug=debug)
+        generate_bed(predict_file, NAME, LEN, output_base, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
