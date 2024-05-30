@@ -56,6 +56,7 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
     parser_predict.add_argument('--annotation-file', '-a', type=str, required=False, help="Path to GFF file of coordinates for genes")
     parser_predict.add_argument('--threshold', '-t', type=str, required=False, help="Threshold to determine acceptor and donor sites")
+    parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
     parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements directed to stderr)")
 
 
