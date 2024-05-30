@@ -26,6 +26,7 @@ def log_memory_usage():
     print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
 
 HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
+FLUSH_PREDICT_THRESHOLD = 200 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 
 #####################
@@ -42,59 +43,9 @@ def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='Spl
 
     return model_pred_outdir
 
-def setup_device():
-    """Select computation device based on availability."""
-    device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
-    return torch.device(device_str)
-
-# load given model and get params
-def load_model(device, flanking_size):
-    """Loads the given model."""
-    # Hyper-parameters:
-    # L: Number of convolution kernels
-    # W: Convolution window size in each residual unit
-    # AR: Atrous rate in each residual unit
-    L = 32
-    W = np.asarray([11, 11, 11, 11])
-    AR = np.asarray([1, 1, 1, 1])
-    N_GPUS = 2
-    BATCH_SIZE = 18*N_GPUS
-
-    if int(flanking_size) == 80:
-        W = np.asarray([11, 11, 11, 11])
-        AR = np.asarray([1, 1, 1, 1])
-        BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 400:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
-        BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 2000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10])
-        BATCH_SIZE = 12*N_GPUS
-    elif int(flanking_size) == 10000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21, 41, 41, 41, 41])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10, 25, 25, 25, 25])
-        BATCH_SIZE = 6*N_GPUS
-
-    CL = 2 * np.sum(AR*(W-1))
-
-    print("\033[1mContext nucleotides: %d\033[0m" % (CL))
-    print("\033[1mSequence length (output): %d\033[0m" % (SL))
-    
-    model = SpliceAI(L, W, AR).to(device)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
-
-    return model, params
-
-
-#########################
-##   DATA PROCESSING   ##
-#########################
+################
+##   STEP 1   ##
+################
 
 def process_gff(fasta_file, gff_file, output_dir):
     """
@@ -202,7 +153,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
         seq_id = record.long_name
         sequence = genes[record.name][:].seq    
         
-        # reverse strand if explicitly specified
+        # reverse strand if explicitly specified, name with strand info
         if neg_strands is not None and record.name in neg_strands: 
             seq_id = str(seq_id) + ':-'
             sequence = sequence.reverse.complement
@@ -231,106 +182,10 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
 
     # check_and_count_motifs(gene_seq, labels, gene.strand) # maybe adapt to count motifs that were found in the predicted file...
 
-def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
-    '''
-    Script to convert datafile into a one-hot encoded dataset ready to input to model. 
-    If HDF5 file used, data is chunked for loading. 
 
-    Parameters:
-    - datafile_path: path to the datafile
-    - output_dir: output directory path
-    - SEQ: list of sequences 
-
-    Returns:
-    - Path to the dataset.
-    - LEN: list of how many chunks each gene takes up
-    '''
-
-    # determine whether to convert an h5 or txt file
-    file_ext = os.path.splitext(datafile_path)[1]
-    assert file_ext in ['.h5', '.txt']
-    use_h5 = file_ext == '.h5'
-
-    # read the given input file if both datastreams were not provided
-    if SEQ == None:
-        print(f"\t[INFO] Reading {datafile_path} ... ")
-        if use_h5:
-            with h5py.File(datafile_path, 'r') as in_h5f:
-                SEQ = in_h5f['SEQ'][:]
-        else:
-            SEQ = []
-            with open(datafile_path, 'r') as in_file:
-                lines = in_file.readlines()
-                for i, line in enumerate(lines):
-                    if i % 2 == 1: 
-                        SEQ.append(line)
-    else:
-        print('\t[INFO] NAME and SEQ data provided, skipping reading ...')
-
-    num_seqs = len(SEQ)
-    if debug:
-        print('\n\t[DEBUG] convert_sequences', file=sys.stderr)
-        print("\tnum_seqs: ", num_seqs, file=sys.stderr)
-
-    LEN = [] # Number of batches for each sequence
-
-    # write to h5 file by chunking and one-hot encoding inputs
-    if use_h5:
-        dataset_path = f'{output_dir}dataset.h5'
-
-        print(f"\t[INFO] Writing {dataset_path} ... ")
-        with h5py.File(dataset_path, 'w') as out_h5f:
-               
-            # Create dataset
-            for i in range(num_seqs // CHUNK_SIZE):
-
-                # Each dataset has CHUNK_SIZE genes
-                if (i+1) == num_seqs // CHUNK_SIZE: # if last chunk, will add on all leftovers
-                    NEW_CHUNK_SIZE = CHUNK_SIZE + num_seqs % CHUNK_SIZE
-                else:
-                    NEW_CHUNK_SIZE = CHUNK_SIZE
-
-                X_batch = []
-                for j in range(NEW_CHUNK_SIZE):
-                    idx = i * CHUNK_SIZE + j
-
-                    seq_decode = SEQ[idx]
-                    X = create_datapoints(seq_decode, debug=debug) 
-                    if debug:      
-                        print('\tX.shape:', X.shape, file=sys.stderr)
-                    LEN.append(len(X))
-                    X_batch.extend(X)
-
-                # Convert batches to arrays and save as HDF5
-                X_batch = np.asarray(X_batch).astype('int8')
-                if debug:
-                    print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE, file=sys.stderr)
-                    print("\tX_batch.shape:", X_batch.shape, file=sys.stderr)
-                    log_memory_usage()
-                out_h5f.create_dataset('X' + str(i), data=X_batch)
-    
-    # convert to tensor and write directly to a binary PyTorch file for quick loading
-    else:
-        dataset_path = f'{output_dir}/dataset.pt'
-
-        print(f"\t[INFO] Writing {dataset_path} ... ")
-        X_all = []
-        for idx in range(num_seqs):
-            seq_decode = SEQ[idx].decode('ascii')
-            X = create_datapoints(seq_decode, debug=debug)
-            if debug:      
-                print('\tX.shape:', X.shape, file=sys.stderr)
-            LEN.append(len(X))
-            X_all.extend(X)
-
-        # convert batches to a tensor
-        X_tensor = torch.tensor(X_all, dtype=torch.int8)
-
-        # save as a binary file
-        torch.save(X_tensor, dataset_path)     
-    
-    return dataset_path, LEN
-
+################
+##   STEP 2   ##
+################
 
 def create_datapoints(input_string, debug=False):
     """
@@ -427,9 +282,165 @@ def one_hot_encode(Xd):
 
     return IN_MAP[Xd.astype('int8')]
 
-####################
-##   PREDICTION   ##
-####################
+def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
+    '''
+    Script to convert datafile into a one-hot encoded dataset ready to input to model. 
+    If HDF5 file used, data is chunked for loading. 
+
+    Parameters:
+    - datafile_path: path to the datafile
+    - output_dir: output directory path
+    - SEQ: list of sequences 
+
+    Returns:
+    - Path to the dataset.
+    - LEN: list of how many chunks each gene takes up
+    '''
+
+    # determine whether to convert an h5 or txt file
+    file_ext = os.path.splitext(datafile_path)[1]
+    assert file_ext in ['.h5', '.txt']
+    use_h5 = file_ext == '.h5'
+
+    # read the given input file if both datastreams were not provided
+    if SEQ == None:
+        print(f"\t[INFO] Reading {datafile_path} ... ")
+        if use_h5:
+            with h5py.File(datafile_path, 'r') as in_h5f:
+                SEQ = in_h5f['SEQ'][:]
+        else:
+            SEQ = []
+            with open(datafile_path, 'r') as in_file:
+                lines = in_file.readlines()
+                for i, line in enumerate(lines):
+                    if i % 2 == 1: 
+                        SEQ.append(line)
+    else:
+        print('\t[INFO] NAME and SEQ data provided, skipping reading ...')
+
+    num_seqs = len(SEQ)
+    if debug:
+        print('\n\t[DEBUG] convert_sequences', file=sys.stderr)
+        print("\tnum_seqs: ", num_seqs, file=sys.stderr)
+
+    LEN = [] # Number of batches for each sequence
+
+    # write to h5 file by chunking and one-hot encoding inputs
+    if use_h5:
+        dataset_path = f'{output_dir}dataset.h5'
+
+        print(f"\t[INFO] Writing {dataset_path} ... ")
+        with h5py.File(dataset_path, 'w') as out_h5f:
+               
+            # Create dataset
+            for i in range(num_seqs // CHUNK_SIZE):
+
+                # Each dataset has CHUNK_SIZE genes
+                if (i+1) == num_seqs // CHUNK_SIZE: # if last chunk, will add on all leftovers
+                    NEW_CHUNK_SIZE = CHUNK_SIZE + num_seqs % CHUNK_SIZE
+                else:
+                    NEW_CHUNK_SIZE = CHUNK_SIZE
+
+                X_batch = []
+                for j in range(NEW_CHUNK_SIZE):
+                    idx = i * CHUNK_SIZE + j
+
+                    seq_decode = SEQ[idx]
+                    X = create_datapoints(seq_decode, debug=debug) 
+                    if debug:      
+                        print('\tX.shape:', X.shape, file=sys.stderr)
+                    LEN.append(len(X))
+                    X_batch.extend(X)
+
+                # Convert batches to arrays and save as HDF5
+                X_batch = np.asarray(X_batch).astype('int8')
+                if debug:
+                    print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE, file=sys.stderr)
+                    print("\tX_batch.shape:", X_batch.shape, file=sys.stderr)
+                    log_memory_usage()
+                out_h5f.create_dataset('X' + str(i), data=X_batch)
+    
+    # convert to tensor and write directly to a binary PyTorch file for quick loading
+    else:
+        dataset_path = f'{output_dir}/dataset.pt'
+
+        print(f"\t[INFO] Writing {dataset_path} ... ")
+        X_all = []
+        for idx in range(num_seqs):
+            seq_decode = SEQ[idx].decode('ascii')
+            X = create_datapoints(seq_decode, debug=debug)
+            if debug:      
+                print('\tX.shape:', X.shape, file=sys.stderr)
+                log_memory_usage()
+            LEN.append(len(X))
+            X_all.extend(X)
+
+        # convert batches to a tensor
+        X_tensor = torch.tensor(X_all, dtype=torch.int8)
+
+        # save as a binary file
+        torch.save(X_tensor, dataset_path)     
+    
+    return dataset_path, LEN
+
+
+################
+##   STEP 3   ##
+################
+
+def setup_device():
+    """Select computation device based on availability."""
+    device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
+    return torch.device(device_str)
+
+# load given model and get params
+def load_model(device, flanking_size):
+    """Loads the given model."""
+    # Hyper-parameters:
+    # L: Number of convolution kernels
+    # W: Convolution window size in each residual unit
+    # AR: Atrous rate in each residual unit
+    L = 32
+    W = np.asarray([11, 11, 11, 11])
+    AR = np.asarray([1, 1, 1, 1])
+    N_GPUS = 2
+    BATCH_SIZE = 18*N_GPUS
+
+    if int(flanking_size) == 80:
+        W = np.asarray([11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1])
+        BATCH_SIZE = 18*N_GPUS
+    elif int(flanking_size) == 400:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
+        BATCH_SIZE = 18*N_GPUS
+    elif int(flanking_size) == 2000:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10])
+        BATCH_SIZE = 12*N_GPUS
+    elif int(flanking_size) == 10000:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21, 41, 41, 41, 41])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10, 25, 25, 25, 25])
+        BATCH_SIZE = 6*N_GPUS
+
+    CL = 2 * np.sum(AR*(W-1))
+
+    print("\033[1mContext nucleotides: %d\033[0m" % (CL))
+    print("\033[1mSequence length (output): %d\033[0m" % (SL))
+    
+    model = SpliceAI(L, W, AR).to(device)
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+
+    return model, params
+
+
+################
+##   STEP 4   ##
+################
 
 # only used when file in hdf5
 def load_shard(h5f, batch_size, shard_idx):
@@ -490,7 +501,28 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
     return X_clipped
 
 
-def get_prediction(model, dataset_path, criterion, device, params, metric_files, output_dir, debug=False):
+def flush_predictions(predictions, file_path):
+    """
+    Flush predictions continuously to a file, in cases where too many predictions are currently in memory. 
+
+    Parameters:
+    - predictions: Tensor of predictions to save.
+    - file_path: Path to the file where predictions are saved.
+    """
+    if os.path.exists(file_path):
+        # Load existing predictions
+        existing_predictions = torch.load(file_path)
+        # Append new predictions
+        updated_predictions = torch.cat((existing_predictions, predictions), dim=0)
+    else:
+        # If file doesn't exist, just use the new predictions
+        updated_predictions = predictions
+
+    # Save the updated predictions
+    torch.save(updated_predictions, file_path)
+
+
+def get_prediction(model, dataset_path, device, params, output_dir, debug=False):
     """
     Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
@@ -505,8 +537,10 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     - Path to predictions binary file
     - Raw predictions (saved in memory)
     """
-    # define batch size
+    # define batch_size and predict_path
     batch_size = params["BATCH_SIZE"]
+    predict_path = f'{output_dir}predict.pt'
+
     print(f'\t[INFO] Batch size: {batch_size}')
     if debug:
         print('\n\t[DEBUG] get_prediction', file=sys.stderr)
@@ -522,7 +556,7 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
     
     batch_ypred = [] # list of tensors containing the predictions from model
 
-    if use_h5:
+    if use_h5: # read from the h5 file
         h5f = h5py.File(dataset_path, 'r')
 
         # iterate over shards in index 
@@ -544,16 +578,20 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
                 if debug:
                     print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
 
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # issue with clipping datapoints
-
+                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                 DNAs = DNAs.to(torch.float32).to(device)
-
                 y_pred = model(DNAs)
+                y_pred = y_pred.detach().cpu()
 
                 if debug:
                     print('\tbatch ', len(y_pred), file=sys.stderr)
 
-                batch_ypred.append(y_pred.detach().cpu())
+                batch_ypred.append(y_pred)
+
+                if len(batch_ypred) > FLUSH_PREDICT_THRESHOLD: 
+                    batch_ypred_tensor = torch.cat(batch_ypred, dim=0)
+                    flush_predictions(batch_ypred_tensor, predict_path)
+                    batch_ypred = []  # reset the list after flushing
 
                 pbar.update(1)
             
@@ -561,8 +599,12 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
                 log_memory_usage()
             
             pbar.close()
-    else:
-        # all data should be loaded
+        
+        h5f.close()
+
+    else: # read from the PyTorch file
+
+        # load all data
         X = torch.load(dataset_path)
         X = torch.tensor(X, dtype=torch.float32)
         ds = TensorDataset(X)
@@ -585,19 +627,25 @@ def get_prediction(model, dataset_path, criterion, device, params, metric_files,
 
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
     
-    # write all predictions to a predict_file
-    predict_path = f'{output_dir}predict.pt'
-    batch_ypred = torch.cat(batch_ypred, dim=0)
-    torch.save(batch_ypred, predict_path)
+    # flush any remaining predictions
+    print('\t[INFO] Saving predictions...')
+    if batch_ypred:
+        batch_ypred_tensor = torch.cat(batch_ypred, dim=0)
+        flush_predictions(batch_ypred_tensor, predict_path)
     
     # preview information
     head_length = 5 if len(batch_ypred) >= 5 else len(batch_ypred)
     print(f'\t[INFO] Batch predictions collected. Format: {batch_ypred.shape}. Preview: {batch_ypred[:head_length]}')
     print(f'\t[INFO] Torch-compressed predictions saved to {predict_path}.')
 
-    return predict_path, batch_ypred
+    return predict_path
 
 
+################
+##   STEP 5   ##
+################
+
+# NOTE: need to handle naming when gff file not provided.
 def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshold=1e-6, debug=False):
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
@@ -648,7 +696,11 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
                 print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
 
             # iterate over the positions and write to the respective BED files
-            for pos in range(len(acceptor_scores)): # donor and acceptor have same scores 
+            for pos in range(len(acceptor_scores)): # donor and acceptor should have same num of scores 
+
+                # obtain scores (keeping in mind strandedness)
+                acceptor_score = acceptor_scores[pos] if strand == '+' else donor_scores[pos]
+                donor_score = donor_scores[pos] if strand == '+' else acceptor_scores[pos]   
 
                 # parse out key information from name
                 pattern = re.compile(r'.*chr\d+:(\d+)-(\d+)\(([-+])\):([+])')
@@ -659,30 +711,31 @@ def generate_bed(predict_file, NAME, LEN, output_dir, batch_ypred=None, threshol
                     end = int(match.group(2))
                     strand = match.group(3)
                     name = seq_name[:-2] # remove endings
-                else:
-                    print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Skipping...')
-                    continue
-                
-                # get scores
-                acceptor_score = acceptor_scores[pos]
-                donor_score = donor_scores[pos]                
 
-                # handle file writing based on strand
-                if strand == '+':
+                    # handle file writing based on strand
+                    if strand == '+':
+                        if acceptor_score > threshold:
+                            acceptor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tAcceptor\t{acceptor_score:.6f}\n")
+                        if donor_score > threshold:
+                            donor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tDonor\t{donor_score:.6f}\n")
+                    elif strand == '-':
+                        if acceptor_score > threshold:
+                            acceptor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tAcceptor\t{acceptor_score:.6f}\n")
+                        if donor_score > threshold:
+                            donor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tDonor\t{donor_score:.6f}\n")
+                    else:
+                        print(f'\t[ERR] Undefined strand {strand}. Skipping...')
+                        continue
+
+                else: # does not match pattern, but could be due to not having gff file, still keep writing it
+                    print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
+                    
+                    # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
                     if acceptor_score > threshold:
-                        acceptor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tAcceptor\t{acceptor_score:.6f}\n")
+                        acceptor_bed.write(f"{name}\t{pos}\t{pos+2}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
                     if donor_score > threshold:
-                        donor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tDonor\t{donor_score:.6f}\n")
-                elif strand == '-':
-                    acceptor_score, donor_score = donor_score, acceptor_score # positions inverted
-                    if acceptor_score > threshold:
-                        acceptor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tAcceptor\t{acceptor_score:.6f}\n")
-                    if donor_score > threshold:
-                        donor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tDonor\t{donor_score:.6f}\n")
-                else:
-                    print(f'\t[ERR] Undefined strand {strand}. Skipping...')
-                    continue
-            
+                        donor_bed.write(f"{name}\t{pos}\t{pos+2}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+
             # update the start index for the next gene
             start_idx = end_idx
 
@@ -785,12 +838,7 @@ def predict(args):
     print("--- Step 4: Get predictions ... ---")
     start_time = time.time()
 
-    # for testing
-    predict_metric_files = None
-    criterion = None
-
-    predict_file, batch_ypred = get_prediction(model, dataset_path, criterion, device, 
-                                    params, predict_metric_files, output_base, debug=debug)
+    predict_file, batch_ypred = get_prediction(model, dataset_path, device, params, output_base, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
