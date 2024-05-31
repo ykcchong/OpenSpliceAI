@@ -673,10 +673,6 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
     # iterate over the positions and write to the respective BED files
     for pos in range(len(acceptor_scores)): # donor and acceptor should have same num of scores 
 
-        # obtain scores (keeping in mind strandedness)
-        acceptor_score = acceptor_scores[pos] if strand == '+' else donor_scores[pos]
-        donor_score = donor_scores[pos] if strand == '+' else acceptor_scores[pos]   
-
         # parse out key information from name
         pattern = re.compile(r'.*chr\d+:(\d+)-(\d+)\(([-+])\):([+])')
         match = pattern.match(seq_name)
@@ -686,6 +682,10 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
             end = int(match.group(2))
             strand = match.group(3)
             name = seq_name[:-2] # remove endings
+
+            # obtain scores (keeping in mind strandedness)
+            acceptor_score = acceptor_scores[pos] if strand == '+' else donor_scores[pos]
+            donor_score = donor_scores[pos] if strand == '+' else acceptor_scores[pos]   
 
             # handle file writing based on strand
             if strand == '+':
@@ -704,12 +704,18 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
 
         else: # does not match pattern, but could be due to not having gff file, still keep writing it
             print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
+
+            strand = seq_name[-1] # use the ending as the strand (when lack of other information)
+
+            # obtain scores (keeping in mind strandedness)
+            acceptor_score = acceptor_scores[pos] if strand == '+' else donor_scores[pos]
+            donor_score = donor_scores[pos] if strand == '+' else acceptor_scores[pos]  
             
             # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
             if acceptor_score > threshold:
-                acceptor_bed.write(f"{name}\t{pos}\t{pos+2}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                acceptor_bed.write(f"{seq_name}\t{pos}\t{pos+2}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
             if donor_score > threshold:
-                donor_bed.write(f"{name}\t{pos}\t{pos+2}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+                donor_bed.write(f"{seq_name}\t{pos}\t{pos+2}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
 
 
 # NOTE: need to handle naming when gff file not provided.
@@ -724,8 +730,9 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 
     # load the predictions (if not already there)
     if use_h5:
-        h5f = h5py.File(predict_file, 'r')
-        batch_ypred = h5f['predictions']
+        with h5py.File(predict_file, 'r') as h5f:
+            batch_ypred_np = h5f['predictions'][:]
+        batch_ypred = torch.tensor(batch_ypred_np)
     elif batch_ypred is not None:
         batch_ypred = torch.load(predict_file)
 
@@ -757,9 +764,6 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 
             # update the start index for the next gene
             start_idx = end_idx
-
-    if use_h5:
-        h5f.close()
 
     print(f"\t[INFO] Acceptor BED file saved to {acceptor_bed_path}")
     print(f"\t[INFO] Donor BED file saved to {donor_bed_path}")
@@ -831,8 +835,7 @@ def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_d
 
                 # writing to BED
                 seq_name = NAME[i]
-                gene_predictions = y_pred.permute(0, 2, 1).contiguous().view(-1, y_pred.shape[1])
-                write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+                write_batch_to_bed(seq_name, y_pred, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
                 
                 pbar.update(1)
             
@@ -1002,8 +1005,6 @@ def predict(args):
             predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))
-
-
 
 
 ### TODO: tests
