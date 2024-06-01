@@ -300,7 +300,7 @@ def process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f, debug=False):
         log_memory_usage()
     out_h5f.create_dataset('X' + str(i), data=X_batch)
 
-def convert_sequences(datafile_path, output_dir, SEQ=None, max_workers=1, debug=False):
+def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
     '''
     Script to convert datafile into a one-hot encoded dataset ready to input to model. 
     If HDF5 file used, data is chunked for loading. 
@@ -342,15 +342,14 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, max_workers=1, debug=
         print("\tnum_seqs: ", num_seqs, file=sys.stderr)
 
     LEN = [] # Number of batches for each sequence
-
+    
     # write to h5 file by chunking and one-hot encoding inputs
     if use_h5:
         dataset_path = f'{output_dir}dataset.h5'
 
         print(f"\t[INFO] Writing {dataset_path} ... ")
-        with h5py.File(dataset_path, 'w') as out_h5f, ThreadPoolExecutor(max_workers=max_workers) as executor:
-            
-            futures = [] # for collecting threads 
+
+        with h5py.File(dataset_path, 'w') as out_h5f:
 
             # Create dataset
             for i in tqdm(range(num_seqs // CHUNK_SIZE), desc='Processing chunks...'):
@@ -361,16 +360,9 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, max_workers=1, debug=
                 else:
                     NEW_CHUNK_SIZE = CHUNK_SIZE
 
-                # multithreading chunk conversion 
-                futures.append(executor.submit(
-                    process_chunk,
-                    NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f, debug
-                ))
-            
-            # ensure tasks are completed
-            for future in tqdm(as_completed(futures), desc='Synchronizing tasks...', total=len(futures)):
-                future.result()
-    
+                # Chunk conversion 
+                process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f, debug)            
+      
     # convert to tensor and write directly to a binary PyTorch file for quick loading
     else:
         dataset_path = f'{output_dir}/dataset.pt'
@@ -691,28 +683,28 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         # parse out key information from name
         pattern = re.compile(r'.*chr\d+:(\d+)-(\d+)\(([-+])\):([+])')
         match = pattern.match(seq_name)
-
+        
         if match:
             start = int(match.group(1))
             end = int(match.group(2))
             strand = match.group(3)
             name = seq_name[:-2] # remove endings
 
-            # obtain scores (keeping in mind strandedness)
-            acceptor_score = acceptor_scores[pos] if strand == '+' else donor_scores[pos]
-            donor_score = donor_scores[pos] if strand == '+' else acceptor_scores[pos]   
+            # obtain scores
+            acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
+            donor_score = donor_scores[pos] if strand=='+' else acceptor_scores[pos]
 
             # handle file writing based on strand
             if strand == '+':
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{name}\t{start+pos-2}\t{start+pos}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{start+pos}\t{start+pos+2}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
             elif strand == '-':
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{end-pos-1}\t{end-pos+1}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tDonor\t{donor_score:.6f}\n")
             else:
                 print(f'\t[ERR] Undefined strand {strand}. Skipping...')
                 continue
@@ -721,16 +713,16 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
             print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
 
             strand = seq_name[-1] # use the ending as the strand (when lack of other information)
-
-            # obtain scores (keeping in mind strandedness)
-            acceptor_score = acceptor_scores[pos] if strand == '+' else donor_scores[pos]
-            donor_score = donor_scores[pos] if strand == '+' else acceptor_scores[pos]  
             
+            # obtain scores
+            acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
+            donor_score = donor_scores[pos] if strand=='+' else acceptor_scores[pos]
+
             # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
             if acceptor_score > threshold:
-                acceptor_bed.write(f"{seq_name}\t{pos}\t{pos+2}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
             if donor_score > threshold:
-                donor_bed.write(f"{seq_name}\t{pos}\t{pos+2}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+                donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
 
 
 # NOTE: need to handle naming when gff file not provided.
@@ -806,9 +798,9 @@ def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_d
     batch_size = params["BATCH_SIZE"]
     count = 0
     print(f'\t[INFO] Batch size: {batch_size}')
+    print(f'\t[INFO] Using {max_workers} threads')
     if debug:
         print('\n\t[DEBUG] extract_predictions', file=sys.stderr)
-        print(f'\t Using {max_workers} threads')
         print('\tlen(NAME)', len(NAME), 'len(LEN)', len(LEN), file=sys.stderr)
     assert len(NAME) == len(LEN)
 
@@ -951,7 +943,7 @@ def predict(args):
     threshold = float(args.threshold)
     debug = args.debug
     predict_all = args.predict_all
-    threads = args.threads
+    threads = int(args.threads)
 
     global CL_max 
     CL_max = flanking_size
@@ -989,7 +981,7 @@ def predict(args):
     print("--- Step 2: Creating one-hot encoding ... ---")
     start_time = time.time()
 
-    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, max_workers=threads, debug=debug)
+    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -1041,9 +1033,9 @@ def predict(args):
         start_time = time.time()
         
         if threshold:
-            predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
+            predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, max_workers=threads, threshold=threshold, debug=debug)
         else:
-            predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, debug=debug)
+            predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, max_workers=threads, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))
 
