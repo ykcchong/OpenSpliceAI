@@ -15,6 +15,10 @@ failing on step 2: this is because its converting the whole genome into the data
 ### 2. full genome with full annotation -> h5py file, predicts on all genes
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
+**with 8 threads**
+spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapien
+s/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff -t 0.9 -@ 8 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
+
 * fix:
 failing on step 4: this is because it is running out of memory when saving the prediction results to the torch file (the stored array is too large)
 - update get_prediction -> set a PERIODIC_SAVE_THRESHOLD_BATCHES variable, if reached this number of batches, periodically flush out the batch_ypred into the file, and load it again for next time. only execute like this if there are more thresholds than needed, and finish by setting the batch_ypred to None so that it is passed in as such to generate_bed
@@ -32,6 +36,11 @@ solutions:
 went with method 3 -> new issue, the prediction h5 file is 255.4 GIGABYTES
 - will try out method 2, need to dynamically detect this?
     - instead, made flag with option to write info to file, otherwise will default to just extracting predictions without intermediate prediction file
+
+new method works -> is very slow specifically in BED file writing
+- use ThreadPoolExecutor to multithread the BED file writing process 
+    - do in both the generate_bed and extract_predictions functions
+    - maybe in the future figure out if its possible with get_prediction
 
 ### 3. full genome with toy annotation -> h5py file, smaller file
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D -p > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
