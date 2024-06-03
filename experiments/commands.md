@@ -4,6 +4,15 @@ python setup.py install
 
 # predict
 
+## updates (since last working model)
+1. use h5 files for storing predictions
+- previously used pt, but found that if too many predictions saved, would run out of memory -> needed a way to flush predictions to file continuously, pt does not support but h5 does
+2. 4o option
+- faster method which combines prediction and bed file writing together, this reduces the stored memory size, only extracting the necessary donors and acceptors above the threshold
+- is now the default method, but 4 + 5 possible
+3. tried multithreading -> DOES NOT WORK -> removed
+
+
 ## questions for kh
 1. is multithreading implemented in python, or will it be easier to do in C? will this command-line utility eventually be converted to Cpython like in Splam? it would provide a significant speedup in C implementation, and multithreading will definitely make predit run a lot faster (it is also inherently parallelizeable)
     - if implementing in Python, should I use ThreadPoolExecutor, or is there a better way to do this? double-check logic
@@ -16,7 +25,7 @@ python setup.py install
 ## 1. full genome -> h5py file, predict on whole
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
-[] failing on step 2: this is because its converting the whole genome into the datafile, and each FASTA entry in this file is a whole chromosome -> too large, the batch size does not apply properly, running out of memory when converting the whole chromosome into an entry of the H5 file. 
+[] failing (out of memory) on step 2: this is because its converting the whole genome into the datafile, and each FASTA entry in this file is a whole chromosome -> too large, the batch size does not apply properly, running out of memory when converting the whole chromosome into an entry of the H5 file. 
 - one way could be to split the chromosome into different pieces, need a way to detect that, and then create a new FASTA file which demarcates the different "pieces" of the chromosome. This time, need to make sure the pieces overlap by the flanking size, so that it predicts continuously on the whole chromosome.
 - simpler way would just be to tell the user the genome is too large, need to make more specific entries in FASTA. 
 
@@ -65,7 +74,19 @@ solutions:
 ## 3. full genome with toy annotation -> h5py file, smaller file
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D -p > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
-* works
+**with 8 threads**
+spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -@ 8 -D -p > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
+
+### testing notes (originally worked, broke after some improvements)
+[x] benchmarks find that convert_sequences multithreading is slower
+- undo multithreading
+
+[] file corruption during bed writing with 4 and 5, although marginal speedup observed. 
+- i think cause is due to the multithreading... multiple attempts to write to file at the same time
+- NO MORE MULTITHREADING GET RID OF IT AHHHH
+
+[] still incorrect coordinates with 4o, issue is not observed in 4 and 5 -> note that the order of genes is different, but same number of predictions generated as correct run
+- probably due to some way the gene information is loaded (ordering during storage?)
 
 ## 4. toy genome -> no h5py file, predict on whole 
 

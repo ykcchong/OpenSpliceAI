@@ -9,7 +9,6 @@ import platform
 import h5py
 import time
 from pyfaidx import Fasta
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from spliceaitoolkit.predict.spliceai import *
 from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
@@ -554,8 +553,6 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
     assert file_ext in ['.h5', '.pt']
     use_h5 = file_ext == '.h5'
     
-    batch_ypred = [] # list of tensors containing the predictions from model
-    
     if use_h5: # read from the h5 file
 
         # initialize predict file (to prevent continuous appending)
@@ -570,12 +567,14 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
             print('\th5 indices:', idxs, file=sys.stderr)
 
         for i, shard_idx in enumerate(idxs, 1):
+
             if debug:
                 print('\tshard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']), file=sys.stderr)
             loader = load_shard(h5f, batch_size, shard_idx)
             if debug:
                 print('\t\tloader batches ', len(loader), file=sys.stderr)
 
+            batch_ypred = [] # list of tensors containing the predictions from model
             pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
             for batch in pbar:
                 DNAs = batch[0].to(device)
@@ -610,6 +609,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 
             # flush any remaining predictions
             if batch_ypred:
+                print(f'\t[INFO] Flushing remaining {len(batch_ypred)} predictions..')
                 batch_ypred_tensor = torch.cat(batch_ypred, dim=0)
                 flush_predictions(batch_ypred_tensor, predict_path)
         
@@ -624,6 +624,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
+        batch_ypred = [] # list of tensors containing the predictions from model
         pbar = tqdm(loader, leave=False, total=len(loader))
         for batch in pbar:
             DNAs = batch[0].to(device)
@@ -726,7 +727,7 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
 
 
 # NOTE: need to handle naming when gff file not provided.
-def generate_bed(predict_file, NAME, LEN, output_dir, max_workers=1, threshold=1e-6, batch_ypred=None, debug=False):
+def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypred=None, debug=False):
     ''' 
     Generates the BEDgraph file pertaining to the predictions 
     '''
@@ -756,8 +757,7 @@ def generate_bed(predict_file, NAME, LEN, output_dir, max_workers=1, threshold=1
     acceptor_bed_path = f'{output_dir}acceptor_predictions.bed'
     donor_bed_path = f'{output_dir}donor_predictions.bed'
 
-    with open(acceptor_bed_path, 'w') as acceptor_bed, open(donor_bed_path, 'w') as donor_bed, ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = []
+    with open(acceptor_bed_path, 'w') as acceptor_bed, open(donor_bed_path, 'w') as donor_bed:
         start_idx = 0
         for i in tqdm(range(len(NAME)), desc='Generating BED tasks...'):
             seq_name = NAME[i]
@@ -767,19 +767,11 @@ def generate_bed(predict_file, NAME, LEN, output_dir, max_workers=1, threshold=1
             # extract predictions for the current gene
             gene_predictions = batch_ypred[start_idx:end_idx]
 
-            # multithread the BED file writing
-            futures.append(executor.submit(
-                write_batch_to_bed,
-                seq_name, gene_predictions, acceptor_bed, donor_bed, threshold, debug
-            ))
-            # write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+            # write to BED file
+            write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
 
             # update the start index for the next gene
             start_idx = end_idx
-
-        # ensure tasks are completed
-        for future in tqdm(as_completed(futures), desc='Writing BED files...', total=len(futures)):
-            future.result()
 
     print(f"\t[INFO] Acceptor BED file saved to {acceptor_bed_path}")
     print(f"\t[INFO] Donor BED file saved to {donor_bed_path}")
@@ -789,16 +781,12 @@ def generate_bed(predict_file, NAME, LEN, output_dir, max_workers=1, threshold=1
 ##   STEP 4o   ##
 #################
 
-def predict_and_write():
-    pass
-    
-def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_dir, max_workers=1, threshold=1e-6, debug=False):
+def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_dir, threshold=1e-6, debug=False):
     
     # define batch_size and count
     batch_size = params["BATCH_SIZE"]
     count = 0
     print(f'\t[INFO] Batch size: {batch_size}')
-    print(f'\t[INFO] Using {max_workers} threads')
     if debug:
         print('\n\t[DEBUG] extract_predictions', file=sys.stderr)
         print('\tlen(NAME)', len(NAME), 'len(LEN)', len(LEN), file=sys.stderr)
@@ -820,65 +808,53 @@ def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_d
     donor_bed = open(donor_bed_path, 'w')
     
     if use_h5: # read from the h5 file
-       
-        # read dataset and iterate over shards in index 
-        h5f = h5py.File(dataset_path, 'r')
-        idxs = np.arange(len(h5f.keys()))
-
-        if debug:
-            print('\th5 indices:', idxs, file=sys.stderr)
         
-        # initialize the multithread executor
-        executor = ThreadPoolExecutor(max_workers=max_workers)
-        futures = []
+        # using the multithread executor
+        with h5py.File(dataset_path, 'r') as h5f:
+            
+            # iterate over shards in index
+            idxs = np.arange(len(h5f.keys()))
 
-        for i, shard_idx in enumerate(idxs, 1):
             if debug:
-                print('\tshard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']), file=sys.stderr)
-            loader = load_shard(h5f, batch_size, shard_idx)
-            if debug:
-                print('\t\tloader batches ', len(loader), file=sys.stderr)
+                print('\th5 indices:', idxs, file=sys.stderr)
 
-            pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
-            for batch in pbar:
-
-                # getting predictions
-                DNAs = batch[0].to(device)
+            for i, shard_idx in enumerate(idxs, 1):
 
                 if debug:
-                    print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
-
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
-                DNAs = DNAs.to(torch.float32).to(device)
-                y_pred = model(DNAs)
-                y_pred = y_pred.detach().cpu()
-                count += 1
-
+                    print('\tshard_idx, h5 len', shard_idx, len(h5f[f'X{shard_idx}']), file=sys.stderr)
+                loader = load_shard(h5f, batch_size, shard_idx)
                 if debug:
-                    print('\tbatch ', len(y_pred), file=sys.stderr)
+                    print('\t\tloader batches ', len(loader), file=sys.stderr)
 
-                # writing to BED multithreaded
-                seq_name = NAME[i]
-                futures.append(executor.submit(
-                    write_batch_to_bed,
-                    seq_name, y_pred, acceptor_bed, donor_bed, threshold, debug
-                ))
-                # write_batch_to_bed(seq_name, y_pred, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+                pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(idxs)}')
+                for batch in pbar:
+
+                    # getting predictions
+                    DNAs = batch[0].to(device)
+
+                    if debug:
+                        print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
+
+                    DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
+                    DNAs = DNAs.to(torch.float32).to(device)
+                    y_pred = model(DNAs)
+                    y_pred = y_pred.detach().cpu()
+                    count += 1
+
+                    if debug:
+                        print('\tbatch ', len(y_pred), file=sys.stderr)
+
+                    # writing to BED multithreaded
+                    seq_name = NAME[i]
+                    write_batch_to_bed(seq_name, y_pred, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+                    
+                    pbar.update(1)
                 
-                pbar.update(1)
-            
-            if debug:
-                log_memory_usage()
-            
-            pbar.close()
-
-            # ensure tasks are completed
-            for future in tqdm(as_completed(futures), desc='Writing BED files...', total=len(futures)):
-                future.result()
-        
-        executor.shutdown()
-        h5f.close()
-
+                if debug:
+                    log_memory_usage()
+                
+                pbar.close()
+                
     else: # read from the PyTorch file
 
         # load all data
@@ -910,6 +886,7 @@ def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_d
     acceptor_bed.close()
     donor_bed.close()
 
+    print(f'\t[INFO] {count} predictions collected.')
     print(f"\t[INFO] Acceptor BED file saved to {acceptor_bed_path}")
     print(f"\t[INFO] Donor BED file saved to {donor_bed_path}")
 
@@ -940,11 +917,11 @@ def predict(args):
     model_path = args.model
     input_sequence = args.input_sequence
     gff_file = args.annotation_file
-    threshold = float(args.threshold)
+    threshold = float(args.threshold) if args.threshold else 1e-6
+    # threads = int(args.threads) if args.threads else 1
     debug = args.debug
     predict_all = args.predict_all
-    threads = int(args.threads)
-
+    
     global CL_max 
     CL_max = flanking_size
 
@@ -1019,10 +996,7 @@ def predict(args):
         print("--- Step 5: Generating BED report ... ---")
         start_time = time.time()
 
-        if threshold:
-            generate_bed(predict_file, NAME, LEN, output_base, max_workers=threads, threshold=threshold, debug=debug)
-        else:
-            generate_bed(predict_file, NAME, LEN, output_base, max_workers=threads, debug=debug)
+        generate_bed(predict_file, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -1032,10 +1006,7 @@ def predict(args):
         print("--- Step 4o: Extract predictions to BED ... ---")
         start_time = time.time()
         
-        if threshold:
-            predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, max_workers=threads, threshold=threshold, debug=debug)
-        else:
-            predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, max_workers=threads, debug=debug)
+        predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))
 
