@@ -60,11 +60,10 @@ solutions:
     - maybe in the future figure out if its possible with get_prediction
     - *NOTE: need to determine whether multithreading screws up order of BED file, esp LEN variable in convert_sequences*
 
-[] there is actually slowdown when multithreading convert_sequences...
+[x] there is actually slowdown when multithreading convert_sequences...
 - on the upside, threading automatically sorts all sequences in order
 - will try a different multithreading method
-- if it does not work
-
+- actually just got rid of threads altogether
 
 [] errors detected (not present in 3 for some reason), seems to have overinflated prediction numbers, as well as wrong coordinates for essentially all of the genes
 - likely not from multithreading as issue was present before it was implemented 
@@ -73,6 +72,8 @@ solutions:
 
 ## 3. full genome with toy annotation -> h5py file, smaller file
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D -p > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
+
+spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
 **with 8 threads**
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -@ 8 -D -p > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
