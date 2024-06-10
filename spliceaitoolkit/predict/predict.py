@@ -340,7 +340,7 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
         print('\n\t[DEBUG] convert_sequences', file=sys.stderr)
         print("\tnum_seqs: ", num_seqs, file=sys.stderr)
 
-    LEN = [] # Number of batches for each sequence
+    LEN = [] # number of batches for each sequence
     
     # write to h5 file by chunking and one-hot encoding inputs
     if use_h5:
@@ -350,16 +350,16 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
 
         with h5py.File(dataset_path, 'w') as out_h5f:
 
-            # Create dataset
+            # create dataset
             for i in tqdm(range(num_seqs // CHUNK_SIZE), desc='Processing chunks...'):
 
-                # Each dataset has CHUNK_SIZE genes
+                # each dataset has CHUNK_SIZE genes
                 if (i+1) == num_seqs // CHUNK_SIZE: # if last chunk, will add on all leftovers
                     NEW_CHUNK_SIZE = CHUNK_SIZE + num_seqs % CHUNK_SIZE
                 else:
                     NEW_CHUNK_SIZE = CHUNK_SIZE
 
-                # Chunk conversion 
+                # chunk conversion 
                 process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f, debug)            
       
     # convert to tensor and write directly to a binary PyTorch file for quick loading
@@ -431,8 +431,8 @@ def load_model(device, flanking_size):
 
     CL = 2 * np.sum(AR*(W-1))
 
-    print("\033[1mContext nucleotides: %d\033[0m" % (CL))
-    print("\033[1mSequence length (output): %d\033[0m" % (SL))
+    print(f"\t[INFO] Context nucleotides {CL}")
+    print(f"\t[INFO] Sequence length (output): {SL}")
     
     model = SpliceAI(L, W, AR).to(device)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
@@ -646,9 +646,14 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
         torch.save(predictions, predict_path)
         
     # preview information
-    head_length = 5 if len(batch_ypred) >= 5 else len(batch_ypred)
-    print(f'\t[INFO] {count} predictions collected. Preview: {batch_ypred[:head_length]}')
-    print(f'\t[INFO] Torch-compressed predictions saved to {predict_path}.')
+    print(f'\t[INFO] {count} predictions collected.')
+    if debug:
+        try:
+            head_length = 5 if len(batch_ypred) >= 5 else len(batch_ypred)
+            print(f'\tPreview predictions: {batch_ypred[:head_length]}')
+        except Exception as e:
+            print(f'Preview could not be generated: {e}.')
+    print(f'\t[INFO] Predictions saved to {predict_path}.')
 
     return predict_path
 
@@ -703,17 +708,17 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
                     donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
             elif strand == '-':
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tDonor\t{donor_score:.6f}\n")
             else:
                 print(f'\t[ERR] Undefined strand {strand}. Skipping...')
                 continue
 
-        else: # does not match pattern, but could be due to not having gff file, still keep writing it
+        else: # does not match pattern, could be due to not having gff file, keep writing it
             print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
 
-            strand = seq_name[-1] # use the ending as the strand (when lack of other information)
+            strand = seq_name[-1] # use the ending as the strand (when lack other information)
             
             # obtain scores
             acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
@@ -781,15 +786,16 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 ##   STEP 4o   ##
 #################
 
-def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_dir, threshold=1e-6, debug=False):
+# predictions are generated continuously in 5000-block chunks -> the aggregate of all predictions in block form is batch_ypred which was removed here
+# writing is based on the LEN stat which assigns the 5000-block chunks to a name based the length of all genes in block units
+def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir, threshold=1e-6, debug=False):
     
-    # define batch_size and count
+    # define batch_size
     batch_size = params["BATCH_SIZE"]
-    count = 0
     print(f'\t[INFO] Batch size: {batch_size}')
     if debug:
-        print('\n\t[DEBUG] extract_predictions', file=sys.stderr)
-        print('\tlen(NAME)', len(NAME), 'len(LEN)', len(LEN), file=sys.stderr)
+        print('\n\t[DEBUG] predict_and_write', file=sys.stderr)
+        print('\tlen(NAME)', len(NAME), 'len(LEN)', len(LEN), 'sum(LEN)', sum(LEN), file=sys.stderr)
     assert len(NAME) == len(LEN)
 
     # put model in evaluation mode
@@ -806,15 +812,18 @@ def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_d
     donor_bed_path = f'{output_dir}donor_predictions.bed'
     acceptor_bed = open(acceptor_bed_path, 'w')
     donor_bed = open(donor_bed_path, 'w')
+
+    count = 0
+    len_idx = 0
+    accumulated_predictions = []
+    accumulated_length = 0
     
     if use_h5: # read from the h5 file
-        
-        # using the multithread executor
+
         with h5py.File(dataset_path, 'r') as h5f:
             
             # iterate over shards in index
             idxs = np.arange(len(h5f.keys()))
-
             if debug:
                 print('\th5 indices:', idxs, file=sys.stderr)
 
@@ -831,22 +840,57 @@ def extract_predictions(model, dataset_path, device, params, NAME, LEN, output_d
 
                     # getting predictions
                     DNAs = batch[0].to(device)
-
                     if debug:
-                        print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
+                        print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr) # should be 36 -> referring to 5k blocks
 
                     DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                     DNAs = DNAs.to(torch.float32).to(device)
                     y_pred = model(DNAs)
                     y_pred = y_pred.detach().cpu()
-                    count += 1
 
                     if debug:
                         print('\tbatch ', len(y_pred), file=sys.stderr)
+                        print('\tcount ', count, 'cumsum of lengths ', LEN[:len_idx+1], file=sys.stderr)
 
-                    # writing to BED multithreaded
-                    seq_name = NAME[i]
-                    write_batch_to_bed(seq_name, y_pred, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+                    # # calculate whether to move onto the next gene, write current
+                    # if count == sum(LEN[:len_idx+1]):    
+                    #     if debug: 
+                    #         print('\t flushing to next gene', file=sys.stderr)
+                    #     seq_name = NAME[len_idx]
+                    #     tensor_ypred = torch.cat(batch_ypred, dim=0)
+                    #     if debug: 
+                    #         print(seq_name, file=sys.stderr)
+                    #     write_batch_to_bed(seq_name, tensor_ypred, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+                    #     len_idx += 1
+                    #     batch_ypred = []
+                    # elif count > sum(LEN[:len_idx+1]):
+                    #     raise ValueError('\t[ERR] Incorrect gene batch counts.')
+
+                    # handle predictions and write to BED
+                    accumulated_predictions.append(y_pred)
+                    accumulated_length += len(y_pred)
+
+                    while len_idx < len(LEN) and accumulated_length >= LEN[len_idx]:
+                        # enough predictions to cover the current gene
+                        seq_name = NAME[len_idx]
+                        gene_length = LEN[len_idx]
+
+                        # combine accumulated predictions into a tensor for the current gene
+                        accumulated_predictions = torch.cat(accumulated_predictions, dim=0)
+                        combined_predictions = accumulated_predictions[:gene_length]
+
+                        if debug:
+                            print(f'\t[predict_and_write] Writing gene {seq_name} with length {gene_length}', file=sys.stderr)
+                            print(f'\tlen(accumulated_predictions) {len(accumulated_predictions)}, accumulated_length, {accumulated_length}', file=sys.stderr)
+
+                        write_batch_to_bed(seq_name, combined_predictions, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
+
+                        # move to the next gene
+                        accumulated_predictions = [accumulated_predictions[gene_length:]]
+                        accumulated_length -= gene_length
+                        len_idx += 1
+
+                    count += len(y_pred)  # Update the count for the current batch
                     
                     pbar.update(1)
                 
@@ -944,7 +988,7 @@ def predict(args):
     # if gff file is provided, extract just the gene regions into a new FASTA file
     if gff_file: 
         print('\t[INFO] GFF file provided: extracting gene sequences.')
-        new_fasta = process_gff(input_sequence, gff_file, output_base) 
+        new_fasta = process_gff(input_sequence, gff_file, output_base)
         datafile_path, NAME, SEQ = get_sequences(new_fasta, output_base)
     else:
         # otherwise, collect all sequences from FASTA into file
@@ -1000,13 +1044,13 @@ def predict(args):
 
         print("--- %s seconds ---" % (time.time() - start_time))
 
-    else: # combine prediction and output 
+    else: # combine prediction and output
         
         ### PART 4o: Get only predictions and write to BED
         print("--- Step 4o: Extract predictions to BED ... ---")
         start_time = time.time()
         
-        predict_file = extract_predictions(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
+        predict_file = predict_and_write(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))
 
