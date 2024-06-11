@@ -17,7 +17,6 @@ python setup.py install
 1. is multithreading implemented in python, or will it be easier to do in C? will this command-line utility eventually be converted to Cpython like in Splam? it would provide a significant speedup in C implementation, and multithreading will definitely make predit run a lot faster (it is also inherently parallelizeable)
     - if implementing in Python, should I use ThreadPoolExecutor, or is there a better way to do this? double-check logic
 2. as predict is developed, there are always features that I feel like adding to improve runtime/memory usage, but it may vary for different users so i always keep options to tune parameters, it is better practice to infer these features from the user's system/automatically attempt the most optimal running parameters, or should i keep everything as a manual parameter?
-3. 
 
 ## questions for steven and ela
 1. for the application side, what do you think about packaging this toolkit alongside Splam? 
@@ -25,8 +24,8 @@ python setup.py install
 ## 1. full genome -> h5py file, predict on whole
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
-[] failing (out of memory) on step 2: this is because its converting the whole genome into the datafile, and each FASTA entry in this file is a whole chromosome -> too large, the batch size does not apply properly, running out of memory when converting the whole chromosome into an entry of the H5 file. 
-- one way could be to split the chromosome into different pieces, need a way to detect that, and then create a new FASTA file which demarcates the different "pieces" of the chromosome. This time, need to make sure the pieces overlap by the flanking size, so that it predicts continuously on the whole chromosome.
+[x] failing (out of memory) on step 2: this is because its converting the whole genome into the datafile, and each FASTA entry in this file is a whole chromosome -> too large, the batch size does not apply properly, running out of memory when converting the whole chromosome into an entry of the H5 file. -> implemented the splitting
+- one way could be to split the chromosome into different pieces, need a way to detect that, and then create a new FASTA file which demarcates the different "pieces" of the chromosome. This time, need to make sure the pieces overlap by the flanking size, so that it predicts continuously on the whole chromosome. 
 - simpler way would just be to tell the user the genome is too large, need to make more specific entries in FASTA. 
 
 ## 2. full genome with full annotation -> h5py file, predicts on all genes
@@ -103,4 +102,10 @@ _genomic.fna --annotation-gff data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.
 
 
 # variant
-spliceai-toolkit variant -m models/spliceai-mane/400nt/model_400nt_rs42.pt  -I data/vcf/input.vcf -O results/variant/output.vcf -R data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A data/grch38.txt -D 100 -M 1
+
+## updates
+1. added conversion from pt model to keras model to ensure compatibility
+    - is this an issue for downstream? the predict function we make is built off pt, so it could work but will need to entirely rework variant
+
+## standard test
+spliceai-toolkit variant -m models/spliceai-mane/400nt/model_400nt_rs42.pt -f 400 -I data/vcf/input.vcf -O results/variant/output.vcf -R data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A data/grch38.txt -D 100 -M 1

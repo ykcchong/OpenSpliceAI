@@ -2,15 +2,24 @@ from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
-from keras.models import save_model, load_model
+import keras.models
 import torch
 import logging
 import onnx
 import platform
+import os
 from onnx2keras import onnx_to_keras
 from spliceaitoolkit.train.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 
+def initialize_paths(output_dir, flanking_size, sequence_length=SL, model_arch='SpliceAI'):
+    """Initialize project directories and create them if they don't exist."""
+
+    BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
+    model_pred_outdir = f"{output_dir}/{BASENAME}/"
+    os.makedirs(model_pred_outdir, exist_ok=True)
+
+    return model_pred_outdir
 
 def setup_device():
     """Select computation device based on availability."""
@@ -60,12 +69,12 @@ def load_model(device, flanking_size):
 
     return model, params
 
-def convert_pt_to_keras(model_path, CL): 
+def convert_pt_to_keras(model_path, CL, output_dir): 
 
     ## check compatibility ##
 
     # Print the keys in the state_dict
-    state_dict = torch.load('models/spliceai-mane/400nt/model_400nt_rs42.pt')
+    state_dict = torch.load(model_path)
     print("State_dict keys:")
     print(', '.join(state_dict.keys()))
 
@@ -105,23 +114,23 @@ def convert_pt_to_keras(model_path, CL):
     
     # convert to onnx
     dummy_input = torch.randn(1, 4, SL+CL).to(device)
-    torch.onnx.export(model, dummy_input, "spliceai.onnx")
-    onnx_model = onnx.load("spliceai.onnx")
+    torch.onnx.export(model, dummy_input, f"{output_dir}spliceai.onnx")
+    onnx_model = onnx.load(f"{output_dir}spliceai.onnx")
+    print('Onnx model loaded')
 
     # convert onnx to keras
     input_names = [input.name for input in onnx_model.graph.input]
     print(input_names)
-    k_model = onnx_to_keras(onnx_model, input_names) # THROWING ERROR
+    k_model = onnx_to_keras(onnx_model, input_names, verbose=True) # THROWING ERROR
 
     # save as h5
-    save_model(k_model, 'model_keras.h5')
-    keras_model = load_model('model_keras.h5')
-
+    keras.models.save_model(k_model, f'{output_dir}model_keras.h5')
+    keras_model = keras.models.load_model(f'{output_dir}model_keras.h5')
 
 
 class Annotator:
 
-    def __init__(self, ref_fasta, annotations, model=None, CL=80):
+    def __init__(self, ref_fasta, annotations, output_dir, model=None, CL=80):
 
         if annotations == 'grch37':
             annotations = resource_filename(__name__, 'annotations/grch37.txt')
@@ -159,7 +168,7 @@ class Annotator:
             self.models = []
             for m in [path.strip() for path in model.split(',')]:
                 if m.endswith('.pt'): # convert from pytorch to onnx to keras 
-                    keras_model = convert_pt_to_keras(m, CL)
+                    keras_model = convert_pt_to_keras(m, CL, output_dir)
                     self.models.append(keras_model)
                 else:
                     self.models.append(load_model(m))

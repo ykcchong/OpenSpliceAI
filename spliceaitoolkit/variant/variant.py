@@ -35,7 +35,7 @@ def variant(args):
 
     # Generating output VCF file
     print('\t[INFO] Generating output VCF file')
-    os.makedirs(os.path.dirname(args.O), exist_ok=True)
+    output_dir = initialize_paths(os.path.dirname(args.O), args.flanking_size)
     try:
         output = pysam.VariantFile(args.O, mode='w', header=header)
     except (IOError, ValueError) as e:
@@ -44,7 +44,7 @@ def variant(args):
 
     # Initialize the Annotator class
     logging.info('Initializing Annotator class')
-    ann = Annotator(args.R, args.A, args.model, int(args.flanking_size))
+    ann = Annotator(args.R, args.A, output_dir, args.model, int(args.flanking_size))
 
     # Process each record in the VCF
     for record in vcf:
