@@ -13,15 +13,13 @@ from spliceaitoolkit.predict.spliceai import *
 from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
 
-# # FOR TESTING PURPOSES
-# from spliceai import *
-# from utils import *
+# FOR TESTING PURPOSES
 import psutil
 def log_memory_usage():
     process = psutil.Process(os.getpid())
     print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
 
-HDF_THRESHOLD_LEN = 5000 # maximum size before reading sequence into an HDF file for storage
+HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
 FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 
@@ -29,7 +27,6 @@ CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
 ##      SETUP      ##
 #####################
 
-# initialize output directory for log files, predict.bed file
 def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='SpliceAI'):
     """Initialize project directories and create them if they don't exist."""
 
@@ -109,7 +106,7 @@ def process_gff(fasta_file, gff_file, output_dir):
 
     return output_fasta_file
     
-'''MODIFY TO JUST GET SEQUENCES, BUILD SEP FUNCTION THAT READS INTO TEMPFILE IF SIZE <=5K'''
+
 def get_sequences(fasta_file, output_dir, neg_strands=None):
     """
     Extract sequences for each protein-coding gene, process them based on strand orientation,
@@ -395,7 +392,6 @@ def setup_device():
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
     return torch.device(device_str)
 
-# load given model and get params
 def load_model(device, flanking_size):
     """Loads the given model."""
     # Hyper-parameters:
@@ -459,7 +455,6 @@ def load_shard(h5f, batch_size, shard_idx):
 
     return DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
-# custom for this implementation (removed dependency on Y, removed clipping of N_GPUS)
 def clip_datapoints(X, CL, N_GPUS, debug=False):
     """
     This function is necessary to make sure of the following:
@@ -595,7 +590,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 
                 # write predictions to file if exceeding threshold
                 if len(batch_ypred) > FLUSH_PREDICT_THRESHOLD: 
-                    print(f'\t[INFO] Reached {FLUSH_PREDICT_THRESHOLD} predictions. Flushing to file...')
+                    print(f'\t[INFO] Reached {FLUSH_PREDICT_THRESHOLD} predictions. Flushing to file...', file=sys.stderr)
                     batch_ypred_tensor = torch.cat(batch_ypred, dim=0)
                     flush_predictions(batch_ypred_tensor, predict_path)
                     batch_ypred = []  # reset the list after flushing
@@ -609,7 +604,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 
             # flush any remaining predictions
             if batch_ypred:
-                print(f'\t[INFO] Flushing remaining {len(batch_ypred)} predictions..')
+                print(f'\t[INFO] Flushing remaining {len(batch_ypred)} predictions..', file=sys.stderr)
                 batch_ypred_tensor = torch.cat(batch_ypred, dim=0)
                 flush_predictions(batch_ypred_tensor, predict_path)
         
@@ -650,9 +645,9 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
     if debug:
         try:
             head_length = 5 if len(batch_ypred) >= 5 else len(batch_ypred)
-            print(f'\tPreview predictions: {batch_ypred[:head_length]}')
+            print(f'\tPreview predictions: {batch_ypred[:head_length]}', file=sys.stderr)
         except Exception as e:
-            print(f'Preview could not be generated: {e}.')
+            print(f'Preview could not be generated: {e}.', file=sys.stderr)
     print(f'\t[INFO] Predictions saved to {predict_path}.')
 
     return predict_path
@@ -687,13 +682,13 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
     for pos in range(len(acceptor_scores)): # donor and acceptor should have same num of scores 
 
         # parse out key information from name
-        pattern = re.compile(r'.*chr\d+:(\d+)-(\d+)\(([-+])\):([+])')
+        pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+])\):([+])')
         match = pattern.match(seq_name)
         
         if match:
-            start = int(match.group(1))
-            end = int(match.group(2))
-            strand = match.group(3)
+            start = int(match.group(2))
+            end = int(match.group(3))
+            strand = match.group(4)
             name = seq_name[:-2] # remove endings
 
             # obtain scores
@@ -743,6 +738,7 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 
     # load the predictions (if not already there)
     if use_h5:
+        print('\t[INFO] Loading predictions...')
         with h5py.File(predict_file, 'r') as h5f:
             batch_ypred_np = h5f['predictions'][:]
         batch_ypred = torch.tensor(batch_ypred_np)
@@ -786,8 +782,6 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 ##   STEP 4o   ##
 #################
 
-# predictions are generated continuously in 5000-block chunks -> the aggregate of all predictions in block form is batch_ypred which was removed here
-# writing is based on the LEN stat which assigns the 5000-block chunks to a name based the length of all genes in block units
 def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir, threshold=1e-6, debug=False):
     
     # define batch_size
@@ -847,24 +841,11 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
                     DNAs = DNAs.to(torch.float32).to(device)
                     y_pred = model(DNAs)
                     y_pred = y_pred.detach().cpu()
+                    count += len(y_pred)  # update the count for the current batch
 
                     if debug:
                         print('\tbatch ', len(y_pred), file=sys.stderr)
-                        print('\tcount ', count, 'cumsum of lengths ', LEN[:len_idx+1], file=sys.stderr)
-
-                    # # calculate whether to move onto the next gene, write current
-                    # if count == sum(LEN[:len_idx+1]):    
-                    #     if debug: 
-                    #         print('\t flushing to next gene', file=sys.stderr)
-                    #     seq_name = NAME[len_idx]
-                    #     tensor_ypred = torch.cat(batch_ypred, dim=0)
-                    #     if debug: 
-                    #         print(seq_name, file=sys.stderr)
-                    #     write_batch_to_bed(seq_name, tensor_ypred, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
-                    #     len_idx += 1
-                    #     batch_ypred = []
-                    # elif count > sum(LEN[:len_idx+1]):
-                    #     raise ValueError('\t[ERR] Incorrect gene batch counts.')
+                        print('\tcount ', count, 'cumsum of lengths ', sum(LEN[:len_idx+1]), file=sys.stderr)
 
                     # handle predictions and write to BED
                     accumulated_predictions.append(y_pred)
@@ -889,9 +870,7 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
                         accumulated_predictions = [accumulated_predictions[gene_length:]]
                         accumulated_length -= gene_length
                         len_idx += 1
-
-                    count += len(y_pred)  # Update the count for the current batch
-                    
+                   
                     pbar.update(1)
                 
                 if debug:
@@ -930,7 +909,7 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
     acceptor_bed.close()
     donor_bed.close()
 
-    print(f'\t[INFO] {count} predictions collected.')
+    print(f'\t[INFO] {count} predictions processed.')
     print(f"\t[INFO] Acceptor BED file saved to {acceptor_bed_path}")
     print(f"\t[INFO] Donor BED file saved to {donor_bed_path}")
 
@@ -982,7 +961,7 @@ def predict(args):
     print("Sequence length: ", sequence_length, file=sys.stderr)
     
     # PART 1: Extracting input sequence
-    print("--- Step 1: Extracting input sequence ... ---")
+    print("--- Step 1: Extracting input sequence ... ---", flush=True)
     start_time = time.time()
 
     # if gff file is provided, extract just the gene regions into a new FASTA file
@@ -999,7 +978,7 @@ def predict(args):
     print("--- %s seconds ---" % (time.time() - start_time))
 
     ### PART 2: Getting one-hot encoding of inputs
-    print("--- Step 2: Creating one-hot encoding ... ---")
+    print("--- Step 2: Creating one-hot encoding ... ---", flush=True)
     start_time = time.time()
 
     dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
@@ -1008,27 +987,24 @@ def predict(args):
 
 
     ### PART 3: Loading model
-    print("--- Step 3: Load model ... ---")
+    print("--- Step 3: Load model ... ---", flush=True)
     start_time = time.time()
 
     # setup device
     device = setup_device()
-    print("device: ", device, file=sys.stderr)
 
     # load model from current state
     model, params = load_model(device, flanking_size)
     model.load_state_dict(torch.load(model_path))
     model = model.to(device)
-
-    print("model: ", model, file=sys.stderr)
-    print("params: ", params, file=sys.stderr)
+    print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
     if predict_all: # predict using intermediate files
 
         ### PART 4: Get predictions
-        print("--- Step 4: Get predictions ... ---")
+        print("--- Step 4: Get predictions ... ---", flush=True)
         start_time = time.time()
 
         predict_file = get_prediction(model, dataset_path, device, params, output_base, debug=debug)
@@ -1037,7 +1013,7 @@ def predict(args):
 
 
         ### PART 5: Generate BED report
-        print("--- Step 5: Generating BED report ... ---")
+        print("--- Step 5: Generating BED report ... ---", flush=True)
         start_time = time.time()
 
         generate_bed(predict_file, NAME, LEN, output_base, threshold=threshold, debug=debug)
@@ -1047,15 +1023,9 @@ def predict(args):
     else: # combine prediction and output
         
         ### PART 4o: Get only predictions and write to BED
-        print("--- Step 4o: Extract predictions to BED ... ---")
+        print("--- Step 4o: Extract predictions to BED ... ---", flush=True)
         start_time = time.time()
         
         predict_file = predict_and_write(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
-        print("--- %s seconds ---" % (time.time() - start_time))
-
-
-### TODO: tests
-# predict on /models/spliceai-mane
-# input gff file, extract gene-level sequences, then predict score for each position in gene
-# later -> bedgraph file     
+        print("--- %s seconds ---" % (time.time() - start_time))  

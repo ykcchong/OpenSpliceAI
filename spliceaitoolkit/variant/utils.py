@@ -2,12 +2,68 @@ from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
-from keras.models import load_model
+from keras.models import save_model, load_model
+import torch
 import logging
+import onnx
+import platform
+from onnx2keras import onnx_to_keras
+from spliceaitoolkit.train.spliceai import SpliceAI
+from spliceaitoolkit.constants import *
+
+
+def setup_device():
+    """Select computation device based on availability."""
+    device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
+    return torch.device(device_str)
+
+def load_model(device, flanking_size):
+    """Loads the given model."""
+    # Hyper-parameters:
+    # L: Number of convolution kernels
+    # W: Convolution window size in each residual unit
+    # AR: Atrous rate in each residual unit
+    L = 32
+    W = np.asarray([11, 11, 11, 11])
+    AR = np.asarray([1, 1, 1, 1])
+    N_GPUS = 2
+    BATCH_SIZE = 18*N_GPUS
+
+    if int(flanking_size) == 80:
+        W = np.asarray([11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1])
+        BATCH_SIZE = 18*N_GPUS
+    elif int(flanking_size) == 400:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
+        BATCH_SIZE = 18*N_GPUS
+    elif int(flanking_size) == 2000:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10])
+        BATCH_SIZE = 12*N_GPUS
+    elif int(flanking_size) == 10000:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21, 41, 41, 41, 41])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10, 25, 25, 25, 25])
+        BATCH_SIZE = 6*N_GPUS
+
+    CL = 2 * np.sum(AR*(W-1))
+
+    print(f"\t[INFO] Context nucleotides {CL}")
+    print(f"\t[INFO] Sequence length (output): {SL}")
+    
+    model = SpliceAI(L, W, AR).to(device)
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+
+    return model, params
+
 
 class Annotator:
 
-    def __init__(self, ref_fasta, annotations):
+    def __init__(self, ref_fasta, annotations, model=None, CL=80):
 
         if annotations == 'grch37':
             annotations = resource_filename(__name__, 'annotations/grch37.txt')
@@ -37,9 +93,33 @@ class Annotator:
         except IOError as e:
             logging.error('{}'.format(e))
             exit()
+        
+        if model == 'SpliceAI':
+            paths = ('models/spliceai{}.h5'.format(x) for x in range(1, 6))
+            self.models = [load_model(resource_filename(__name__, x)) for x in paths]
+        else:
+            self.models = []
+            for m in model.split(','):
+                if m.endswith('.pt'): # convert from pytorch to onnx to keras 
+                    device = setup_device()
+                    spliceai, _ = load_model(device, CL)
+                    spliceai = spliceai.to(device)
+                    spliceai.load_state_dict(torch.load(m))
+                    spliceai.eval()
 
-        paths = ('models/spliceai{}.h5'.format(x) for x in range(1, 6))
-        self.models = [load_model(resource_filename(__name__, x)) for x in paths]
+                    dummy_input = torch.randn(1, 4, SL+CL).to(device)
+                    torch.onnx.export(spliceai, dummy_input, "spliceai.onnx")
+                    onnx_model = onnx.load("spliceai.onnx")
+
+                    input_names = [input.name for input in onnx_model.graph.input]
+                    print(input_names)
+                    k_model = onnx_to_keras(onnx_model, input_names) # THROWING ERROR
+
+                    save_model(k_model, 'model_keras.h5')
+                    keras_model = load_model('model_keras.h5')
+                    self.models.append(keras_model)
+                else:
+                    self.models.append(load_model(m))
 
     def get_name_and_strand(self, chrom, pos):
 
@@ -154,8 +234,8 @@ def get_delta_scores(record, ann, dist_var, mask):
                 x_ref = x_ref[:, ::-1, ::-1]
                 x_alt = x_alt[:, ::-1, ::-1]
 
-            y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(5)], axis=0)
-            y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(5)], axis=0)
+            y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
+            y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
 
             if strands[i] == '-':
                 y_ref = y_ref[:, ::-1]

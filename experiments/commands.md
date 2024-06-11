@@ -65,10 +65,9 @@ solutions:
 - will try a different multithreading method
 - actually just got rid of threads altogether
 
-[] errors detected (not present in 3 for some reason), seems to have overinflated prediction numbers, as well as wrong coordinates for essentially all of the genes
+[x] errors detected (not present in 3 for some reason), seems to have overinflated prediction numbers, as well as wrong coordinates for essentially all of the genes
 - likely not from multithreading as issue was present before it was implemented 
-- i think its an issue with the batching process
-- 
+- i think its an issue with the batching process -> it was
 
 ## 3. full genome with toy annotation -> h5py file, smaller file
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/toy/human/test.gff -t 0.9 -D -p > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
@@ -82,12 +81,13 @@ spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o re
 [x] benchmarks find that convert_sequences multithreading is slower
 - undo multithreading
 
-[] file corruption during bed writing with 4 and 5, although marginal speedup observed. 
+[x] file corruption during bed writing with 4 and 5, although marginal speedup observed. 
 - i think cause is due to the multithreading... multiple attempts to write to file at the same time
 - NO MORE MULTITHREADING GET RID OF IT AHHHH
 
-[] still incorrect coordinates with 4o, issue is not observed in 4 and 5 -> note that the order of genes is different, but same number of predictions generated as correct run
+[x] still incorrect coordinates with 4o, issue is not observed in 4 and 5 -> note that the order of genes is different, but same number of predictions generated as correct run
 - probably due to some way the gene information is loaded (ordering during storage?)
+- fixed by parsing through each batch (can contain multiple genes, genes can span multiple batches)
 
 ## 4. toy genome -> no h5py file, predict on whole 
 
@@ -100,3 +100,7 @@ spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o re
 # create-data
 spliceai-toolkit create-data --output-dir results/create-data --genome-fasta data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14
 _genomic.fna --annotation-gff data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff
+
+
+# variant
+spliceai-toolkit variant -m models/spliceai-mane/400nt/model_400nt_rs42.pt  -I data/vcf/input.vcf -O results/variant/output.vcf -R data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A data/grch38.txt -D 100 -M 1
