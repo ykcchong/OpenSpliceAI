@@ -64,6 +64,7 @@ def parse_args_predict(subparsers):
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
     parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str)
+    parser_variant.add_argument('--flanking-size', '-f', type=int, default=80)
     parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin,
                         help='path to the input VCF file, defaults to standard in')
     parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout,
