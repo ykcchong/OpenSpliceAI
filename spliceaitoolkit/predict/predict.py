@@ -22,7 +22,7 @@ def log_memory_usage():
 HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
 FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
-SPLIT_FASTA_THRESHOLD = 100000 # maximum length of fasta entry before splitting
+SPLIT_FASTA_THRESHOLD = 1000000 # maximum length of fasta entry before splitting
 
 #####################
 ##      SETUP      ##
@@ -153,7 +153,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
                 if seq_length > SPLIT_FASTA_THRESHOLD:
                     # process each segment into a new entry
                     for i in range(0, seq_length, SPLIT_FASTA_THRESHOLD):
-                        segment_name = f"{record.name}_{(i // SPLIT_FASTA_THRESHOLD) + 1}"
+                        segment_name = f"{record.name}_{i}"
                         segment_seq = genes[record.name][i:i + SPLIT_FASTA_THRESHOLD]
                         output_file.write(f">{segment_name}\n")
                         output_file.write(f"{segment_seq}\n")
