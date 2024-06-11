@@ -22,7 +22,7 @@ def log_memory_usage():
 HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
 FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
-SPLIT_FASTA_THRESHOLD = 100000000 # maximum length of fasta entry before splitting
+SPLIT_FASTA_THRESHOLD = 100000 # maximum length of fasta entry before splitting
 
 #####################
 ##      SETUP      ##
@@ -163,8 +163,8 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
                     output_file.write(f"{genes[record.name][:]}\n") 
 
         # re-loads the pyfaidx Fasta object with split genes
-        genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
-        print(f"\t[INFO] Saved to {split_fasta_file}.")
+        genes = Fasta(split_fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
+        print(f"\t[INFO] Saved and loaded {split_fasta_file}.")
 
     NAME = [] # Gene Header
     SEQ  = [] # Sequences
@@ -739,7 +739,7 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
                 continue
 
         else: # does not match pattern, could be due to not having gff file, keep writing it
-            print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
+            # print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
 
             strand = seq_name[-1] # use the ending as the strand (when lack other information)
             
