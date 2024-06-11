@@ -60,6 +60,64 @@ def load_model(device, flanking_size):
 
     return model, params
 
+def convert_pt_to_keras(model_path, CL): 
+
+    ## check compatibility ##
+
+    # Print the keys in the state_dict
+    state_dict = torch.load('models/spliceai-mane/400nt/model_400nt_rs42.pt')
+    print("State_dict keys:")
+    print(', '.join(state_dict.keys()))
+
+    # Print model's named parameters
+    device = setup_device()
+    model, params = load_model(device, CL)
+    print("\nModel's named parameters:")
+    print(','.join([name for name, param in model.named_parameters()]))
+
+    state_dict_keys = set(state_dict.keys())
+    model_param_keys = set(name for name, _ in model.named_parameters())
+
+    # Check for keys that are in the state_dict but not in the model
+    extra_keys = state_dict_keys - model_param_keys
+    if extra_keys:
+        print("Extra keys in state_dict:\n", extra_keys)
+
+    # Check for keys that are in the model but not in the state_dict
+    missing_keys = model_param_keys - state_dict_keys
+    if missing_keys:
+        print("Missing keys in state_dict:\n", missing_keys)
+
+    ## perform conversion ##
+
+    # load state dict, use non-strict if necessary
+    try:
+        model.load_state_dict(state_dict)
+    except Exception as e1:
+        try: 
+            model.load_state_dict(state_dict, strict=False)
+            print("Model loaded successfully with strict=False")
+        except Exception as e2:
+            print(f"Error loading model: {e1}, {e2}")
+    else:
+        print('State dict fully loaded')
+    model.eval()
+    
+    # convert to onnx
+    dummy_input = torch.randn(1, 4, SL+CL).to(device)
+    torch.onnx.export(model, dummy_input, "spliceai.onnx")
+    onnx_model = onnx.load("spliceai.onnx")
+
+    # convert onnx to keras
+    input_names = [input.name for input in onnx_model.graph.input]
+    print(input_names)
+    k_model = onnx_to_keras(onnx_model, input_names) # THROWING ERROR
+
+    # save as h5
+    save_model(k_model, 'model_keras.h5')
+    keras_model = load_model('model_keras.h5')
+
+
 
 class Annotator:
 
@@ -99,24 +157,9 @@ class Annotator:
             self.models = [load_model(resource_filename(__name__, x)) for x in paths]
         else:
             self.models = []
-            for m in model.split(','):
+            for m in [path.strip() for path in model.split(',')]:
                 if m.endswith('.pt'): # convert from pytorch to onnx to keras 
-                    device = setup_device()
-                    spliceai, _ = load_model(device, CL)
-                    spliceai = spliceai.to(device)
-                    spliceai.load_state_dict(torch.load(m))
-                    spliceai.eval()
-
-                    dummy_input = torch.randn(1, 4, SL+CL).to(device)
-                    torch.onnx.export(spliceai, dummy_input, "spliceai.onnx")
-                    onnx_model = onnx.load("spliceai.onnx")
-
-                    input_names = [input.name for input in onnx_model.graph.input]
-                    print(input_names)
-                    k_model = onnx_to_keras(onnx_model, input_names) # THROWING ERROR
-
-                    save_model(k_model, 'model_keras.h5')
-                    keras_model = load_model('model_keras.h5')
+                    keras_model = convert_pt_to_keras(m, CL)
                     self.models.append(keras_model)
                 else:
                     self.models.append(load_model(m))

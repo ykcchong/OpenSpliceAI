@@ -22,6 +22,7 @@ def log_memory_usage():
 HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
 FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
+SPLIT_FASTA_THRESHOLD = 100000000 # maximum length of fasta entry before splitting
 
 #####################
 ##      SETUP      ##
@@ -51,7 +52,7 @@ def process_gff(fasta_file, gff_file, output_dir):
     - output_fasta_file: Path to the output FASTA file.
     """
     # define output FASTA file
-    output_fasta_file = f'{output_dir}genes.fa'
+    output_fasta_file = f'{output_dir}{os.path.splitext(os.path.basename(fasta_file))[0]}_genes.fa'
 
     # read the input FASTA file
     fasta = Fasta(fasta_file)
@@ -125,18 +126,45 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
     # detect sequence length, determine file saving method to use
     total_length = 0
     use_hdf = False
+    need_splitting = False
 
-    # NOTE: always creates uppercase sequence, uses [1,0]-indexed sequences, takes simple name from FASTA
+    # NOTE: always creates uppercase sequence, uses [1,0]-indexed sequence names (does not affect slicing), takes simple name from FASTA
     genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
 
     for record in genes:
-        total_length += len(genes[record.name])
+        record_length = len(genes[record.name])
+        total_length += record_length
         if total_length > HDF_THRESHOLD_LEN:
-            print(f'\t[INFO] Input FASTA sequences over {HDF_THRESHOLD_LEN}: use_hdf = True.')
             use_hdf = True
+            print(f'\t[INFO] Input FASTA sequences over {HDF_THRESHOLD_LEN}: use_hdf = True.')
+        if record_length > SPLIT_FASTA_THRESHOLD:
+            need_splitting = True
+            print(f'\t[INFO] Input FASTA contains sequence(s) over {SPLIT_FASTA_THRESHOLD}: need_splitting = True')
+        if use_hdf and need_splitting:
             break
-    else:
-        print(f'\t[INFO] Input FASTA only {total_length} bases long: use_hdf = False.')
+    
+    if need_splitting:
+        split_fasta_file = f'{output_dir}{os.path.splitext(os.path.basename(fasta_file))[0]}_split.fa'
+        print(f'\t[INFO] Splitting {fasta_file} to {split_fasta_file}...')
+
+        with open(split_fasta_file, 'w') as output_file:
+            for record in genes:
+                seq_length = len(genes[record.name])
+                if seq_length > SPLIT_FASTA_THRESHOLD:
+                    # process each segment into a new entry
+                    for i in range(0, seq_length, SPLIT_FASTA_THRESHOLD):
+                        segment_name = f"{record.name}_{(i // SPLIT_FASTA_THRESHOLD) + 1}"
+                        segment_seq = genes[record.name][i:i + SPLIT_FASTA_THRESHOLD]
+                        output_file.write(f">{segment_name}\n")
+                        output_file.write(f"{segment_seq}\n")
+                else:
+                    # write sequence as is
+                    output_file.write(f">{record.name}\n")
+                    output_file.write(f"{genes[record.name][:]}\n") 
+
+        # re-loads the pyfaidx Fasta object with split genes
+        genes = Fasta(fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
+        print(f"\t[INFO] Saved to {split_fasta_file}.")
 
     NAME = [] # Gene Header
     SEQ  = [] # Sequences
