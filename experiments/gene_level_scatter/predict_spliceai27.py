@@ -257,8 +257,8 @@ def predict():
     print("* Model_output_base: ", model_output_base, file=sys.stderr)
     print("* Log_output_test_base: ", log_output_test_base, file=sys.stderr)
 
-    project_root = "/home/kchao10/data_ssalzbe1/khchao/data/"
-    output_dir = f"{project_root}train_test_dataset_MANE_bk/"
+    project_root = "/ccb/cybertron/khchao/OpenSpliceAI/data/"
+    output_dir = f"{project_root}train_test_dataset_MANE/"
 
     model = load_model(model_path)
 
@@ -287,6 +287,8 @@ def predict():
 
                 
                 x = one_hot_encode('N'*(flanking_size//2) + seq_decode + 'N'*(flanking_size//2))[None, :]
+                print("x: ", x.shape)
+                print("model: ", model)
                 y = model.predict(x)
 
 
