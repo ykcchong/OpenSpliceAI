@@ -132,7 +132,7 @@ def split_fasta(genes, split_fasta_file):
                 seqid = record.name # use original name to denote sequence ID         
             start = start_pos + 1
             end = start_pos + len(segment_seq)
-            strand = '.' # NOTE: here will say unknown strand, will be treated as a forward strand further downstream (supply neg_strands argument to get_sequences() to override)
+            strand = '.' # NOTE: unknown strands will be treated as a forward strand further downstream (supply neg_strands argument to get_sequences() to override)
             
             # construct the fixed string with the split denoted
             segment_name = f"{seqid}:{start}-{end}({strand})"
@@ -427,11 +427,12 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
         with h5py.File(dataset_path, 'w') as out_h5f:
 
             # create dataset
-            for i in tqdm(range(num_seqs // CHUNK_SIZE), desc='Processing chunks...'):
+            num_chunks = ceil_div(num_seqs, CHUNK_SIZE) # ensures that even if num_seqs < CHUNK_SIZE, will still create a chunk
+            for i in tqdm(range(num_chunks), desc='Processing chunks...'):
 
                 # each dataset has CHUNK_SIZE genes
-                if (i+1) == num_seqs // CHUNK_SIZE: # if last chunk, will add on all leftovers
-                    NEW_CHUNK_SIZE = CHUNK_SIZE + num_seqs % CHUNK_SIZE
+                if i == num_chunks - 1: # if last chunk, process remainder or full chunk size if no remainder
+                    NEW_CHUNK_SIZE = num_seqs % CHUNK_SIZE or CHUNK_SIZE 
                 else:
                     NEW_CHUNK_SIZE = CHUNK_SIZE
 
@@ -761,7 +762,7 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
     for pos in range(len(acceptor_scores)): # donor and acceptor should have same num of scores 
 
         # parse out key information from name
-        pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+])\):([+])')
+        pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
         match = pattern.match(seq_name)
         
         if match:
@@ -769,6 +770,11 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
             end = int(match.group(3))
             strand = match.group(4)
             name = seq_name[:-2] # remove endings
+            
+            if strand == '.': # in case of unknown/unspecified strand, gets the manually specified strand and use full name
+                strand = match.group(5)
+                name = seq_name
+            
 
             # obtain scores
             acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
