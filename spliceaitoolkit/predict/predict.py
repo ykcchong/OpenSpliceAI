@@ -22,7 +22,7 @@ def log_memory_usage():
 HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
 FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
 CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
-SPLIT_FASTA_THRESHOLD = 1000000 # maximum length of fasta entry before splitting
+SPLIT_FASTA_THRESHOLD = 1500000 # maximum length of fasta entry before splitting
 
 #####################
 ##      SETUP      ##
@@ -106,9 +106,67 @@ def process_gff(fasta_file, gff_file, output_dir):
     print(f"\t[INFO] {count} gene sequences have been extracted to {output_fasta_file}")
 
     return output_fasta_file
+
+def split_fasta(genes, split_fasta_file):
+    '''
+    Splits any long genes in the given Fasta object into segments of SPLIT_FASTA_THRESHOLD length and writes them to a FASTA file.
+
+    Parameters:
+    - genes (Fasta): A pyfaidx dictionary-like object containing gene records.
+    - split_fasta_file (str): The path to the output FASTA file.
+    '''
+    name_pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+])\):([+])')
+    chrom_pattern = re.compile(r'(chr[a-zA-Z0-9_]+)')
+    
+    def create_name(record, start_pos, segment_seq):
+        # default extended name
+        segment_name = record.long_name
+        
+        # search for the pattern in the name
+        match = name_pattern.search(segment_name)
+        if not match:
+            chrom_match = chrom_pattern.search(segment_name)
+            if chrom_match:
+                seqid = chrom_match.group(1) # use chromosome to denote sequence ID
+            else:
+                seqid = record.name # use original name to denote sequence ID         
+            start = start_pos + 1
+            end = start_pos + len(segment_seq)
+            strand = '.' # NOTE: here will say unknown strand, will be treated as a forward strand further downstream (supply neg_strands argument to get_sequences() to override)
+            
+            # construct the fixed string with the split denoted
+            segment_name = f"{seqid}:{start}-{end}({strand})"
+        
+        return segment_name
+                    
+    with open(split_fasta_file, 'w') as output_file:
+        for record in genes:
+            seq_length = len(genes[record.name])
+            if seq_length > SPLIT_FASTA_THRESHOLD:
+                # process each segment into a new entry
+                for i in range(0, seq_length, SPLIT_FASTA_THRESHOLD):
+                    
+                    # obtain the split sequence (with flanking to preserve predictions across splits)
+                    start_slice = i - (CL_max // 2) if i - (CL_max // 2) >= 0 else 0
+                    end_slice = i + SPLIT_FASTA_THRESHOLD + (CL_max // 2) if i + SPLIT_FASTA_THRESHOLD + (CL_max // 2) <= seq_length else seq_length
+                    segment_seq = genes[record.name][start_slice:end_slice].seq # added flanking sequences to preserve predictions 
+                    
+                    # formulate the sequence name using pattern matching
+                    segment_name = create_name(record, start_slice, segment_seq)
+                    
+                    output_file.write(f">{segment_name}\n")
+                    output_file.write(f"{segment_seq}\n")
+                    
+            else:
+                # write sequence as is (still ensuring name in format)
+                segment_seq = genes[record.name][:]
+                segment_name = create_name(record, 0, segment_seq)
+            
+                output_file.write(f">{segment_name}\n")
+                output_file.write(f"{segment_seq}\n")
     
 
-def get_sequences(fasta_file, output_dir, neg_strands=None):
+def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
     """
     Extract sequences for each protein-coding gene, process them based on strand orientation,
     and save data in file depending on the sequence size (HDF file if sequence >HDF_THRESHOLD_LEN, 
@@ -122,6 +180,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
     Returns:
     - Path to datafile.
     """
+    global CL_max 
 
     # detect sequence length, determine file saving method to use
     total_length = 0
@@ -134,10 +193,10 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
     for record in genes:
         record_length = len(genes[record.name])
         total_length += record_length
-        if total_length > HDF_THRESHOLD_LEN:
+        if not use_hdf and total_length > HDF_THRESHOLD_LEN:
             use_hdf = True
             print(f'\t[INFO] Input FASTA sequences over {HDF_THRESHOLD_LEN}: use_hdf = True.')
-        if record_length > SPLIT_FASTA_THRESHOLD:
+        if not need_splitting and record_length > SPLIT_FASTA_THRESHOLD:
             need_splitting = True
             print(f'\t[INFO] Input FASTA contains sequence(s) over {SPLIT_FASTA_THRESHOLD}: need_splitting = True')
         if use_hdf and need_splitting:
@@ -145,22 +204,9 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
     
     if need_splitting:
         split_fasta_file = f'{output_dir}{os.path.splitext(os.path.basename(fasta_file))[0]}_split.fa'
-        print(f'\t[INFO] Splitting {fasta_file} to {split_fasta_file}...')
+        print(f'\t[INFO] Splitting {fasta_file}.')
 
-        with open(split_fasta_file, 'w') as output_file:
-            for record in genes:
-                seq_length = len(genes[record.name])
-                if seq_length > SPLIT_FASTA_THRESHOLD:
-                    # process each segment into a new entry
-                    for i in range(0, seq_length, SPLIT_FASTA_THRESHOLD):
-                        segment_name = f"{record.name}_{i}"
-                        segment_seq = genes[record.name][i:i + SPLIT_FASTA_THRESHOLD]
-                        output_file.write(f">{segment_name}\n")
-                        output_file.write(f"{segment_seq}\n")
-                else:
-                    # write sequence as is
-                    output_file.write(f">{record.name}\n")
-                    output_file.write(f"{genes[record.name][:]}\n") 
+        split_fasta(genes, split_fasta_file)
 
         # re-loads the pyfaidx Fasta object with split genes
         genes = Fasta(split_fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
@@ -183,6 +229,8 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
         
         NAME.append(seq_id)
         SEQ.append(str(sequence))
+        
+        print(seq_id, len(sequence))
     
     # write the sequences to datafile
     if use_hdf:
@@ -197,7 +245,8 @@ def get_sequences(fasta_file, output_dir, neg_strands=None):
             for name, seq in zip(NAME, SEQ):
                 datafile.write(f'{name}\n{seq}\n')
     
-    print(f'\t[DEBUG] len(NAME): {len(NAME)}, len(SEQ): {len(SEQ)}', file=sys.stderr)
+    if debug:
+        print(f'\t[DEBUG] len(NAME): {len(NAME)}, len(SEQ): {len(SEQ)}', file=sys.stderr)
     
     return datafile_path, NAME, SEQ
 
@@ -245,6 +294,8 @@ def create_datapoints(input_string, debug=False):
 
 def reformat_data(X0, debug=False):
     """
+    Breaks up an input sequence into overlapping windows of size SL + CL_max.
+    
     Parameters:
     - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
     - (global) CL_max: Maximum context length for sequence prediction (flanking size sum).

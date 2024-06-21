@@ -24,9 +24,14 @@ python setup.py install
 ## 1. full genome -> h5py file, predict on whole
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
 
+### testing notes:
 [x] failing (out of memory) on step 2: this is because its converting the whole genome into the datafile, and each FASTA entry in this file is a whole chromosome -> too large, the batch size does not apply properly, running out of memory when converting the whole chromosome into an entry of the H5 file. -> implemented the splitting
 - one way could be to split the chromosome into different pieces, need a way to detect that, and then create a new FASTA file which demarcates the different "pieces" of the chromosome. This time, need to make sure the pieces overlap by the flanking size, so that it predicts continuously on the whole chromosome. 
 - simpler way would just be to tell the user the genome is too large, need to make more specific entries in FASTA. 
+
+[x] when splitting the chromosome/long genes, the prediction will pad the flanking of the last chunk with N's when in reality there is more context that exists there. 
+- workaround would be to add the flanking sequence onto the sequence (so each chunk is SPLIT_FASTA_THRESHOLD + CL_max length), giving slight overlap between chunks
+- *NOTE: would need to ensure that SPLIT_FASTA_THRESHOLD is a multiple of the SL (sequence length, 5k) so that every chunk aligns perfectly with the boundary of the split*
 
 ## 2. full genome with full annotation -> h5py file, predicts on all genes
 spliceai-toolkit predict -m models/spliceai-mane/400nt/model_400nt_rs40.pt -o results/predict -f 400 -i data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -a data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.gff -t 0.9 -D > results/predict/SpliceAI_5000_400/output.log 2> results/predict/SpliceAI_5000_400/error.log
