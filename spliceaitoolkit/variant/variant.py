@@ -50,7 +50,7 @@ def variant(args):
     for record in vcf:
         scores = get_delta_scores(record, ann, args.D, args.M)
         if scores:
-            record.info['SpliceAI'] = ','.join(scores)
+            record.info['SpliceAI'] = scores
         output.write(record)
 
     # Close input and output VCF files

@@ -19,6 +19,7 @@ import logging
 import inspect
 from onnx import numpy_helper
 
+import onnx2keras
 from onnx2keras.layers import AVAILABLE_CONVERTERS
 from onnx2keras.converter import onnx_node_attributes_to_dict
 
@@ -373,14 +374,14 @@ def convert_pt_to_keras(model_path, CL, output_dir):
     
     # convert to onnx
     dummy_input = torch.randn(1, 4, SL+CL).to(device)
-    torch.onnx.export(model, dummy_input, f"{output_dir}spliceai.onnx")
+    torch.onnx.export(model, dummy_input, f"{output_dir}spliceai.onnx", input_names=['input'], output_names=['output'], dynamic_axes={'input': {0:'batch_size'}, 'output': {0:'batch_size'}})
     onnx_model = onnx.load(f"{output_dir}spliceai.onnx")
     print('Onnx model loaded')
 
     # convert onnx to keras
     input_names = [input.name for input in onnx_model.graph.input]
     print(input_names)
-    k_model = onnx_to_keras(onnx_model, input_names, verbose=True) # THROWING ERROR
+    k_model = onnx2keras.onnx_to_keras(onnx_model, input_names, input_shapes=[(4, SL+CL)], name_policy='renumerate', verbose=True) # THROWING ERROR
 
     # save as h5
     keras.models.save_model(k_model, f'{output_dir}model_keras.h5')
