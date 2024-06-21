@@ -229,8 +229,6 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
         
         NAME.append(seq_id)
         SEQ.append(str(sequence))
-        
-        print(seq_id, len(sequence))
     
     # write the sequences to datafile
     if use_hdf:
