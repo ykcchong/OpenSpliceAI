@@ -21,7 +21,7 @@ OUTPUT_FILE="$RESULT_DIR/output.log"
 ERROR_FILE="$RESULT_DIR/error.log"
 
 # Run the spliceai-toolkit predict command
-echo -e spliceai-toolkit predict -m "$MODEL_PATH" -o "$OUTPUT_PATH" -f $FLANKING_SIZE -i "$DATA_PATH" -a "$ANNOTATION_FILE" -t $THRESHOLD -D \
+echo -e spliceai-toolkit predict -m "$MODEL_PATH" -o "$OUTPUT_PATH" -f $FLANKING_SIZE -i "$DATA_PATH" -a "$ANNOTATION_PATH" -t $THRESHOLD -D \
 > "$OUTPUT_FILE" 2> "$ERROR_FILE"
-spliceai-toolkit predict -m "$MODEL_PATH" -o "$OUTPUT_PATH" -f $FLANKING_SIZE -i "$DATA_PATH" -a "$ANNOTATION_FILE" -t $THRESHOLD -D \
+spliceai-toolkit predict -m "$MODEL_PATH" -o "$OUTPUT_PATH" -f $FLANKING_SIZE -i "$DATA_PATH" -a "$ANNOTATION_PATH" -t $THRESHOLD -D \
 > "$OUTPUT_FILE" 2> "$ERROR_FILE"
