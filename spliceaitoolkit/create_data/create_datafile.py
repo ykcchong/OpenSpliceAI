@@ -115,8 +115,9 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
                         # Acceptor site is at the start of the next exon
                         second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
                         '''
-                        KH: We only want to get only "GT-AG" or "GC-AG" splice sites. Annotation files are not always perfect.
-                        If not, we will skip the gene.
+                        KH: We only want to get only "GT-AG" or "GC-AG" or "AT-AC" splice sites. Annotation files are not always perfect.
+                        If motifs are not conserved, we want to skip them.
+                        A better solution is adding an argument letting users decide whether to skip or not.
                         '''
                         if gene.strand == '+':
                             labels[first_site] = 2  # Mark donor site
@@ -174,8 +175,8 @@ def create_datafile(args):
     ''' 
     NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!
     Where are the `get_all_chromosomes` and `split_chromosomes` functions? nvm they're in the main spliceaitoolkit.py file
-    
-    KH: We want to make human as special cases following SpliceAI's chromosome splitting method. Please add the condition back.
+
+    KH: We want to treat humans as special cases, following SpliceAI's chromosome splitting method. Please add the condition back.
     '''
     # Use gffutils to parse annotation file
     os.makedirs(args.output_dir, exist_ok=True)
