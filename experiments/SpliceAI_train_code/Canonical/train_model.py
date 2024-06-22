@@ -9,7 +9,7 @@ import h5py
 import os
 import keras.backend as kb
 import tensorflow as tf
-from spliceai_multihead import *
+# from spliceai_multihead import *
 from spliceai import *
 from utils import *
 from multi_gpu import *

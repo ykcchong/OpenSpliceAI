@@ -15,6 +15,7 @@ class PositionwiseFeedforward(nn.Module):
         x = self.linear2(x)
         return x
 
+
 class DNALocalTransformer(nn.Module):
     def __init__(self, embed_size, num_layers, heads, device, forward_expansion, dropout, window_size=80, sequence_length=5000):
         super(DNALocalTransformer, self).__init__()
@@ -36,6 +37,15 @@ class DNALocalTransformer(nn.Module):
             dropout=dropout
         )
         self.transformer_encoder = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+
+        # Transformer decoder layer
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=embed_size,
+            nhead=heads,
+            dim_feedforward=embed_size * forward_expansion,
+            dropout=dropout
+        )
+        self.transformer_decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
 
         # Output layer to map from embed_size to 3 output channels (donor, acceptor, neither)
         self.output_layer = nn.Linear(embed_size, 3)
@@ -63,16 +73,14 @@ class DNALocalTransformer(nn.Module):
 
             window += pos_embeddings
             # Process the window with the transformer encoder
-            window = self.transformer_encoder(window.permute(1, 0, 2))  # Shape: [window_size, batch_size, embed_size]
-            window = window.permute(1, 0, 2)  # Back to [batch_size, window_size, embed_size]
+            encoded_window = self.transformer_encoder(window.permute(1, 0, 2))  # Shape: [window_size, batch_size, embed_size]
+            decoded_window = self.transformer_decoder(encoded_window, encoded_window)  # Self-attention
+            decoded_window = decoded_window.permute(1, 0, 2)  # Back to [batch_size, window_size, embed_size]
 
             # Apply the output layer
-            window_output = self.output_layer(window)  # Shape: [batch_size, window_size, 3]
+            window_output = self.output_layer(encoded_window)  # Shape: [batch_size, window_size, 3]
             window_output = F.softmax(window_output, dim=-1)
-
             # Combine the output of this window with the overall output tensor
-            # Note: This simplistic approach just writes/overwrites the window output to the final tensor
-            # For overlapping windows, you might want to average the overlapping outputs
             output_tensor[:, :, start:end] = window_output.transpose(1, 2)
 
         return output_tensor  # Final shape: [batch_size, 3, sequence_length]
@@ -108,5 +116,5 @@ class DNALocalTransformer(nn.Module):
 # output.shape
 # print("output: ", output.shape)
 
-# # Note: The forward method currently concatenates the processed windows without handling overlaps correctly.
-# # You'll need to implement a method to properly aggregate these overlapping windows into a continuous sequence output.
+# Note: The forward method currently concatenates the processed windows without handling overlaps correctly.
+# You'll need to implement a method to properly aggregate these overlapping windows into a continuous sequence output.

@@ -17,18 +17,8 @@ System requirements
    * python >= 3.8.0
    * numpy >= 1.22.0
    * gffutils >= 0.10.1
-   * cigar >= 0.1.3
-   * parasail>=1.2.4
-   * intervaltree>=3.1.0
-   * biopython>=1.76
-   * networkx>=2.4
-   * miniprot >= 0.10.0
-   * pyfaidx>=0.5.8
-   * pysam>=0.19.1
-   * interlap>=0.2.6
-   * ujson>=3.2.0
 
-These dependencies will be automatically installed when you install LiftOn through pip or conda. The only exception is **miniprot**. Since miniprot is not on PyPi, you will need to install it manually. Please check out the `miniprot installation guide <https://github.com/lh3/miniprot?tab=readme-ov-file#install>`_ on `GitHub <https://github.com/lh3/miniprot>`_.
+These dependencies will be automatically installed when you install SpliceAI-toolkit through pip or conda. The only exception is **miniprot**. Since miniprot is not on PyPi, you will need to install it manually. Please check out the `miniprot installation guide <https://github.com/lh3/miniprot?tab=readme-ov-file#install>`_ on `GitHub <https://github.com/lh3/miniprot>`_.
 
 .. admonition:: Version warning
    :class: important
@@ -43,18 +33,18 @@ These dependencies will be automatically installed when you install LiftOn throu
 |
 
 
-There are three ways that you can install LiftOn:
+There are three ways that you can install SpliceAI-toolkit:
 
 .. _install-through-pip:
 
 Install through pip
 -------------------------
 
-LiftOn is on `PyPi 3.12 <https://pypi.org/project/lifton/>`_ now. Check out all the releases `here <https://pypi.org/manage/project/lifton/releases/>`_. Pip automatically resolves and installs any dependencies required by LiftOn.
+SpliceAI-toolkit is on `PyPi 3.12 <https://pypi.org/project/spliceai-toolkit/>`_ now. Check out all the releases `here <https://pypi.org/manage/project/spliceai-toolkit/releases/>`_. Pip automatically resolves and installs any dependencies required by SpliceAI-toolkit.
 
 .. code-block:: bash
    
-   $ pip install LiftOn
+   $ pip install spliceai-toolkit
 
 |
 
@@ -63,13 +53,13 @@ LiftOn is on `PyPi 3.12 <https://pypi.org/project/lifton/>`_ now. Check out all 
 Install through conda
 -------------------------------
 
-Installing LiftOn through conda is the easiest way to go:
+Installing SpliceAI-toolkit through conda is the easiest way to go:
 
 .. code-block:: bash
    
    TBC
 
-   $ conda install -c bioconda lifton
+   $ conda install -c bioconda spliceai-toolkit
 
 |
 
@@ -78,27 +68,27 @@ Installing LiftOn through conda is the easiest way to go:
 Install from source
 -------------------------
 
-You can also install LiftOn from source. Check out the latest version on `GitHub <https://github.com/Kuanhao-Chao/LiftOn>`_
+You can also install SpliceAI-toolkit from source. Check out the latest version on `GitHub <https://github.com/Kuanhao-Chao/SpliceAI-toolkit>`_
 !
 
 .. code-block:: bash
 
-   $ git clone https://github.com/Kuanhao-Chao/LiftOn
+   $ git clone https://github.com/Kuanhao-Chao/SpliceAI-toolkit
 
    $ python setup.py install
 
 |
 
-.. _check-LiftOn-installation:
+.. _check-SpliceAI-toolkit-installation:
 
-Check LiftOn installation
+Check SpliceAI-toolkit installation
 -------------------------------------
 
-Run the following command to make sure LiftOn is properly installed:
+Run the following command to make sure SpliceAI-toolkit is properly installed:
 
 .. code-block:: bash
    
-   $ lifton -h
+   $ spliceai-toolkit -h
 
 
 .. dropdown:: Terminal output
@@ -110,92 +100,22 @@ Run the following command to make sure LiftOn is properly installed:
 
 
       ====================================================================
-      An accurate homology lift-over tool between assemblies
+      Deep learning framework to train your own SpliceAI model
       ====================================================================
 
 
-         ██╗     ██╗███████╗████████╗ ██████╗ ███╗   ██╗
-         ██║     ██║██╔════╝╚══██╔══╝██╔═══██╗████╗  ██║
-         ██║     ██║█████╗     ██║   ██║   ██║██╔██╗ ██║
-         ██║     ██║██╔══╝     ██║   ██║   ██║██║╚██╗██║
-         ███████╗██║██║        ██║   ╚██████╔╝██║ ╚████║
-         ╚══════╝╚═╝╚═╝        ╚═╝    ╚═════╝ ╚═╝  ╚═══╝
+      ███████╗██████╗ ██╗     ██╗ ██████╗███████╗ █████╗ ██╗   ████████╗ ██████╗  ██████╗ ██╗     ██╗  ██╗██╗████████╗
+      ██╔════╝██╔══██╗██║     ██║██╔════╝██╔════╝██╔══██╗██║   ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██║ ██╔╝██║╚══██╔══╝
+      ███████╗██████╔╝██║     ██║██║     █████╗  ███████║██║█████╗██║   ██║   ██║██║   ██║██║     █████╔╝ ██║   ██║
+      ╚════██║██╔═══╝ ██║     ██║██║     ██╔══╝  ██╔══██║██║╚════╝██║   ██║   ██║██║   ██║██║     ██╔═██╗ ██║   ██║
+      ███████║██║     ███████╗██║╚██████╗███████╗██║  ██║██║      ██║   ╚██████╔╝╚██████╔╝███████╗██║  ██╗██║   ██║
+      ╚══════╝╚═╝     ╚══════╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝      ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝   ╚═╝
 
-      v0.0.1
+      0.0.1
 
-      usage: lifton [-h] [-E] [-c] [-o FILE] [-u FILE] [-exclude_partial] [-mm2_options =STR] [-a A] [-s S] [-d D] [-flank F] [-V] [-D] [-t THREADS]
-                  [-m PATH] [-f TYPES] [-infer-genes] [-infer_transcripts] [-chroms TXT] [-unplaced TXT] [-copies] [-sc SC] [-overlap O] [-mismatch M]
-                  [-gap_open GO] [-gap_extend GE] [-polish] [-cds] -g GFF [-P FASTA] [-T FASTA] [-L gff] [-M gff]
-                  target reference
+      usage: spliceai-toolkit [-h] {create-data,train,predict,variant} ...
+      spliceai-toolkit: error: the following arguments are required: command
 
-      Lift features from one genome assembly to another
-
-      * Required input (sequences):
-      target                target fasta genome to lift genes to
-      reference             reference fasta genome to lift genes from
-
-      * Required input (Reference annotation):
-      -g GFF, --reference-annotation GFF
-                              the reference annotation file to lift over in GFF or GTF format (or) name of feature database; if not specified, the -g
-                              argument must be provided and a database will be built automatically
-
-      * Optional input (Reference sequences):
-      -P FASTA, --proteins FASTA
-                              the reference protein sequences.
-      -T FASTA, --transcripts FASTA
-                              the reference transcript sequences.
-
-      * Optional input (Liftoff annotation):
-      -L gff, --liftoff gff
-                              the annotation generated by Liftoff (or) name of Liftoff gffutils database; if not specified, the -liftoff argument must be
-                              provided and a database will be built automatically
-
-      * Optional input (miniprot annotation):
-      -M gff, --miniprot gff
-                              the annotation generated by miniprot (or) name of miniprot gffutils database; if not specified, the -miniprot argument must
-                              be provided and a database will be built automatically
-
-      * Output settings:
-      -o FILE, --output FILE
-                              write output to FILE in same format as input; by default, output is written to "lifton.gff3"
-      -u FILE               write unmapped features to FILE; default is "unmapped_features.txt"
-      -exclude_partial      write partial mappings below -s and -a threshold to unmapped_features.txt; if true partial/low sequence identity mappings
-                              will be included in the gff file with partial_mapping=True, low_identity=True in comments
-
-      * Miscellaneous settings:
-      -h, --help            show this help message and exit
-      -E, --evaluation      Run LiftOn in evaluation mode
-      -c, --write_chains    Write chaining files
-      -V, --version         show program version
-      -D, --debug           Run debug mode
-      -t THREADS, --threads THREADS
-                              use t parallel processes to accelerate alignment; by default p=1
-      -m PATH               Minimap2 path
-      -f TYPES, --features TYPES
-                              list of feature types to lift over
-      -infer-genes          use if annotation file only includes transcripts, exon/CDS features
-      -infer_transcripts    use if annotation file only includes exon/CDS features and does not include transcripts/mRNA
-      -chroms TXT           comma seperated file with corresponding chromosomes in the reference,target sequences
-      -unplaced TXT         text file with name(s) of unplaced sequences to map genes from after genes from chromosomes in chroms.txt are mapped;
-                              default is "unplaced_seq_names.txt"
-      -copies               look for extra gene copies in the target genome
-      -sc SC                with -copies, minimum sequence identity in exons/CDS for which a gene is considered a copy; must be greater than -s; default
-                              is 1.0
-      -overlap O            maximum fraction [0.0-1.0] of overlap allowed by 2 features; by default O=0.1
-      -mismatch M           mismatch penalty in exons when finding best mapping; by default M=2
-      -gap_open GO          gap open penalty in exons when finding best mapping; by default GO=2
-      -gap_extend GE        gap extend penalty in exons when finding best mapping; by default GE=1
-      -polish
-      -cds                  annotate status of each CDS (partial, missing start, missing stop, inframe stop codon)
-
-      Alignments:
-      -mm2_options =STR     space delimited minimap2 parameters. By default ="-a --end-bonus 5 --eqx -N 50 -p 0.5"
-      -a A                  designate a feature mapped only if it aligns with coverage ≥A; by default A=0.5
-      -s S                  designate a feature mapped only if its child features (usually exons/CDS) align with sequence identity ≥S; by default S=0.5
-      -d D                  distance scaling factor; alignment nodes separated by more than a factor of D in the target genome will not be connected in
-                              the graph; by default D=2.0
-      -flank F              amount of flanking sequence to align as a fraction [0.0-1.0] of gene length. This can improve gene alignment where gene
-                              structure differs between target and reference; by default F=0.0
 |
 
 .. _installation-complete:
