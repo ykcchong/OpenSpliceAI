@@ -20,6 +20,10 @@ from temperature_scaling import ModelWithTemperature
 from sklearn.metrics import log_loss
 import matplotlib.pyplot as plt
 
+<<<<<<< HEAD
+
+=======
+>>>>>>> main
 RANDOM_SEED = 42
 
 def setup_device():
@@ -114,6 +118,57 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
     batch_ypred = []
 
 
+<<<<<<< HEAD
+def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_mode, sample_freq):
+    print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
+    model.eval()
+    running_loss = 0.0
+    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    print("shuffled_idxs: ", shuffled_idxs)
+    batch_ylabel = []
+    batch_ypred = []
+    print_dict = {}
+    batch_idx = 0
+    for i, shard_idx in enumerate(shuffled_idxs, 1):
+        print(f"Shard {i}/{len(shuffled_idxs)}")
+        loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
+        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
+        for batch in pbar:
+            DNAs, labels = batch[0].to(device), batch[1].to(device)
+            # print("\n\tDNAs.shape: ", DNAs.shape)
+            # print("\tlabels.shape: ", labels.shape)
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+            DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
+            # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
+            # print("\tAfter clipping labels.shape: ", labels.shape)
+            yp = model(DNAs)
+            # if criterion == "cross_entropy_loss":
+            loss = categorical_crossentropy_2d(labels, yp)
+            # elif criterion == "focal_loss":
+            #     loss = focal_loss(labels, yp)
+            # Logging loss for every update.
+            with open(metric_files["loss_every_update"], 'a') as f:
+                f.write(f"{loss.item()}\n")
+            wandb.log({
+                f'{run_mode}/loss_every_update': loss.item(),
+            })
+            running_loss += loss.item()
+            # print("loss: ", loss.item())
+            batch_ylabel.append(labels.detach().cpu())
+            batch_ypred.append(yp.detach().cpu())
+            print_dict["loss"] = loss.item()
+            pbar.set_postfix(print_dict)
+            pbar.update(1)
+            batch_idx += 1
+        if i == 5:
+            break
+        pbar.close()
+    model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
+
+
+=======
+>>>>>>> main
 def initialize_model_and_optim(flanking_size):
     """Initialize the model, criterion, optimizer, and scheduler."""
     # Hyper-parameters:
@@ -152,6 +207,81 @@ def initialize_model_and_optim(flanking_size):
     return params
 
 
+<<<<<<< HEAD
+
+############################################
+# Model calibration
+############################################
+def fit_temperature_scaling(model, h5f, idxs, device, batch_size, params, train=False):
+    model.eval()  # Ensure the model is in evaluation mode
+    logits_list = []
+    labels_list = []
+    model.eval()
+    running_loss = 0.0
+    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
+    print("shuffled_idxs: ", shuffled_idxs)
+    batch_idx = 0
+    for i, shard_idx in enumerate(shuffled_idxs, 1):
+        print(f"Shard {i}/{len(shuffled_idxs)}")
+        loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
+        pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
+        for batch in pbar:
+            DNAs, labels = batch[0].to(device), batch[1].to(device)
+            # print("\n\tDNAs.shape: ", DNAs.shape)
+            # print("\tlabels.shape: ", labels.shape)
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+            DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
+            # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
+            # print("\tAfter clipping labels.shape: ", labels.shape)
+            with torch.no_grad():
+                logits = model(DNAs)  # Get raw logits from your model
+                logits_list.append(logits.detach().cpu())
+                labels_list.append(labels.detach().cpu())
+        # if i == 3:
+        #     break
+    # Concatenate all collected logits and true labels
+    logits = torch.cat(logits_list).to(device)
+    labels = torch.cat(labels_list).to(device)
+    print("logits: ", logits)
+    print("labels: ", labels)
+    if train == False:
+        return None, logits, labels
+
+    # Initialize the temperature scaling model with a reasonable starting temperature, e.g., 1.0
+    temp_model = TemperatureScaling().to(device)
+    temp_model.train()
+    
+    # Define optimizer for temperature parameter
+    optimizer = optim.LBFGS([temp_model.temperature], lr=0.01, max_iter=50)
+
+    # # Define the closure for LBFGS optimizer
+    # def nll_closure():
+    #     optimizer.zero_grad()
+    #     scaled_logits = temp_model(logits)
+    #     loss = F.cross_entropy(scaled_logits.view(-1, 3), labels.view(-1, 3))
+    #     loss.backward()
+    #     return loss
+
+    def nll_closure():
+        optimizer.zero_grad()
+        scaled_logits = temp_model(logits)
+        # Define weights for each class - higher for minority classes
+        class_weights = torch.tensor([1., 1000., 1000.]).to(device)  # Adjust weights as appropriate
+        loss_fn = nn.CrossEntropyLoss(weight=class_weights)
+        loss = loss_fn(scaled_logits.view(-1, 3), labels.view(-1, 3).max(1)[1])  # Assuming labels are one-hot encoded
+        loss.backward()
+        return loss
+
+    # Run optimizer to fit the temperature parameter
+    optimizer.step(nll_closure)
+    # Return the fitted temperature scaling model
+    return temp_model, logits, labels
+
+
+
+=======
+>>>>>>> main
 def calibrate_and_predict(model, temp_model, test_loader):
     model.eval() # Ensure the model is in evaluation mode
     temp_model.eval() # Ensure the temperature model is in evaluation mode
@@ -171,7 +301,10 @@ def calibrate_and_predict(model, temp_model, test_loader):
 # End of model calibration
 ############################################
 
+<<<<<<< HEAD
+=======
 
+>>>>>>> main
 def reverse_softmax(softmax_output, epsilon=1e-12):
     # Using log softmax for numerical stability
     # Adding epsilon to avoid log(0) which is undefined
@@ -277,26 +410,49 @@ def predict():
     model = SpliceAI(params['L'], params['W'], params['AR'])
     model.load_state_dict(torch.load(model_path))
     model = model.to(device)
+<<<<<<< HEAD
+
+    # model.eval()
+=======
     model.eval()
+>>>>>>> main
     print("Model: ", model)
     SAMPLE_FREQ = 1000
     print("\n--------------------------------------------------------------")
     start_time = time.time()
     BATCH_SIZE = 36
     
+<<<<<<< HEAD
+    scaled_model = ModelWithTemperature(model)
+    # # Calibration on the validation dataset
+    # scaled_model.set_temperature(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=True)
+    # Calibration on the testing dataset
+    # scaled_model.set_temperature(model, train_h5f, train_idxs, device, params["BATCH_SIZE"], params, train=True)
+=======
     
     
     ##########################################
     # Temperature scaling
     ##########################################    
     scaled_model = ModelWithTemperature(model)
+>>>>>>> main
     scaled_model.set_temperature(model, test_h5f, test_idxs, device, params["BATCH_SIZE"], params, train=True)
     # scaled_model = ModelWithTemperature(model).to(device)
     # scaled_model.load_state_dict(torch.load("temp_model.pt"))
     # scaled_model = scaled_model.to(device)
     # scaled_model.set_temperature(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=False)
+<<<<<<< HEAD
+
+    # # valid_epoch(model, test_h5f, test_idxs, BATCH_SIZE, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
+    # temp_model, logits, labels = fit_temperature_scaling(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=True)
+    # # temp_model, logits, labels = fit_temperature_scaling(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=False)
     # print("logits: ", logits.shape)
     # print("labels: ", labels.shape)
+
+=======
+    # print("logits: ", logits.shape)
+    # print("labels: ", labels.shape)
+>>>>>>> main
     torch.save(scaled_model.state_dict(), f"temp_model.pt")
     print("scaled_model: ", scaled_model)
 
@@ -327,6 +483,23 @@ def predict():
     probs_scaled = probs_scaled.detach().cpu().numpy()
     labels = labels.detach().cpu().numpy()
 
+<<<<<<< HEAD
+    # ##########################################
+    # # Plotting the score distribution
+    # ##########################################
+    # score_frequency_distribution(probs, probs_scaled, labels, index=0)
+    # score_frequency_distribution(probs, probs_scaled, labels, index=1)
+    # score_frequency_distribution(probs, probs_scaled, labels, index=2)
+    # Assuming labels are one-hot encoded, we convert them to class indices for log_loss
+    # Calculate log-loss
+    log_loss_before = log_loss(labels, probs)
+    log_loss_after = log_loss(labels, probs_scaled)
+    # print("probs_after_reshaped: ", probs_after_reshaped)
+    # print("labels_indices: ", labels_indices)
+    print("Log-loss of")
+    print(f" * uncalibrated classifier: {log_loss_before:.8f}")
+    print(f" * calibrated classifier: {log_loss_after:.8f}")
+=======
     # # ##########################################
     # # # Plotting the score distribution
     # # ##########################################
@@ -342,6 +515,7 @@ def predict():
     # print("Log-loss of")
     # print(f" * uncalibrated classifier: {log_loss_before:.8f}")
     # print(f" * calibrated classifier: {log_loss_after:.8f}")
+>>>>>>> main
 
 
     ##########################################
@@ -386,8 +560,11 @@ def predict():
 
 
 
+<<<<<<< HEAD
+=======
     
     
+>>>>>>> main
     ##########################################
     # Plotting the score calibration
     ##########################################

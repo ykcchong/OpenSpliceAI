@@ -127,7 +127,11 @@ class ModelWithTemperature(nn.Module):
                     logits = model(DNAs)  # Get raw logits from your model
                     logits_list.append(logits.detach().cpu())
                     labels_list.append(labels.detach().cpu())
+<<<<<<< HEAD
+            if i == 20:
+=======
             if i == 30:
+>>>>>>> main
                 break
         # Concatenate all collected logits and true labels
         logits = torch.cat(logits_list).to(device)
@@ -153,6 +157,9 @@ class ModelWithTemperature(nn.Module):
         print("After logits: ", logits)
         print("After labels: ", labels)
         print("After flatten logits.shape: ", logits.shape)
+<<<<<<< HEAD
+        print("After flatten labels.shape: ", labels.shape)   
+=======
         print("After flatten labels.shape: ", labels.shape)           
 
         # # Creating a mask of non-zero elements
@@ -165,12 +172,17 @@ class ModelWithTemperature(nn.Module):
         print("After filter logits.shape: ", logits.shape)
         print("After filter labels.shape: ", labels.shape)   
 
+>>>>>>> main
         if train == False:
             # Storing the logits and labels.
             self.logits = logits
             self.labels = labels
             return self
 
+<<<<<<< HEAD
+            # 
+=======
+>>>>>>> main
         self.cuda()
         class_weights=torch.tensor([1,5000, 5000],dtype=torch.float).cuda()
         nll_criterion = nn.CrossEntropyLoss(weight=class_weights,reduction='mean').cuda()
@@ -180,11 +192,20 @@ class ModelWithTemperature(nn.Module):
         before_temperature_ece = ece_criterion(logits, labels).item()
         # before_temperature_fl = focal_loss(logits, labels_ls).item()
         # before_temperature_cel = categorical_crossentropy_2d(logits, labels_ls).item()
+<<<<<<< HEAD
+        print('Before temperature - NLL: %.8f, ECE: %.8f' % (before_temperature_nll, before_temperature_ece))
+
+        # Prepare for training
+        epochs = 1000  # Number of epochs to train for
+        # optimizer = optim.SGD([self.temperature], lr=0.1)
+        optimizer = optim.Adam([self.temperature], lr=0.001)  # You can adjust the learning rate as needed
+=======
         # Prepare for training
         epochs = 1000  # Number of epochs to train for
         # optimizer = optim.SGD([self.temperature], lr=0.1)
         optimizer = optim.Adam([self.temperature], lr=0.01)  # You can adjust the learning rate as needed
         # optimizer = optim.SGD([self.temperature], lr=0.01, momentum=0.9)  # Adjust the learning rate and momentum as needed
+>>>>>>> main
         
 
         # Early stopping parameters
@@ -194,8 +215,13 @@ class ModelWithTemperature(nn.Module):
 
         for epoch in range(epochs):
             optimizer.zero_grad()
+<<<<<<< HEAD
+            # loss = nll_criterion(self.temperature_scale(logits), labels)
+            loss = ece_criterion(self.temperature_scale(logits), labels)
+=======
             loss = nll_criterion(self.temperature_scale(logits), labels)
             # loss = ece_criterion(self.temperature_scale(logits), labels)
+>>>>>>> main
             # loss = focal_loss(self.temperature_scale(logits), labels_ls)
             # loss = categorical_crossentropy_2d(self.temperature_scale(logits), labels_ls)
             loss.backward()
@@ -222,7 +248,10 @@ class ModelWithTemperature(nn.Module):
         after_temperature_ece = ece_criterion(self.temperature_scale(logits), labels).item()
         # after_temperature_fl = focal_loss(self.temperature_scale(logits), labels_ls).item()
         # after_temperature_cel = categorical_crossentropy_2d(self.temperature_scale(logits), labels_ls).item()
+<<<<<<< HEAD
+=======
         print('Before temperature - NLL: %.8f, ECE: %.8f' % (before_temperature_nll, before_temperature_ece))
+>>>>>>> main
         print('Optimal temperature: %.5f' % self.temperature.item())
         print('After temperature - NLL: %.8f, ECE: %.8f' % (after_temperature_nll, after_temperature_ece))
 
@@ -279,4 +308,8 @@ class _ECELoss(nn.Module):
                 accuracy_in_bin = accuracies[in_bin].float().mean()
                 avg_confidence_in_bin = confidences[in_bin].mean()
                 ece += torch.abs(avg_confidence_in_bin - accuracy_in_bin) * prop_in_bin
+<<<<<<< HEAD
+
+=======
+>>>>>>> main
         return ece

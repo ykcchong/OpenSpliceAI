@@ -17,7 +17,11 @@ ref_genome='/home/kchao10/data_ssalzbe1/khchao/ref_genome/homo_sapiens/GRCh37/hg
 
 
 # step 1 output dir
+<<<<<<< HEAD
+data_dir='/home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_SpliceAI27_test/'
+=======
 data_dir='/home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_SpliceAI27/'
+>>>>>>> main
 # splice_table='../../results/train_test_dataset_spliceAI/canonical_dataset.txt'
 splice_table='./canonical_dataset.txt'
 
