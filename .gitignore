@@ -20,12 +20,12 @@ scripts/zebra_fish/
 spliceai-toolkit/Step_4_spliceAI_model_train/
 experiments/SpliceAI_train_code/model_train_outdir/
 spliceaitoolkit/spliceAI_pytorch_model/JOB_spliceai_train_dataloader_version.sh
-spliceaitoolkit/spliceAI_pytorch_model/spliceai/bin/
-spliceaitoolkit/spliceAI_pytorch_model/spliceai/
 
-canonical_sequence.txt
-train_data/
+
+spliceai_goals.pdf
 test/
+train_data/
+
 
 
 # Byte-compiled / optimized / DLL files
