@@ -272,15 +272,6 @@ def onnx_to_keras(onnx_model, input_names,
 
     return model
 
-def initialize_paths(output_dir, flanking_size, sequence_length=SL, model_arch='SpliceAI'):
-    """Initialize project directories and create them if they don't exist."""
-
-    BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
-    model_pred_outdir = f"{output_dir}/{BASENAME}/"
-    os.makedirs(model_pred_outdir, exist_ok=True)
-
-    return model_pred_outdir
-
 def setup_device():
     """Select computation device based on availability."""
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
