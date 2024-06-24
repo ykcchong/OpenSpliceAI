@@ -28,7 +28,6 @@ Functions:
 """
 
 import os 
-import gffutils
 from Bio import SeqIO
 import numpy as np
 import h5py
@@ -82,13 +81,12 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
     h5f = h5py.File(output_dir + f'datafile_{type}.h5', 'w')
     GENE_COUNTER = 0
     for gene in db.features_of_type('gene'):
-        if gene.attributes["gene_biotype"][0] == "protein_coding" and gene.seqid in chrom_dict:
-            chrom_dict[gene.seqid] += 1
-            gene_id = gene.id
-            gene_seq = seq_dict[gene.seqid].seq[gene.start-1:gene.end].upper()  # Extract gene sequence
-            labels = [0] * len(gene_seq)  # Initialize all labels to 0
-            transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
-            if len(transcripts) == 0:
+        if "exception" in gene.attributes.keys() and gene.attributes["exception"][0] == "trans-splicing":
+            continue
+        if gene.seqid not in chrom_dict:
+            continue
+        if biotype =="protein-coding":
+            if gene.attributes["gene_biotype"][0] != "protein_coding":
                 continue
             elif len(transcripts) > 1:
                 print(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
@@ -116,6 +114,11 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
                         first_site = exons[i].end - gene.start  # Adjusted for python indexing
                         # Acceptor site is at the start of the next exon
                         second_site = exons[i + 1].start - gene.start  # Adjusted for python indexing
+                        '''
+                        KH: We only want to get only "GT-AG" or "GC-AG" or "AT-AC" splice sites. Annotation files are not always perfect.
+                        If motifs are not conserved, we want to skip them.
+                        A better solution is adding an argument letting users decide whether to skip or not.
+                        '''
                         if gene.strand == '+':
                             labels[first_site] = 2  # Mark donor site
                             labels[second_site] = 1  # Mark acceptor site
@@ -139,7 +142,7 @@ def get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse
             SEQ.append(gene_seq)
             LABEL.append(labels_str)
             fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
-            check_and_count_motifs(gene_seq, labels, gene.strand)
+            utils.check_and_count_motifs(gene_seq, labels, gene.strand, donor_motif_counts, acceptor_motif_counts)
     fw_stats.close()
     dt = h5py.string_dtype(encoding='utf-8')
     h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
@@ -172,6 +175,8 @@ def create_datafile(args):
     ''' 
     NOTE!!!!!!!!!!!!!!!!!!!!!!!!!!
     Where are the `get_all_chromosomes` and `split_chromosomes` functions? nvm they're in the main spliceaitoolkit.py file
+
+    KH: We want to treat humans as special cases, following SpliceAI's chromosome splitting method. Please add the condition back.
     '''
     # Use gffutils to parse annotation file
     os.makedirs(args.output_dir, exist_ok=True)

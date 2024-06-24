@@ -27,6 +27,7 @@ def parse_args_train(subparsers):
     parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_train.add_argument('--project-name', '-s', type=str)
     parser_train.add_argument('--flanking-size', '-f', type=int, default=80)
+    parser_train.add_argument('--random-seed', '-r', type=int, default=42)
     parser_train.add_argument('--exp-num', '-e', type=str, default=0)
     parser_train.add_argument('--train-dataset', '-train', type=str)
     parser_train.add_argument('--test-dataset', '-test', type=str)

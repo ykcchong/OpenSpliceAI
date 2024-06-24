@@ -20,7 +20,10 @@ from temperature_scaling import ModelWithTemperature
 from sklearn.metrics import log_loss
 import matplotlib.pyplot as plt
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> main
 RANDOM_SEED = 42
 
 def setup_device():
@@ -115,6 +118,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
     batch_ypred = []
 
 
+<<<<<<< HEAD
 def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_mode, sample_freq):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
@@ -163,6 +167,8 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
 
 
+=======
+>>>>>>> main
 def initialize_model_and_optim(flanking_size):
     """Initialize the model, criterion, optimizer, and scheduler."""
     # Hyper-parameters:
@@ -201,6 +207,7 @@ def initialize_model_and_optim(flanking_size):
     return params
 
 
+<<<<<<< HEAD
 
 ############################################
 # Model calibration
@@ -273,6 +280,8 @@ def fit_temperature_scaling(model, h5f, idxs, device, batch_size, params, train=
 
 
 
+=======
+>>>>>>> main
 def calibrate_and_predict(model, temp_model, test_loader):
     model.eval() # Ensure the model is in evaluation mode
     temp_model.eval() # Ensure the temperature model is in evaluation mode
@@ -292,6 +301,10 @@ def calibrate_and_predict(model, temp_model, test_loader):
 # End of model calibration
 ############################################
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> main
 def reverse_softmax(softmax_output, epsilon=1e-12):
     # Using log softmax for numerical stability
     # Adding epsilon to avoid log(0) which is undefined
@@ -397,24 +410,38 @@ def predict():
     model = SpliceAI(params['L'], params['W'], params['AR'])
     model.load_state_dict(torch.load(model_path))
     model = model.to(device)
+<<<<<<< HEAD
 
     # model.eval()
+=======
+    model.eval()
+>>>>>>> main
     print("Model: ", model)
     SAMPLE_FREQ = 1000
     print("\n--------------------------------------------------------------")
     start_time = time.time()
     BATCH_SIZE = 36
     
+<<<<<<< HEAD
     scaled_model = ModelWithTemperature(model)
     # # Calibration on the validation dataset
     # scaled_model.set_temperature(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=True)
     # Calibration on the testing dataset
     # scaled_model.set_temperature(model, train_h5f, train_idxs, device, params["BATCH_SIZE"], params, train=True)
+=======
+    
+    
+    ##########################################
+    # Temperature scaling
+    ##########################################    
+    scaled_model = ModelWithTemperature(model)
+>>>>>>> main
     scaled_model.set_temperature(model, test_h5f, test_idxs, device, params["BATCH_SIZE"], params, train=True)
     # scaled_model = ModelWithTemperature(model).to(device)
     # scaled_model.load_state_dict(torch.load("temp_model.pt"))
     # scaled_model = scaled_model.to(device)
     # scaled_model.set_temperature(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=False)
+<<<<<<< HEAD
 
     # # valid_epoch(model, test_h5f, test_idxs, BATCH_SIZE, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
     # temp_model, logits, labels = fit_temperature_scaling(model, train_h5f, val_idxs, device, params["BATCH_SIZE"], params, train=True)
@@ -422,6 +449,10 @@ def predict():
     # print("logits: ", logits.shape)
     # print("labels: ", labels.shape)
 
+=======
+    # print("logits: ", logits.shape)
+    # print("labels: ", labels.shape)
+>>>>>>> main
     torch.save(scaled_model.state_dict(), f"temp_model.pt")
     print("scaled_model: ", scaled_model)
 
@@ -452,6 +483,7 @@ def predict():
     probs_scaled = probs_scaled.detach().cpu().numpy()
     labels = labels.detach().cpu().numpy()
 
+<<<<<<< HEAD
     # ##########################################
     # # Plotting the score distribution
     # ##########################################
@@ -467,6 +499,23 @@ def predict():
     print("Log-loss of")
     print(f" * uncalibrated classifier: {log_loss_before:.8f}")
     print(f" * calibrated classifier: {log_loss_after:.8f}")
+=======
+    # # ##########################################
+    # # # Plotting the score distribution
+    # # ##########################################
+    # # score_frequency_distribution(probs, probs_scaled, labels, index=0)
+    # # score_frequency_distribution(probs, probs_scaled, labels, index=1)
+    # # score_frequency_distribution(probs, probs_scaled, labels, index=2)
+    # # Assuming labels are one-hot encoded, we convert them to class indices for log_loss
+    # # Calculate log-loss
+    # log_loss_before = log_loss(labels, probs)
+    # log_loss_after = log_loss(labels, probs_scaled)
+    # # print("probs_after_reshaped: ", probs_after_reshaped)
+    # # print("labels_indices: ", labels_indices)
+    # print("Log-loss of")
+    # print(f" * uncalibrated classifier: {log_loss_before:.8f}")
+    # print(f" * calibrated classifier: {log_loss_after:.8f}")
+>>>>>>> main
 
 
     ##########################################
@@ -511,6 +560,11 @@ def predict():
 
 
 
+<<<<<<< HEAD
+=======
+    
+    
+>>>>>>> main
     ##########################################
     # Plotting the score calibration
     ##########################################
