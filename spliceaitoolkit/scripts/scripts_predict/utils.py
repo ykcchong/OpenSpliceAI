@@ -6,8 +6,14 @@ datafile_{}_{}.h5 and convert them into a format usable by Keras.'''
 import numpy as np
 import torch
 from math import ceil
+<<<<<<< HEAD
 from sklearn.metrics import average_precision_score
 from spliceaitoolkit.constants import *
+=======
+from sklearn.metrics import average_precision_score, roc_auc_score, roc_curve, precision_recall_curve
+from spliceaitoolkit.constants import *
+import matplotlib.pyplot as plt
+>>>>>>> main
 
 assert CL_max % 2 == 0
 
@@ -67,7 +73,11 @@ def clip_datapoints(X, Y, CL, N_GPUS):
         # return X, [Y[t] for t in range(1)]
 
 
+<<<<<<< HEAD
 def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=False):
+=======
+def print_topl_statistics(y_true, y_pred, metric_files, ss_type='acceptor', print_top_k=False):
+>>>>>>> main
     # Prints the following information: top-kL statistics for k=0.5,1,2,4,
     # auprc, thresholds for k=0.5,1,2,4, number of true splice sites.
     idx_true = np.nonzero(y_true == 1)[0]
@@ -78,18 +88,29 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
     # print(("sorted_y_pred: ", sorted_y_pred))
     topkl_accuracy = []
     threshold = []
+<<<<<<< HEAD
     for top_length in [0.5, 1, 2, 4]:
 
+=======
+    ################################################
+    # Calculate top-kL accuracy and threshold
+    ################################################
+    for top_length in [0.5, 1, 2, 4]:
+>>>>>>> main
         num_elements = int(top_length * len(idx_true))
         if num_elements > len(y_pred):  # Check to prevent out-of-bounds access
             print(f"Warning: Requested top_length {top_length} with {len(idx_true)} true elements exceeds y_pred size of {len(y_pred)}. Adjusting to fit.")
             num_elements = len(y_pred)  # Adjust num_elements to prevent out-of-bounds error
+<<<<<<< HEAD
 
         idx_pred = argsorted_y_pred[-int(top_length*len(idx_true)):]
         print("idx_pred: ", idx_pred)
         print("idx_true: ", idx_true)
         # print(("idx_pred: ", idx_pred))
         
+=======
+        idx_pred = argsorted_y_pred[-int(top_length*len(idx_true)):]
+>>>>>>> main
         # print(("np.size(np.intersect1d(idx_true, idx_pred)): ", np.size(np.intersect1d(idx_true, idx_pred))))
         # print(("float(min(len(idx_pred), len(idx_true))): ", float(min(len(idx_pred), len(idx_true)))))
         topkl_accuracy += [np.size(np.intersect1d(idx_true, idx_pred)) \
@@ -98,22 +119,71 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
         threshold += [sorted_y_pred[-num_elements]]
         # print("threshold: ", threshold)
 
+<<<<<<< HEAD
     auprc = average_precision_score(y_true, y_pred)
 
     if print_top_k:
         print(f"\n\033[1m{type}:\033[0m")
+=======
+    ################################################
+    # Calculate AUPRC / AUROC
+    ################################################
+    auprc = average_precision_score(y_true, y_pred)
+    auroc = roc_auc_score(y_true, y_pred)
+
+    # ################################################
+    # # Plot ROC curve
+    # ################################################
+    # # Calculate ROC curve
+    # fpr, tpr, thresholds = roc_curve(y_true, y_pred)
+    # # Plot ROC curve
+    # plt.figure()
+    # plt.plot(fpr, tpr, label=f'ROC curve (area = {auroc:.2f})')
+    # plt.plot([0, 1], [0, 1], 'k--')  # Random predictions curve
+    # plt.xlim([0.0, 1.0])
+    # plt.ylim([0.0, 1.05])
+    # plt.xlabel('False Positive Rate')
+    # plt.ylabel('True Positive Rate')
+    # plt.title('Receiver Operating Characteristic (ROC) Curve')
+    # plt.legend(loc="lower right")
+    # plt.savefig(metric_files[f'{ss_type}_roc'])
+    # plt.clf()
+
+    ################################################
+    # Plot PR curve
+    ################################################
+    # Calculate PR curve
+    precision, recall, thresholds = precision_recall_curve(y_true, y_pred)
+    # Plot PR curve
+    plt.plot(recall, precision, label=f'{ss_type} (area = {auprc:.2f})')
+    plt.xlabel('Recall')
+    plt.ylabel('Precision')
+    plt.title('Precision-Recall (PR) Curve')
+    plt.legend(loc="lower left")
+
+    if print_top_k:
+        print(f"\n\033[1m{ss_type}:\033[0m")
+>>>>>>> main
         print((("%.4f\t\033[91m%.4f\t\033[0m%.4f\t%.4f\t\033[94m%.4f\t\033[0m"
             + "%.4f\t%.4f\t%.4f\t%.4f\t%d") % (topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
             topkl_accuracy[3], auprc, threshold[0], threshold[1],
             threshold[2], threshold[3], len(idx_true))))
+<<<<<<< HEAD
     
     with open(file, 'a') as f:
+=======
+    with open(metric_files[f"{ss_type}_topk_all"], 'a') as f:
+>>>>>>> main
         f.write((("%.4f\t%.4f\t%.4f\t%.4f\t%.4f\t"
           + "%.4f\t%.4f\t%.4f\t%.4f\t%d\n") % (topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
           topkl_accuracy[3], auprc, threshold[0], threshold[1],
           threshold[2], threshold[3], len(idx_true))))
+<<<<<<< HEAD
 
     return topkl_accuracy[1], auprc
+=======
+    return topkl_accuracy[1], auprc, auroc
+>>>>>>> main
 
 
 def weighted_binary_cross_entropy(output, target, weights=None):
