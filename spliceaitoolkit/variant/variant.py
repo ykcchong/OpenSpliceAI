@@ -35,7 +35,7 @@ def variant(args):
 
     # Generating output VCF file
     print('\t[INFO] Generating output VCF file')
-    output_dir = initialize_paths(os.path.dirname(args.O), args.flanking_size)
+    output_dir = os.path.dirname(args.O)
     try:
         output = pysam.VariantFile(args.O, mode='w', header=header)
     except (IOError, ValueError) as e:
