@@ -387,45 +387,66 @@ def convert_pt_to_keras(model_path, CL, output_dir):
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
 class Annotator:
-
+    """
+    Annotator class to handle gene annotations and reference sequences.
+    It initializes with the reference genome, annotation data, and optional model configuration.
+    """
+    
     def __init__(self, ref_fasta, annotations, output_dir, model=None, CL=80):
+        """
+        Initializes the Annotator with reference genome, annotations, and model settings.
+        
+        Args:
+            ref_fasta (str): Path to the reference genome FASTA file.
+            annotations (str): Path or name of the annotation file (e.g., 'grch37', 'grch38').
+            output_dir (str): Directory for output files.
+            model (str, optional): Path to the model file or type of model ('SpliceAI'). Defaults to None.
+            CL (int, optional): Context length parameter for model conversion. Defaults to 80.
+        """
 
+        # Load annotation file based on provided annotations type
         if annotations == 'grch37':
             annotations = resource_filename(__name__, 'annotations/grch37.txt')
         elif annotations == 'grch38':
             annotations = resource_filename(__name__, 'annotations/grch38.txt')
 
+        # Load and parse the annotation file
         try:
             df = pd.read_csv(annotations, sep='\t', dtype={'CHROM': object})
+            # Extract relevant columns into numpy arrays for efficient access
             self.genes = df['#NAME'].to_numpy()
             self.chroms = df['CHROM'].to_numpy()
             self.strands = df['STRAND'].to_numpy()
-            self.tx_starts = df['TX_START'].to_numpy()+1
-            self.tx_ends = df['TX_END'].to_numpy()
-            self.exon_starts = [np.asarray([int(i) for i in c.split(',') if i])+1
+            self.tx_starts = df['TX_START'].to_numpy() + 1  # Transcription start sites (1-based indexing)
+            self.tx_ends = df['TX_END'].to_numpy()  # Transcription end sites
+            
+            # Extract and process exon start and end sites, convert into numpy array format
+            self.exon_starts = [np.asarray([int(i) for i in c.split(',') if i]) + 1
                                 for c in df['EXON_START'].to_numpy()]
             self.exon_ends = [np.asarray([int(i) for i in c.split(',') if i])
                               for c in df['EXON_END'].to_numpy()]
         except IOError as e:
-            logging.error('{}'.format(e))
-            exit()
+            logging.error('{}'.format(e)) 
+            exit()  # Exit if the file cannot be read
         except (KeyError, pd.errors.ParserError) as e:
             logging.error('Gene annotation file {} not formatted properly: {}'.format(annotations, e))
-            exit()
+            exit()  # Exit if the file format is incorrect
 
+        # Load the reference genome fasta file
         try:
             self.ref_fasta = Fasta(ref_fasta, rebuild=False)
         except IOError as e:
-            logging.error('{}'.format(e))
-            exit()
-        
+            logging.error('{}'.format(e))  # Log file read error
+            exit()  # Exit if the file cannot be read
+
+        # Load models based on the specified model type or file
         if model == 'SpliceAI':
-            paths = ('models/spliceai{}.h5'.format(x) for x in range(1, 6))
+            paths = ('models/spliceai{}.h5'.format(x) for x in range(1, 6))  # Generate paths for SpliceAI models
             self.models = [load_model(resource_filename(__name__, x)) for x in paths]
         else:
             self.models = []
             for m in [path.strip() for path in model.split(',')]:
-                if m.endswith('.pt'): # convert from pytorch to onnx to keras 
+                if m.endswith('.pt'):  # Convert PyTorch model to Keras
                     keras_model = convert_pt_to_keras(m, CL, output_dir)
                     self.models.append(keras_model)
                 else:
