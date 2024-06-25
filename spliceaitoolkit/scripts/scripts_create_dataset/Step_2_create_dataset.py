@@ -221,12 +221,6 @@ def main():
         LABEL = h5f['LABEL'][:]
         h5f.close()
 
-<<<<<<< HEAD
-        print("\tCreating dataset.h5 ... ")
-        h5f2 = h5py.File(output_file, 'w')
-        CHUNK_SIZE = 100
-=======
->>>>>>> main
         seq_num = SEQ.shape[0]
         print("seq_num: ", seq_num)
         # print("STRAND.shape[0]: ", STRAND.shape[0])
@@ -243,38 +237,6 @@ def main():
             check_and_count_motifs(seq_decode, label_int, strand_decode)
         print_motif_counts()
         
-<<<<<<< HEAD
-        # Create dataset
-        for i in range(seq_num//CHUNK_SIZE):
-            # Each dataset has CHUNK_SIZE genes
-            if (i+1) == seq_num//CHUNK_SIZE:
-                NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
-            else:
-                NEW_CHUNK_SIZE = CHUNK_SIZE
-            X_batch = []
-            Y_batch = [[] for t in range(1)]
-            for j in range(NEW_CHUNK_SIZE):
-                idx = i*CHUNK_SIZE + j
-                seq_decode = SEQ[idx].decode('ascii')
-                strand_decode = STRAND[idx].decode('ascii')
-                tx_start_decode = TX_START[idx].decode('ascii')
-                tx_end_decode = TX_END[idx].decode('ascii')
-                label_decode = LABEL[idx].decode('ascii')
-                fixed_seq = replace_non_acgt_to_n(seq_decode)
-                X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)            
-                X_batch.extend(X)
-                for t in range(1):
-                    Y_batch[t].extend(Y[t])
-            X_batch = np.asarray(X_batch).astype('int8')
-            print("X_batch.shape: ", X_batch.shape)
-            
-            for t in range(1):
-                Y_batch[t] = np.asarray(Y_batch[t]).astype('int8')
-            print("len(Y_batch[0]): ", len(Y_batch[0]))
-            h5f2.create_dataset('X' + str(i), data=X_batch)
-            h5f2.create_dataset('Y' + str(i), data=Y_batch)
-        h5f2.close()
-=======
         # print("\tCreating dataset.h5 ... ")
         # h5f2 = h5py.File(output_file, 'w')
         # CHUNK_SIZE = 100
@@ -308,7 +270,6 @@ def main():
         #     h5f2.create_dataset('X' + str(i), data=X_batch)
         #     h5f2.create_dataset('Y' + str(i), data=Y_batch)
         # h5f2.close()
->>>>>>> main
         print("--- %s seconds ---" % (time.time() - start_time))
 
 
