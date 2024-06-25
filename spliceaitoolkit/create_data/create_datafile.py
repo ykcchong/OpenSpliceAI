@@ -178,6 +178,8 @@ def create_datafile(args):
         - split_method (str): Method for splitting chromosomes into training and testing groups ('random' or 'human').
         - split_ratio (float): Ratio of training and testing datasets.
     """
+    print("--- Step 1: Creating datafile.h5 ... ---")
+    start_time = time.time()
     
     # Use gffutils to parse annotation file
     os.makedirs(args.output_dir, exist_ok=True)
@@ -190,9 +192,7 @@ def create_datafile(args):
     print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
     print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
 
-    # Collect sequences and labels
-    print("--- Step 1: Creating datafile.h5 ... ---")
-    start_time = time.time()
+    # Collect sequences and labels for testing and/or training groups
     if args.chr_split == 'test':
         print("Creating test datafile...")
         get_sequences_and_labels(db, args.output_dir, seq_dict, data_type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only)
@@ -202,4 +202,5 @@ def create_datafile(args):
         print("Creating test datafile...")
         get_sequences_and_labels(db, args.output_dir, seq_dict, data_type="test", chrom_dict=TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only)
     utils.print_motif_counts(donor_motif_counts, acceptor_motif_counts)
+    
     print("--- %s seconds ---" % (time.time() - start_time))

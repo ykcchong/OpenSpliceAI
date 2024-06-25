@@ -28,6 +28,8 @@ from spliceaitoolkit.constants import *
 from spliceaitoolkit.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
 import argparse          
 
+CHUNK_SIZE = 100 # size of chunks to process data in
+
 def create_dataset(args):
     """
     Create HDF5 datasets for training and testing from processed genomic data.
@@ -43,10 +45,21 @@ def create_dataset(args):
     
     print("--- Step 2: Creating dataset.h5 ... ---")
     start_time = time.time()
-    for data_type in ['train', 'test']:
-        print(("\tProcessing %s ..." % data_type))
-        input_file = f"{args.output_dir}/datafile_{data_type}.h5"
-        output_file = f"{args.output_dir}/dataset_{data_type}.h5"
+    
+    dataset_ls = [] 
+    if args.chr_split == 'test':
+        dataset_ls.append('test')
+    elif args.chr_split == 'train-test':
+        dataset_ls.append('test')
+        dataset_ls.append('train')
+    for dataset_type in dataset_ls:
+        print(("\tProcessing %s ..." % dataset_type))
+        if args.biotype =="non-coding":
+            input_file = f"{args.output_dir}/datafile_{dataset_type}_ncRNA.h5"
+            output_file = f"{args.output_dir}/dataset_{dataset_type}_ncRNA.h5"
+        elif args.biotype =="protein-coding":
+            input_file = f"{args.output_dir}/datafile_{dataset_type}.h5"
+            output_file = f"{args.output_dir}/dataset_{dataset_type}.h5"
 
         print(f"\tReading {input_file} ... ")
         with h5py.File(input_file, 'r') as h5f:
@@ -55,13 +68,10 @@ def create_dataset(args):
             STRAND = h5f['STRAND'][:]
             TX_START = h5f['TX_START'][:]
             TX_END = h5f['TX_END'][:]
-            # SEQ = h5f['SEQ'][:]
-            # LABEL = h5f['LABEL'][:]
 
         print(f"\tWriting {output_file} ... ")
         with h5py.File(output_file, 'w') as h5f2:
             seq_num = len(SEQ)
-            CHUNK_SIZE = 100
 
             print("seq_num: ", seq_num)
             print("STRAND.shape[0]: ", STRAND.shape[0])
@@ -85,10 +95,11 @@ def create_dataset(args):
                     idx = i*CHUNK_SIZE + j
 
                     seq_decode = SEQ[idx].decode('ascii')
-                    strand_decode = STRAND[idx].decode('ascii')
-                    tx_start_decode = TX_START[idx].decode('ascii')
-                    tx_end_decode = TX_END[idx].decode('ascii')
                     label_decode = LABEL[idx].decode('ascii')
+                    
+                    # strand_decode = STRAND[idx].decode('ascii')
+                    # tx_start_decode = TX_START[idx].decode('ascii')
+                    # tx_end_decode = TX_END[idx].decode('ascii')
 
                     fixed_seq = replace_non_acgt_to_n(seq_decode)
                     X, Y = create_datapoints(fixed_seq, label_decode, CL_max=args.flanking_size)
