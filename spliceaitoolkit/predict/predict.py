@@ -13,7 +13,7 @@ from spliceaitoolkit.predict.spliceai import *
 from spliceaitoolkit.predict.utils import *
 from spliceaitoolkit.constants import *
 
-# FOR TESTING PURPOSES
+# FOR DEBUGGING
 import psutil
 def log_memory_usage():
     process = psutil.Process(os.getpid())
