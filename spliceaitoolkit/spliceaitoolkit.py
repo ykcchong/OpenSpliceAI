@@ -69,26 +69,20 @@ def parse_args_predict(subparsers):
 
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
-    parser_variant.add_argument('-R', metavar='reference', required=True,
-                        help='path to the reference genome fasta file')
-    parser_variant.add_argument('-A', metavar='annotation', required=True,
-                        help='"grch37" (GENCODE V24lift37 canonical annotation file in '
-                             'package), "grch38" (GENCODE V24 canonical annotation file in '
-                             'package), or path to a similar custom gene annotation file')
+    parser_variant.add_argument('-R', metavar='reference', required=True, help='path to the reference genome fasta file')
+    parser_variant.add_argument('-A', metavar='annotation', required=True, help='"grch37" (GENCODE V24lift37 canonical annotation file in '
+                                                                                'package), "grch38" (GENCODE V24 canonical annotation file in '
+                                                                                'package), or path to a similar custom gene annotation file')
     parser_variant.add_argument('-m', '--model', default="SpliceAI", type=str)
     parser_variant.add_argument('-f', '--flanking-size', type=int, default=80)
-    parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin,
-                        help='path to the input VCF file, defaults to standard in')
-    parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout,
-                        help='path to the output VCF file, defaults to standard out')
-    parser_variant.add_argument('-D', metavar='distance', nargs='?', default=50,
-                        type=int, choices=range(0, 5000),
-                        help='maximum distance between the variant and gained/lost splice '
-                             'site, defaults to 50')
-    parser_variant.add_argument('-M', metavar='mask', nargs='?', default=0,
-                        type=int, choices=[0, 1],
-                        help='mask scores representing annotated acceptor/donor gain and '
-                             'unannotated acceptor/donor loss, defaults to 0')
+    parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin, help='path to the input VCF file, defaults to standard in')
+    parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout, help='path to the output VCF file, defaults to standard out')
+    parser_variant.add_argument('-D', metavar='distance', nargs='?', default=50, type=int, choices=range(0, 5000),
+                                    help='maximum distance between the variant and gained/lost splice '
+                                        'site, defaults to 50')
+    parser_variant.add_argument('-M', metavar='mask', nargs='?', default=0, type=int, choices=[0, 1], 
+                                    help='mask scores representing annotated acceptor/donor gain and '
+                                        'unannotated acceptor/donor loss, defaults to 0')
  
 
 def parse_args(arglist):

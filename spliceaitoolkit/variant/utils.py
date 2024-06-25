@@ -2,23 +2,24 @@ from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
+from tensorflow import keras
 import keras.models
 import torch
 import logging
 import onnx
 import platform
 import os
+import re
 from spliceaitoolkit.train.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 
-# from onnx2keras import onnx_to_keras
+##############################################
+## KERAS TO PYTORCH CONVERSION LOGIC
+##############################################
 
-import re
-from tensorflow import keras
-import logging
+# from onnx2keras import onnx_to_keras
 import inspect
 from onnx import numpy_helper
-
 import onnx2keras
 from onnx2keras.layers import AVAILABLE_CONVERTERS
 from onnx2keras.converter import onnx_node_attributes_to_dict
@@ -272,53 +273,7 @@ def onnx_to_keras(onnx_model, input_names,
 
     return model
 
-def setup_device():
-    """Select computation device based on availability."""
-    device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
-    return torch.device(device_str)
 
-def load_model(device, flanking_size):
-    """Loads the given model."""
-    # Hyper-parameters:
-    # L: Number of convolution kernels
-    # W: Convolution window size in each residual unit
-    # AR: Atrous rate in each residual unit
-    L = 32
-    W = np.asarray([11, 11, 11, 11])
-    AR = np.asarray([1, 1, 1, 1])
-    N_GPUS = 2
-    BATCH_SIZE = 18*N_GPUS
-
-    if int(flanking_size) == 80:
-        W = np.asarray([11, 11, 11, 11])
-        AR = np.asarray([1, 1, 1, 1])
-        BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 400:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
-        BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 2000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10])
-        BATCH_SIZE = 12*N_GPUS
-    elif int(flanking_size) == 10000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21, 41, 41, 41, 41])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10, 25, 25, 25, 25])
-        BATCH_SIZE = 6*N_GPUS
-
-    CL = 2 * np.sum(AR*(W-1))
-
-    print(f"\t[INFO] Context nucleotides {CL}")
-    print(f"\t[INFO] Sequence length (output): {SL}")
-    
-    model = SpliceAI(L, W, AR).to(device)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
-
-    return model, params
 
 def convert_pt_to_keras(model_path, CL, output_dir): 
 
@@ -377,6 +332,61 @@ def convert_pt_to_keras(model_path, CL, output_dir):
     # save as h5
     keras.models.save_model(k_model, f'{output_dir}model_keras.h5')
     keras_model = keras.models.load_model(f'{output_dir}model_keras.h5')
+    print('Keras model saved')
+    
+##############################################
+## END 
+##############################################
+
+
+def setup_device():
+    """Select computation device based on availability."""
+    device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
+    return torch.device(device_str)
+
+def load_model(device, flanking_size):
+    """Loads the given model."""
+    # Hyper-parameters:
+    # L: Number of convolution kernels
+    # W: Convolution window size in each residual unit
+    # AR: Atrous rate in each residual unit
+    L = 32
+    W = np.asarray([11, 11, 11, 11])
+    AR = np.asarray([1, 1, 1, 1])
+    N_GPUS = 2
+    BATCH_SIZE = 18*N_GPUS
+
+    if int(flanking_size) == 80:
+        W = np.asarray([11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1])
+        BATCH_SIZE = 18*N_GPUS
+    elif int(flanking_size) == 400:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
+        BATCH_SIZE = 18*N_GPUS
+    elif int(flanking_size) == 2000:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10])
+        BATCH_SIZE = 12*N_GPUS
+    elif int(flanking_size) == 10000:
+        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                        21, 21, 21, 21, 41, 41, 41, 41])
+        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                        10, 10, 10, 10, 25, 25, 25, 25])
+        BATCH_SIZE = 6*N_GPUS
+
+    CL = 2 * np.sum(AR*(W-1))
+
+    print(f"\t[INFO] Context nucleotides {CL}")
+    print(f"\t[INFO] Sequence length (output): {SL}")
+    
+    model = SpliceAI(L, W, AR).to(device)
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+
+    return model, params
+
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 ####################################################################################################################################
@@ -453,160 +463,240 @@ class Annotator:
                     self.models.append(load_model(m))
 
     def get_name_and_strand(self, chrom, pos):
+        """
+        Retrieve gene names and strands overlapping a given chromosome position.
+        
+        Args:
+            chrom (str): Chromosome identifier.
+            pos (int): Position on the chromosome.
+        
+        Returns:
+            tuple: Lists of gene names, strands, and their indices overlapping the given position.
+        """
 
+        # Normalize chromosome identifier to match the annotation format
         chrom = normalise_chrom(chrom, list(self.chroms)[0])
+        # Find indices of annotations overlapping the given chromosome and position
         idxs = np.intersect1d(np.nonzero(self.chroms == chrom)[0],
                               np.intersect1d(np.nonzero(self.tx_starts <= pos)[0],
-                              np.nonzero(pos <= self.tx_ends)[0]))
+                                             np.nonzero(pos <= self.tx_ends)[0]))
 
         if len(idxs) >= 1:
-            return self.genes[idxs], self.strands[idxs], idxs
+            return self.genes[idxs], self.strands[idxs], idxs  # Return matching gene names and strands
         else:
-            return [], [], []
+            return [], [], []  # Return empty lists if no matches are found
 
     def get_pos_data(self, idx, pos):
+        """
+        Calculate distances from a given position to the transcription start site, 
+        transcription end site, and nearest exon boundary for a specific gene.
+        
+        Args:
+            idx (int): Index of the gene in the annotations.
+            pos (int): Position on the chromosome.
+        
+        Returns:
+            tuple: Distances to transcription start, transcription end, and nearest exon boundary.
+        """
 
-        dist_tx_start = self.tx_starts[idx]-pos
-        dist_tx_end = self.tx_ends[idx]-pos
-        dist_exon_bdry = min(np.union1d(self.exon_starts[idx], self.exon_ends[idx])-pos, key=abs)
-        dist_ann = (dist_tx_start, dist_tx_end, dist_exon_bdry)
+        # Calculate distances to transcription start and end sites
+        dist_tx_start = self.tx_starts[idx] - pos
+        dist_tx_end = self.tx_ends[idx] - pos
+        # Calculate the closest distance to an exon boundary
+        dist_exon_bdry = min(np.union1d(self.exon_starts[idx], self.exon_ends[idx]) - pos, key=abs)
+        dist_ann = (dist_tx_start, dist_tx_end, dist_exon_bdry)  # Package distances into a tuple
 
         return dist_ann
 
 
 def one_hot_encode(seq):
+    """
+    One-hot encode a DNA sequence.
+    
+    Args:
+        seq (str): DNA sequence to be encoded.
+    
+    Returns:
+        np.ndarray: One-hot encoded representation of the sequence.
+    """
 
-    map = np.asarray([[0, 0, 0, 0],
-                      [1, 0, 0, 0],
-                      [0, 1, 0, 0],
-                      [0, 0, 1, 0],
-                      [0, 0, 0, 1]])
+    # Define a mapping matrix for nucleotide to one-hot encoding
+    map = np.asarray([[0, 0, 0, 0],  # N or any invalid character
+                      [1, 0, 0, 0],  # A
+                      [0, 1, 0, 0],  # C
+                      [0, 0, 1, 0],  # G
+                      [0, 0, 0, 1]]) # T
 
+    # Replace nucleotides with corresponding indices
     seq = seq.upper().replace('A', '\x01').replace('C', '\x02')
     seq = seq.replace('G', '\x03').replace('T', '\x04').replace('N', '\x00')
 
+    # Convert the sequence to one-hot encoded numpy array
     return map[np.fromstring(seq, np.int8) % 5]
 
 
 def normalise_chrom(source, target):
+    """
+    Normalize chromosome identifiers to ensure consistency in format (with or without 'chr' prefix).
+    
+    Args:
+        source (str): Source chromosome identifier.
+        target (str): Target chromosome identifier for comparison.
+    
+    Returns:
+        str: Normalized chromosome identifier.
+    """
 
     def has_prefix(x):
-        return x.startswith('chr')
+        return x.startswith('chr')  # Check if a chromosome name has 'chr' prefix
 
     if has_prefix(source) and not has_prefix(target):
-        return source.strip('chr')
+        return source.strip('chr')  # Remove 'chr' prefix if target doesn't have it
     elif not has_prefix(source) and has_prefix(target):
-        return 'chr'+source
+        return 'chr' + source  # Add 'chr' prefix if target has it
 
-    return source
+    return source  # Return source as is if both or neither have 'chr' prefix
 
+def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
+    """
+    Calculate delta scores for variant impacts on splice sites.
+    
+    Args:
+        record (pysam Record): Record containing variant information (e.g., chrom, pos, ref, alts).
+        ann (Annotator): Annotator instance with annotation and reference genome data.
+        dist_var (int): Max distance between variant and gained/lost splice site, defaults to 50.
+        mask (bool): Mask scores representing annotated acceptor/donor gain and unannotated acceptor/donor loss, defaults to 0.
+        flanking_size (int, optional): Size of the flanking region around the variant, defaults to 5000.
+    
+    Returns:
+        list: Delta scores indicating the impact of variants on splicing.
+    """
 
-def get_delta_scores(record, ann, dist_var, mask):
-
-    cov = 2*dist_var+1
-    wid = 10000+cov
+    # Define coverage and window size around the variant
+    cov = 2 * dist_var + 1
+    wid = 2 * flanking_size + cov
     delta_scores = []
 
+    # Validate the record fields
     try:
         record.chrom, record.pos, record.ref, len(record.alts)
     except TypeError:
         logging.warning('Skipping record (bad input): {}'.format(record))
         return delta_scores
 
+    # Get gene names and strands overlapping the variant position
     (genes, strands, idxs) = ann.get_name_and_strand(record.chrom, record.pos)
     if len(idxs) == 0:
-        return delta_scores
+        return delta_scores  # Return empty list if no overlapping genes are found
 
+    # Normalize chromosome and retrieve reference sequence around the variant
     chrom = normalise_chrom(record.chrom, list(ann.ref_fasta.keys())[0])
     try:
-        seq = ann.ref_fasta[chrom][record.pos-wid//2-1:record.pos+wid//2].seq
+        seq = ann.ref_fasta[chrom][record.pos - wid // 2 - 1 : record.pos + wid // 2].seq
     except (IndexError, ValueError):
         logging.warning('Skipping record (fasta issue): {}'.format(record))
         return delta_scores
 
-    if seq[wid//2:wid//2+len(record.ref)].upper() != record.ref:
+    # Check if the reference sequence matches the expected reference allele
+    if seq[wid // 2 : wid // 2 + len(record.ref)].upper() != record.ref:
         logging.warning('Skipping record (ref issue): {}'.format(record))
         return delta_scores
 
+    # Check if the sequence length matches the expected window size
     if len(seq) != wid:
         logging.warning('Skipping record (near chromosome end): {}'.format(record))
         return delta_scores
 
-    if len(record.ref) > 2*dist_var:
+    # Skip records with a reference allele longer than the distance variable
+    if len(record.ref) > 2 * dist_var:
         logging.warning('Skipping record (ref too long): {}'.format(record))
         return delta_scores
 
+    # Iterate over each alternative allele and each gene index
     for j in range(len(record.alts)):
         for i in range(len(idxs)):
 
+            # Skip specific alternative allele types
             if '.' in record.alts[j] or '-' in record.alts[j] or '*' in record.alts[j]:
                 continue
-
             if '<' in record.alts[j] or '>' in record.alts[j]:
                 continue
 
+            # Handle multi-nucleotide variants
             if len(record.ref) > 1 and len(record.alts[j]) > 1:
                 delta_scores.append("{}|{}|.|.|.|.|.|.|.|.".format(record.alts[j], genes[i]))
                 continue
 
+            # Calculate position-related distances
             dist_ann = ann.get_pos_data(idxs[i], record.pos)
-            pad_size = [max(wid//2+dist_ann[0], 0), max(wid//2-dist_ann[1], 0)]
+            pad_size = [max(wid // 2 + dist_ann[0], 0), max(wid // 2 - dist_ann[1], 0)]
             ref_len = len(record.ref)
             alt_len = len(record.alts[j])
-            del_len = max(ref_len-alt_len, 0)
+            del_len = max(ref_len - alt_len, 0)
 
-            x_ref = 'N'*pad_size[0]+seq[pad_size[0]:wid-pad_size[1]]+'N'*pad_size[1]
-            x_alt = x_ref[:wid//2]+str(record.alts[j])+x_ref[wid//2+ref_len:]
+            # Construct reference and alternative sequences with padding
+            x_ref = 'N' * pad_size[0] + seq[pad_size[0]: wid - pad_size[1]] + 'N' * pad_size[1]
+            x_alt = x_ref[: wid // 2] + str(record.alts[j]) + x_ref[wid // 2 + ref_len:]
 
+            # One-hot encode the sequences
             x_ref = one_hot_encode(x_ref)[None, :]
             x_alt = one_hot_encode(x_alt)[None, :]
 
+            # Reverse the sequences if on the negative strand
             if strands[i] == '-':
                 x_ref = x_ref[:, ::-1, ::-1]
                 x_alt = x_alt[:, ::-1, ::-1]
 
+            # Predict scores using the models
             y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
             y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
 
+            # Reverse the predicted scores if on the negative strand
             if strands[i] == '-':
                 y_ref = y_ref[:, ::-1]
                 y_alt = y_alt[:, ::-1]
 
+            # Adjust the alternative sequence scores based on reference and alternative lengths
             if ref_len > 1 and alt_len == 1:
                 y_alt = np.concatenate([
-                    y_alt[:, :cov//2+alt_len],
+                    y_alt[:, : cov // 2 + alt_len],
                     np.zeros((1, del_len, 3)),
-                    y_alt[:, cov//2+alt_len:]],
-                    axis=1)
+                    y_alt[:, cov // 2 + alt_len:]
+                ], axis=1)
             elif ref_len == 1 and alt_len > 1:
                 y_alt = np.concatenate([
-                    y_alt[:, :cov//2],
-                    np.max(y_alt[:, cov//2:cov//2+alt_len], axis=1)[:, None, :],
-                    y_alt[:, cov//2+alt_len:]],
-                    axis=1)
+                    y_alt[:, : cov // 2],
+                    np.max(y_alt[:, cov // 2 : cov // 2 + alt_len], axis=1)[:, None, :],
+                    y_alt[:, cov // 2 + alt_len:]
+                ], axis=1)
 
+            # Concatenate the reference and alternative scores
             y = np.concatenate([y_ref, y_alt])
 
-            idx_pa = (y[1, :, 1]-y[0, :, 1]).argmax()
-            idx_na = (y[0, :, 1]-y[1, :, 1]).argmax()
-            idx_pd = (y[1, :, 2]-y[0, :, 2]).argmax()
-            idx_nd = (y[0, :, 2]-y[1, :, 2]).argmax()
+            # Find the indices of maximum delta scores for splicing acceptor and donor sites
+            idx_pa = (y[1, :, 1] - y[0, :, 1]).argmax()
+            idx_na = (y[0, :, 1] - y[1, :, 1]).argmax()
+            idx_pd = (y[1, :, 2] - y[0, :, 2]).argmax()
+            idx_nd = (y[0, :, 2] - y[1, :, 2]).argmax()
 
-            mask_pa = np.logical_and((idx_pa-cov//2 == dist_ann[2]), mask)
-            mask_na = np.logical_and((idx_na-cov//2 != dist_ann[2]), mask)
-            mask_pd = np.logical_and((idx_pd-cov//2 == dist_ann[2]), mask)
-            mask_nd = np.logical_and((idx_nd-cov//2 != dist_ann[2]), mask)
+            # Apply masks to delta scores based on calculated indices and provided mask
+            mask_pa = np.logical_and((idx_pa - cov // 2 == dist_ann[2]), mask)
+            mask_na = np.logical_and((idx_na - cov // 2 != dist_ann[2]), mask)
+            mask_pd = np.logical_and((idx_pd - cov // 2 == dist_ann[2]), mask)
+            mask_nd = np.logical_and((idx_nd - cov // 2 != dist_ann[2]), mask)
 
+            # Append the calculated delta scores to the result list
             delta_scores.append("{}|{}|{:.2f}|{:.2f}|{:.2f}|{:.2f}|{}|{}|{}|{}".format(
-                                record.alts[j],
-                                genes[i],
-                                (y[1, idx_pa, 1]-y[0, idx_pa, 1])*(1-mask_pa),
-                                (y[0, idx_na, 1]-y[1, idx_na, 1])*(1-mask_na),
-                                (y[1, idx_pd, 2]-y[0, idx_pd, 2])*(1-mask_pd),
-                                (y[0, idx_nd, 2]-y[1, idx_nd, 2])*(1-mask_nd),
-                                idx_pa-cov//2,
-                                idx_na-cov//2,
-                                idx_pd-cov//2,
-                                idx_nd-cov//2))
+                record.alts[j],
+                genes[i],
+                (y[1, idx_pa, 1] - y[0, idx_pa, 1]) * (1 - mask_pa),
+                (y[0, idx_na, 1] - y[1, idx_na, 1]) * (1 - mask_na),
+                (y[1, idx_pd, 2] - y[0, idx_pd, 2]) * (1 - mask_pd),
+                (y[0, idx_nd, 2] - y[1, idx_nd, 2]) * (1 - mask_nd),
+                idx_pa - cov // 2,
+                idx_na - cov // 2,
+                idx_pd - cov // 2,
+                idx_nd - cov // 2
+            ))
 
-    return delta_scores
+    return delta_scores  # Return the list of delta scores

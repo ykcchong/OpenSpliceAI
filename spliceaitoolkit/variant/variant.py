@@ -6,11 +6,12 @@ import pysam
 import numpy as np
 from spliceaitoolkit.variant.utils import *
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def variant(args):
     print("Running SpliceAI-toolkit with 'variant' mode")
+    
+    # Set up logging
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # Error handling for required arguments
     if None in [args.I, args.O, args.R, args.A, args.model, args.flanking_size]:
@@ -18,37 +19,47 @@ def variant(args):
                       '[-D [distance]] [-M [mask]]')
         exit(1)
 
+    # Define arguments
+    ref_genome = args.R
+    annotation = args.A
+    input_vcf = args.I
+    output_vcf = args.O
+    distance = args.D
+    mask = args.M
+    model = args.model
+    flanking_size = args.flanking_size
+
     # Reading input VCF file
     print('\t[INFO] Reading input VCF file')
     try:
-        vcf = pysam.VariantFile(args.I)
+        vcf = pysam.VariantFile(input_vcf)
     except (IOError, ValueError) as e:
         logging.error('Error reading input file: {}'.format(e))
         exit(1)
 
     # Adding annotation to the header
     header = vcf.header
-    header.add_line('##INFO=<ID=SpliceAI,Number=.,Type=String,Description="SpliceAI-tookit variant '
+    header.add_line('##INFO=<ID=SpliceAI,Number=.,Type=String,Description="OpenSpliceAI variant '
                     'annotation. These include delta scores (DS) and delta positions (DP) for '
                     'acceptor gain (AG), acceptor loss (AL), donor gain (DG), and donor loss (DL). '
                     'Format: ALLELE|SYMBOL|DS_AG|DS_AL|DS_DG|DS_DL|DP_AG|DP_AL|DP_DG|DP_DL">')
 
     # Generating output VCF file
     print('\t[INFO] Generating output VCF file')
-    output_dir = os.path.dirname(args.O)
+    output_dir = os.path.dirname(output_vcf)
     try:
-        output = pysam.VariantFile(args.O, mode='w', header=header)
+        output = pysam.VariantFile(output_vcf, mode='w', header=header)
     except (IOError, ValueError) as e:
         logging.error('Error generating output VCF file: {}'.format(e))
         exit(1)
 
-    # Initialize the Annotator class
+    # Setup the Annotator based on reference genome and annotation
     logging.info('Initializing Annotator class')
-    ann = Annotator(args.R, args.A, output_dir, args.model, int(args.flanking_size))
+    ann = Annotator(ref_genome, annotation, output_dir, model, flanking_size)
 
-    # Process each record in the VCF
+    # Obtain delta score for each variant in VCF
     for record in vcf:
-        scores = get_delta_scores(record, ann, args.D, args.M)
+        scores = get_delta_scores(record, ann, distance, mask, flanking_size)
         if scores:
             record.info['SpliceAI'] = scores
         output.write(record)
@@ -60,6 +71,9 @@ def variant(args):
 
 
 
+
+
+'''original'''
 # def variant(args):
 
 #     print("Running SpliceAI-toolkit with 'variant' mode")
