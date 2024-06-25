@@ -4,7 +4,7 @@ import random
 import h5py
 import numpy as np
 from spliceaitoolkit import header
-from spliceaitoolkit.create_data import create_datafile, create_dataset
+from spliceaitoolkit.create_data import create_datafile, create_dataset, verify_h5_file
 from spliceaitoolkit.train import train
 from spliceaitoolkit.fine_tune import fine_tune
 from spliceaitoolkit.predict import predict
@@ -25,6 +25,7 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--split-ratio', type=float, default=0.8, help='Ratio of training and testing dataset')
     parser_create_data.add_argument('--canonical-only', action='store_true', default=True, help='Flag to obtain only canonical splice site pairs')
     parser_create_data.add_argument('--flanking-size', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_create_data.add_argument('--verify-h5', action='store_true', default=False, help='Verify the generated HDF5 file(s)')
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
@@ -65,7 +66,6 @@ def parse_args_predict(subparsers):
     # parser_predict.add_argument('--threads', '-@', type=str, required=False, help="Number of threads to execute")
     parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
     parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements directed to stderr)")
-
 
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
@@ -130,6 +130,8 @@ Deep learning framework to train your own SpliceAI model
     if args.command == 'create-data':
         create_datafile.create_datafile(args)
         create_dataset.create_dataset(args)
+        if args.verify_h5:
+            verify_h5_file.verify_h5(args)
     elif args.command == 'train':
         train.train(args)
     elif args.command == 'fine-tune':
