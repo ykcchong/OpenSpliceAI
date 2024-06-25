@@ -18,7 +18,10 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--genome-fasta', type=str, required=True, help='Path to the FASTA file')
     parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--parse-type', type=str, default='maximum', choices=['maximum', 'all_isoforms'], help='Type of transcript processing')
-    # parser_create_data.add_argument('--chrom-split', type=str, required=True, help='Chromosome split method for training and testing dataset')
+    parser_create_data.add_argument('--split-method', type=str, choices=['random', 'human'], default='random', help='Chromosome split method for training and testing dataset')
+    parser_create_data.add_argument('--split-ratio', type=float, default=0.8, help='Ratio of training and testing dataset')
+    parser_create_data.add_argument('--chr-split', type=str, choices=['train-test','test'], default='train-test', help='Whether to obtain testing or both training and testing groups')
+    parser_create_data.add_argument('--canonical-only', action='store_true', default=True, help='Flag to obtain only canonical splice site pairs')
 
 
 def parse_args_train(subparsers):

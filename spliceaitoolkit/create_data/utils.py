@@ -75,6 +75,28 @@ def replace_non_acgt_to_n(input_string):
     allowed_chars = {'A', 'C', 'G', 'T'}    
     return ''.join(char if char in allowed_chars else 'N' for char in input_string)
 
+def reformat_data(X0, Y0):
+    """
+    This function converts X0, Y0 of the create_datapoints function into
+    blocks such that the data is broken down into data points where the
+    input is a sequence of length SL+CL_max corresponding to SL nucleotides
+    of interest and CL_max context nucleotides, the output is a sequence of
+    length SL corresponding to the splicing information of the nucleotides
+    of interest. The CL_max context nucleotides are such that they are
+    CL_max/2 on either side of the SL nucleotides of interest.
+    """
+    num_points = ceil_div(len(Y0[0]), SL)
+    Xd = np.zeros((num_points, SL+CL_max))
+    Yd = [-np.ones((num_points, SL)) for t in range(1)]
+    X0 = np.pad(X0, [0, SL], 'constant', constant_values=0)
+    Y0 = [np.pad(Y0[t], [0, SL], 'constant', constant_values=-1)
+         for t in range(1)]
+    for i in range(num_points):
+        Xd[i] = X0[SL*i:CL_max+SL*(i+1)]
+    for t in range(1):
+        for i in range(num_points):
+            Yd[t][i] = Y0[t][SL*i:SL*(i+1)]
+    return Xd, Yd
 
 def create_datapoints(seq, strand, label):
     """
@@ -156,7 +178,18 @@ def split_chromosomes(chromosomes, method='random', split_ratio=0.8):
         split_point = int(len(chromosomes) * split_ratio)
         train_chroms = {chrom: 0 for chrom in chromosomes[:split_point]}
         test_chroms = {chrom: 0 for chrom in chromosomes[split_point:]}
-    else:
-        # Implement other methods if needed
-        train_chroms, test_chroms = {}, {}
+    elif method == 'human':
+        # following SpliceAI default splitting for human chromosomes
+        train_chroms = {
+        'chr2': 0, 'chr4': 0, 'chr6': 0, 'chr8': 0, 
+        'chr10': 0, 'chr11': 0, 'chr12': 0, 'chr13': 0,
+        'chr14': 0, 'chr15': 0, 'chr16': 0, 'chr17': 0, 
+        'chr18': 0, 'chr19': 0, 'chr20': 0, 'chr21': 0, 
+        'chr22': 0, 'chrX': 0, 'chrY': 0
+        }
+        test_chroms = {
+            'chr1': 0, 'chr3': 0, 'chr5': 0, 'chr7': 0, 'chr9': 0
+        }
+    else: 
+        raise ValueError("Invalid chromosome split method. Use 'random' or 'human'.")
     return train_chroms, test_chroms
