@@ -22,46 +22,11 @@ Functions:
 
 import h5py
 import numpy as np
-import os
+import tqdm
 import time
 from spliceaitoolkit.constants import *
-from spliceaitoolkit.create_data.utils import ceil_div, one_hot_encode, replace_non_acgt_to_n, create_datapoints
-import argparse
-
-def reformat_data(X0, Y0):
-    """
-    Reformat sequence and label data into fixed-size blocks for processing.
-    This function converts X0, Y0 of the create_datapoints function into
-    blocks such that the data is broken down into data points where the
-    input is a sequence of length SL+CL_max corresponding to SL nucleotides
-    of interest and CL_max context nucleotides, the output is a sequence of
-    length SL corresponding to the splicing information of the nucleotides
-    of interest. The CL_max context nucleotides are such that they are
-    CL_max/2 on either side of the SL nucleotides of interest.
-
-    Parameters:
-    - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
-    - Y0 (list of numpy.ndarray): Original label data as a list containing a single array of integer encodings.
-
-    Returns:
-    - numpy.ndarray: Reformatted sequence data.
-    - list of numpy.ndarray: Reformatted label data, wrapped in a list.
-    """
-    # Calculate the number of data points needed
-    num_points = ceil_div(len(Y0[0]), SL)
-    # Initialize arrays to hold the reformatted data
-    Xd = np.zeros((num_points, SL + CL_max))
-    Yd = [-np.ones((num_points, SL)) for _ in range(1)]
-    # Pad the sequence and labels to ensure divisibility
-    X0 = np.pad(X0, (0, SL), 'constant', constant_values=0)
-    Y0 = [np.pad(Y0[t], (0, SL), 'constant', constant_values=-1) for t in range(1)]
-
-    # Fill the initialized arrays with data in blocks
-    for i in range(num_points):
-        Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
-        Yd[0][i] = Y0[0][SL * i : SL * (i + 1)]
-
-    return Xd, Yd                  
+from spliceaitoolkit.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
+import argparse          
 
 def create_dataset(args):
     """
@@ -104,12 +69,13 @@ def create_dataset(args):
             print("TX_END.shape[0]: ", TX_END.shape[0])
             print("LABEL.shape[0]: ", LABEL.shape[0])
 
-            # Create dataset
-            for i in range(seq_num // CHUNK_SIZE):
+            # create dataset
+            num_chunks = ceil_div(seq_num, CHUNK_SIZE) # ensures that even if seq_num < CHUNK_SIZE, will still create a chunk
+            for i in tqdm(range(num_chunks), desc='Processing chunks...'):
 
-                # Each dataset has CHUNK_SIZE genes
-                if (i+1) == seq_num // CHUNK_SIZE:
-                    NEW_CHUNK_SIZE = CHUNK_SIZE + seq_num%CHUNK_SIZE
+                # each dataset has CHUNK_SIZE genes
+                if i == num_chunks - 1: # if last chunk, process remainder or full chunk size if no remainder
+                    NEW_CHUNK_SIZE = seq_num % CHUNK_SIZE or CHUNK_SIZE 
                 else:
                     NEW_CHUNK_SIZE = CHUNK_SIZE
 
@@ -125,7 +91,7 @@ def create_dataset(args):
                     label_decode = LABEL[idx].decode('ascii')
 
                     fixed_seq = replace_non_acgt_to_n(seq_decode)
-                    X, Y = create_datapoints(fixed_seq, strand_decode, label_decode)
+                    X, Y = create_datapoints(fixed_seq, label_decode, CL_max=args.flanking_size)
                     print('shapes', X.shape, Y.shape)   
 
                     X_batch.extend(X)

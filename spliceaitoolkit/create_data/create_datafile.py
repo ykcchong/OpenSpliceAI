@@ -39,26 +39,6 @@ import spliceaitoolkit.create_data.utils as utils
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
 
-def create_or_load_db(gff_file, db_file='gff.db'):
-    """
-    Create a gffutils database from a GFF file, or load it if it already exists.
-
-    Parameters:
-    - gff_file: Path to GFF file
-    - db_file: Path to save or load the database file (default: 'gff.db')
-
-    Returns:
-    - db: gffutils FeatureDB object
-    """
-
-    if not os.path.exists(db_file):
-        print("Creating new database...")
-        db = gffutils.create_db(gff_file, dbfn=db_file, force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
-    else:
-        print("Loading existing database...")
-        db = gffutils.FeatureDB(db_file)
-    return db
-
 def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, parse_type="maximum", biotype="protein-coding", canonical_only=True):
     """
     Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
@@ -201,7 +181,7 @@ def create_datafile(args):
     
     # Use gffutils to parse annotation file
     os.makedirs(args.output_dir, exist_ok=True)
-    db = create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
+    db = utils.create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
     seq_dict = SeqIO.to_dict(SeqIO.parse(args.genome_fasta, "fasta"))
     
     # Find all distinct chromosomes and split them

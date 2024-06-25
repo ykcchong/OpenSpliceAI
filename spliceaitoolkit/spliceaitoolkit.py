@@ -22,7 +22,7 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--split-ratio', type=float, default=0.8, help='Ratio of training and testing dataset')
     parser_create_data.add_argument('--chr-split', type=str, choices=['train-test','test'], default='train-test', help='Whether to obtain testing or both training and testing groups')
     parser_create_data.add_argument('--canonical-only', action='store_true', default=True, help='Flag to obtain only canonical splice site pairs')
-
+    parser_create_data.add_argument('--flanking-size', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
