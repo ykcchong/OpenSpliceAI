@@ -3,15 +3,17 @@ import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
 from tensorflow import keras
-import keras.models
 import torch
 import logging
 import onnx
 import platform
-import os
+import os, glob
 import re
 from spliceaitoolkit.train.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
+
+from spliceaitoolkit.predict.predict import *
+from spliceaitoolkit.predict.utils import *
 
 ##############################################
 ## KERAS TO PYTORCH CONVERSION LOGIC
@@ -334,65 +336,175 @@ def convert_pt_to_keras(model_path, CL, output_dir):
     keras_model = keras.models.load_model(f'{output_dir}model_keras.h5')
     print('Keras model saved')
     
+
 ##############################################
-## END 
+## LOADING MODELS
 ##############################################
 
+def load_pytorch_models(model_path, CL):
+    """
+    Loads a SpliceAI PyTorch model from given state, inferring device.
+    
+    Params:
+    - model_path (str): Path to the model state dict, or a directory of models
+    - CL (int): Context length parameter for model conversion.
+    
+    Returns:
+    - loaded_models (list): SpliceAI model(s) loaded with given state.
+    """
+    
+    def setup_device():
+        """Select computation device based on availability."""
+        device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
+        return torch.device(device_str)
 
-def setup_device():
-    """Select computation device based on availability."""
-    device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
-    return torch.device(device_str)
-
-def load_model(device, flanking_size):
-    """Loads the given model."""
-    # Hyper-parameters:
-    # L: Number of convolution kernels
-    # W: Convolution window size in each residual unit
-    # AR: Atrous rate in each residual unit
-    L = 32
-    W = np.asarray([11, 11, 11, 11])
-    AR = np.asarray([1, 1, 1, 1])
-    N_GPUS = 2
-    BATCH_SIZE = 18*N_GPUS
-
-    if int(flanking_size) == 80:
+    def load_model(device, flanking_size):
+        """Loads the given model."""
+        # Hyper-parameters:
+        # L: Number of convolution kernels
+        # W: Convolution window size in each residual unit
+        # AR: Atrous rate in each residual unit
+        L = 32
         W = np.asarray([11, 11, 11, 11])
         AR = np.asarray([1, 1, 1, 1])
+        N_GPUS = 2
         BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 400:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
-        BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 2000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10])
-        BATCH_SIZE = 12*N_GPUS
-    elif int(flanking_size) == 10000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21, 41, 41, 41, 41])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10, 25, 25, 25, 25])
-        BATCH_SIZE = 6*N_GPUS
 
-    CL = 2 * np.sum(AR*(W-1))
+        if int(flanking_size) == 80:
+            W = np.asarray([11, 11, 11, 11])
+            AR = np.asarray([1, 1, 1, 1])
+            BATCH_SIZE = 18*N_GPUS
+        elif int(flanking_size) == 400:
+            W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
+            AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
+            BATCH_SIZE = 18*N_GPUS
+        elif int(flanking_size) == 2000:
+            W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                            21, 21, 21, 21])
+            AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                            10, 10, 10, 10])
+            BATCH_SIZE = 12*N_GPUS
+        elif int(flanking_size) == 10000:
+            W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                            21, 21, 21, 21, 41, 41, 41, 41])
+            AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                            10, 10, 10, 10, 25, 25, 25, 25])
+            BATCH_SIZE = 6*N_GPUS
 
-    print(f"\t[INFO] Context nucleotides {CL}")
-    print(f"\t[INFO] Sequence length (output): {SL}")
+        CL = 2 * np.sum(AR*(W-1))
+
+        print(f"\t[INFO] Context nucleotides {CL}")
+        print(f"\t[INFO] Sequence length (output): {SL}")
+        
+        model = SpliceAI(L, W, AR).to(device)
+        params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+
+        return model, params
     
-    model = SpliceAI(L, W, AR).to(device)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+    # Load all model state dicts given the supplied model path
+    if os.path.isdir(model_path):
+        model_files = glob.glob(os.path.join(model_path, '*.pt')) # gets all PyTorch models from supplied directory
+        if not model_files:
+            logging.error(f"No PyTorch model files found in directory: {model_path}")
+            exit()
+            
+        models = []
+        for model_file in model_files:
+            try:
+                model = torch.load(model_file)
+                models.append(model)
+            except Exception as e:
+                logging.error(f"Error loading PyTorch model from file {model_file}: {e}. Skipping...")
+                
+        if not models:
+            logging.error(f"No valid PyTorch models found in directory: {model_path}")
+            exit()
+    
+    elif os.path.isfile(model_path):
+        try:
+            models = [torch.load(model_path)]
+        except Exception as e:
+            logging.error(f"Error loading PyTorch model from file {model_path}: {e}.")
+            exit()
+        
+    else:
+        logging.error(f"Invalid path: {model_path}")
+        exit()
+    
+    # Setup device and load state of model to device
+    # NOTE: supplied model paths should be state dicts, not model files  
+    device = setup_device() # setup device
+    loaded_models = []      # store loaded models
+    
+    for state_dict in models:
+        try: 
+            model, params = load_model(device, CL) # loads new SpliceAI model with correct hyperparams
+            model.load_state_dict(state_dict)      # loads state dict
+            model = model.to(device)               # puts model on device
+            model.eval()                           # puts model in evaluation mode
+            loaded_models.append(model)            # appends model to list of loaded models  
+        except Exception as e:
+            logging.error(f"Error processing model for device: {e}. Skipping...")
+            
+    if not loaded_models:
+        logging.error("No models were successfully loaded to the device.")
+        exit()
+        
+    return loaded_models
 
-    return model, params
+def load_keras_models(model_path):
+    """
+    Loads Keras models from given path.
+    
+    Params:
+    - model_path (str): Path to the model file or directory of models.
+    
+    Returns:
+    - models (list): List of loaded Keras models.
+    """
+    if os.path.isdir(model_path): # directory supplied
+        model_files = glob.glob(os.path.join(model_path, '*.h5')) # get all Keras models from a directory
+        if not model_files:
+            logging.error(f"No Keras model files found in directory: {model_path}")
+            exit()
+            
+        models = []
+        for model_file in model_files:
+            try:
+                model = keras.models.load_model(model_file)
+                models.append(model)
+            except Exception as e:
+                logging.error(f"Error loading Keras model from file {model_file}: {e}. Skipping...")
+                
+        if not models:
+            logging.error(f"No valid PyTorch models found in directory: {model_path}")
+            exit()
+            
+        return models
+    
+    elif os.path.isfile(model_path): # file supplied
+        try:
+            return [keras.models.load_model(model_path)]
+        except Exception as e:
+            logging.error(f"Error loading Keras model from file {model_path}: {e}")
+            exit()
+        
+    else: # invalid path
+        logging.error(f"Invalid path: {model_path}")
+        exit()
 
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 ####################################################################################################################################
-
+####################################################################################################################################
+####################################################################################################################################
+#######                                                                                                                      #######
+#######                                                                                                                      #######
 #######                                                 ORIGINAL                                                             #######
-
+#######                                                                                                                      #######
+#######                                                                                                                      #######
+####################################################################################################################################
+####################################################################################################################################
 ####################################################################################################################################
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
@@ -402,7 +514,7 @@ class Annotator:
     It initializes with the reference genome, annotation data, and optional model configuration.
     """
     
-    def __init__(self, ref_fasta, annotations, output_dir, model=None, CL=80):
+    def __init__(self, ref_fasta, annotations, output_dir, model_path='SpliceAI', model_type='keras', CL=80):
         """
         Initializes the Annotator with reference genome, annotations, and model settings.
         
@@ -410,7 +522,8 @@ class Annotator:
             ref_fasta (str): Path to the reference genome FASTA file.
             annotations (str): Path or name of the annotation file (e.g., 'grch37', 'grch38').
             output_dir (str): Directory for output files.
-            model (str, optional): Path to the model file or type of model ('SpliceAI'). Defaults to None.
+            model_path (str, optional): Path to the model file or type of model ('SpliceAI'). Defaults to SpliceAI.
+            model_type (str, optional): Type of model ('keras' or 'pytorch'). Defaults to 'keras'.
             CL (int, optional): Context length parameter for model conversion. Defaults to 80.
         """
 
@@ -450,17 +563,16 @@ class Annotator:
             exit()  # Exit if the file cannot be read
 
         # Load models based on the specified model type or file
-        if model == 'SpliceAI':
-            paths = ('models/spliceai{}.h5'.format(x) for x in range(1, 6))  # Generate paths for SpliceAI models
-            self.models = [load_model(resource_filename(__name__, x)) for x in paths]
+        if model_path == 'SpliceAI':
+            paths = ('./models/spliceai/spliceai{}.h5'.format(x) for x in range(1, 6))  # Generate paths for SpliceAI models
+            self.models = [keras.models.load_model(resource_filename(__name__, x)) for x in paths]
+        elif model_type == 'keras': # load models using keras
+            self.models = load_keras_models(model_path)
+        elif model_type == 'pytorch': # load models using pytorch 
+            self.models = load_pytorch_models(model_path, CL)
         else:
-            self.models = []
-            for m in [path.strip() for path in model.split(',')]:
-                if m.endswith('.pt'):  # Convert PyTorch model to Keras
-                    keras_model = convert_pt_to_keras(m, CL, output_dir)
-                    self.models.append(keras_model)
-                else:
-                    self.models.append(load_model(m))
+            logging.error('Model type {} not supported'.format(model_type))
+            exit()
 
     def get_name_and_strand(self, chrom, pos):
         """

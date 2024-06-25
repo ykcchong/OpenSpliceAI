@@ -73,8 +73,6 @@ def parse_args_variant(subparsers):
     parser_variant.add_argument('-A', metavar='annotation', required=True, help='"grch37" (GENCODE V24lift37 canonical annotation file in '
                                                                                 'package), "grch38" (GENCODE V24 canonical annotation file in '
                                                                                 'package), or path to a similar custom gene annotation file')
-    parser_variant.add_argument('-m', '--model', default="SpliceAI", type=str)
-    parser_variant.add_argument('-f', '--flanking-size', type=int, default=80)
     parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin, help='path to the input VCF file, defaults to standard in')
     parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout, help='path to the output VCF file, defaults to standard out')
     parser_variant.add_argument('-D', metavar='distance', nargs='?', default=50, type=int, choices=range(0, 5000),
@@ -83,6 +81,10 @@ def parse_args_variant(subparsers):
     parser_variant.add_argument('-M', metavar='mask', nargs='?', default=0, type=int, choices=[0, 1], 
                                     help='mask scores representing annotated acceptor/donor gain and '
                                         'unannotated acceptor/donor loss, defaults to 0')
+    '''AM: newly added flags below vv'''
+    parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str, help='Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model')
+    parser_variant.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_variant.add_argument('--model-type', '-t', choices=['keras', 'pytorch'], type='str', default='keras', help='Type of model file (keras or pytorch)')
  
 
 def parse_args(arglist):
