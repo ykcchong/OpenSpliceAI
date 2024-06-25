@@ -1011,8 +1011,6 @@ def predict(args):
         - input_sequence: FASTA File
 
     '''
-    # inputs args.: model, output_dir, flanking_size, input sequence (fasta file), 
-    # outputs: the log files, bed files with scores for all splice sites
 
     print("Running SpliceAI-toolkit with 'predict' mode")
 
