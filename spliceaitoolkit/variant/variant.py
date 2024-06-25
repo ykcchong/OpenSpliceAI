@@ -29,15 +29,7 @@ def variant(args):
     mask = args.M
     model = args.model
     flanking_size = args.flanking_size
-    
-    # Detect model type
-    if model.endswith('.h5') or model == 'SpliceAI':
-        model_type = 'keras'
-    elif model.endswith('.pt'):
-        model_type = 'pytorch'
-    else:
-        logging.error('Model file should be in .h5 or .pt format')
-        exit(1)
+    model_type = args.model_type
 
     # Reading input VCF file
     print('\t[INFO] Reading input VCF file')
@@ -65,7 +57,7 @@ def variant(args):
 
     # Setup the Annotator based on reference genome and annotation
     logging.info('Initializing Annotator class')
-    ann = Annotator(ref_genome, annotation, output_dir, model, flanking_size)
+    ann = Annotator(ref_genome, annotation, model, model_type, flanking_size)
 
     # Obtain delta score for each variant in VCF
     for record in tqdm(vcf):
@@ -78,7 +70,6 @@ def variant(args):
     vcf.close()
     output.close()
     logging.info('Annotation completed and written to output VCF file')
-
 
 
 
