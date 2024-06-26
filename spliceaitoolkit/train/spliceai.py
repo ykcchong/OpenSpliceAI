@@ -3,10 +3,6 @@ import numpy as np
 
 import torch.nn as nn
 import torch.nn.functional as F
-<<<<<<< HEAD
-import numpy as np
-=======
->>>>>>> main
 
 class ResidualUnit(nn.Module):
     def __init__(self, l, w, ar):

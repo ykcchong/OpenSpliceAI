@@ -33,79 +33,6 @@ hf = h5py.File(data_dir + 'dataset'
                 + '_' + sys.argv[1]
                 + '.h5', 'r')
 
-<<<<<<< HEAD
-print(hf.keys())
-
-torch.from_numpy(hf['X0'][:]).shape
-torch.from_numpy(hf['X0'][:])[0].float()
-torch.from_numpy(hf['Y0'][:]).shape
-
-x = torch.from_numpy(hf['X0'][:]).float()
-y = torch.from_numpy(hf['Y0'][:])
-
-
-print(f"x[0].shape: {x.shape}")
-# print(f"x[0].shape: {x[0,6231,:]}")
-# print(f"y[0].shape: {y[0].shape}")
-# print(f"y[0].shape: {y[0]}")
-
-# labels_ls = y[0].transpose(1, 2).reshape(-1, 3)
-labels = y[0].argmax(dim=2)  # If labels are one-hot encoded across the 3 classes
-labels = labels.view(-1)  # Flattening labels from [size, 3, 5000] to [size*5000]
-
-
-print(f"logits before: {x[:, 5000:10000, :]}")
-
-logits = x[:, 5000:10000, :].reshape(-1, 4)  # Flattening logits from [size, 3, 5000] to [size*5000, 3]
-
-print(f"logits.shape: {logits.shape}")
-print(f"logits: {logits}")
-print(f"logits: {logits[6231,:]}")
-
-print(f"labels.shape: {labels.shape}")
-print(f"labels: {labels}")
-
-# Donor site
-d_index_positions = [index for index, value in enumerate(labels.tolist()) if value == 2]
-print("d_index_positions: ", d_index_positions)
-
-# Acceptor site
-a_index_positions = [index for index, value in enumerate(labels.tolist()) if value == 1]
-print("a_index_positions: ", a_index_positions)
-
-
-
-# Convert one-hot encoding to numerical labels
-# Here, the mapping is: N -> 0, A -> 1, C -> 2, G -> 3, T -> 4
-numerical_labels = np.argmax(logits.tolist(), axis=1)
-print("numerical_labels: ", numerical_labels)
-print("numerical_labels.shape: ", numerical_labels.shape)
-
-nucleotides = np.array(['A', 'C', 'G', 'T'])
-# Convert the numerical labels to nucleotide bases using the simplified example
-nucleotide_labels = nucleotides[numerical_labels]
-
-
-print("nucleotide_labels: ", nucleotide_labels)
-print("nucleotide_labels.shape: ", nucleotide_labels.shape)
-
-# Get Donor motif:
-for d in d_index_positions:
-    print("d: ", d)
-    print("nucleotide_labels[d+1:d+3]: ", nucleotide_labels[d+1:d+3])
-
-# Get Acceptor motif:
-for a in a_index_positions:
-    print("a: ", a)
-    print("nucleotide_labels[a-2:a]: ", nucleotide_labels[a-2:a])
-
-
-from collections import Counter
-
-# Count each distinct element in the list
-element_count = Counter(labels.tolist())
-print(element_count)
-=======
 donor_motif_dict = {}
 acceptor_motif_dict = {}
 
@@ -199,4 +126,3 @@ for key, value in acceptor_motif_dict.items():
     # # Count each distinct element in the list
     # element_count = Counter(labels.tolist())
     # print(element_count)
->>>>>>> main
