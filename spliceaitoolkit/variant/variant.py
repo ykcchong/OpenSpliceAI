@@ -4,8 +4,11 @@ import argparse
 import logging
 import pysam
 import numpy as np
+import time
 from spliceaitoolkit.variant.utils import *
 from tqdm import tqdm
+
+# NOTE: if running with gpu, note that cudnn version should be 8.9.6 or higher, numpy <2.0.0
 
 def variant(args):
     print("Running SpliceAI-toolkit with 'variant' mode")

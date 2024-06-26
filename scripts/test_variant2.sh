@@ -1,12 +1,7 @@
 #!/bin/bash
 
-# example from spliceai repo
-# usage: spliceai-toolkit variant [-h] [--model MODEL] [--flanking-size FLANKING_SIZE] [-I [input]] [-O [output]] -R reference -A annotation [-D [distance]] [-M [mask]]
-# spliceai-toolkit variant: error: the following arguments are required: -R, -A
-# NOTE: calls predict method, so will need the same arguments generally
-
 SETUP="/ccb/cybertron/smao10/openspliceai/setup.py"
-RESULT_DIR="./results/variant/default"
+RESULT_DIR="./results/variant/pytorch"
 
 # Run the setup script
 python "$SETUP" install
@@ -17,11 +12,11 @@ mkdir -p $RESULT_DIR
 
 REF_GENOME_PATH="/ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh37/hg19.fa"
 ANNOTATION_PATH="grch37" # NOTE: this is a custom annotation file
-MODEL_PATH="SpliceAI"
+MODEL_PATH="./models/spliceai-mane/400nt/model_400nt_rs40.pt"
 INPUT_PATH="./data/vcf/input.vcf"
 OUTPUT_PATH="$RESULT_DIR/output.vcf"
-FLANKING_SIZE=5000
-MODEL_TYPE="keras"
+FLANKING_SIZE=400
+MODEL_TYPE="pytorch"
 
 OUTPUT_FILE="$RESULT_DIR/output.log"
 ERROR_FILE="$RESULT_DIR/error.log"

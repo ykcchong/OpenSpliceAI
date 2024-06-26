@@ -160,7 +160,7 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     # # Defaul optimizer and scheduler
     # optimizer = optim.Adam(model.parameters(), lr=1e-3)
     # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
     return model, None, optimizer, scheduler, params
 
 
@@ -309,7 +309,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
     return loss
 
 
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode):
+def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, flanking_size, run_mode):
     """
     Validates the SpliceAI model on a given dataset.
     (Similar to train_epoch, but without performing backpropagation or updating model parameters)
@@ -342,7 +342,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
         pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
         for batch in pbar:
             DNAs, labels = batch[0].to(device), batch[1].to(device)
-            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], flanking_size, params["N_GPUS"])
             DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
             yp = model(DNAs)
             if criterion == "cross_entropy_loss":
@@ -367,7 +367,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     return eval_loss
 
 
-def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode, sample_freq):
+def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, flanking_size, run_mode):
     """
     Performs one epoch of training on the SpliceAI model.
 
@@ -386,7 +386,6 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
     - params (dict): Dictionary of parameters related to model and training.
     - metric_files (dict): Dictionary containing paths to log files for various metrics.
     - run_mode (str): Indicates the phase of training (e.g., "train", "validation").
-    - sample_freq (int): Frequency of sampling for evaluation and logging.
     """
 
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
@@ -407,7 +406,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             DNAs, labels = batch[0].to(device), batch[1].to(device)
             # print("\n\tDNAs.shape: ", DNAs.shape)
             # print("\tlabels.shape: ", labels.shape)
-            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], flanking_size, params["N_GPUS"])
             DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
             # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
             # print("\tAfter clipping labels.shape: ", labels.shape)
@@ -572,9 +571,9 @@ def train(args):
             f'train/learning_rate': current_lr,
         })
         start_time = time.time()
-        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train")
-        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation")
-        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test")
+        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, flanking_size, run_mode="train")
+        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, flanking_size, run_mode="validation")
+        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, flanking_size, run_mode="test")
         
         # # Scheduler step with validation loss
         # scheduler.step(test_loss)
