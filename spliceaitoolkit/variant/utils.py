@@ -450,7 +450,6 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000, precision=
                 y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
                 y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
                 
-                print('y_ref', y_ref.shape, 'y_alt', y_alt.shape)
                 # Reverse the predicted scores if on the negative strand
                 if strands[i] == '-':
                     y_ref = y_ref[:, ::-1]
@@ -485,7 +484,6 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000, precision=
                 y_alt = y_alt[:, :, flanking_size//2:-flanking_size//2].permute(0, 2, 1)
 
                 # Reverse the predicted scores if on the negative strand and convert back to numpy arrays
-                print('y_ref', y_ref.shape, 'y_alt', y_alt.shape)
                 if strands[i] == '-':
                     y_ref = torch.flip(y_ref, dims=[1])
                     y_alt = torch.flip(y_alt, dims=[1])

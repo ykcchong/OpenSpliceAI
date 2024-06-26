@@ -3,6 +3,7 @@
 *.h5
 *.png
 *.txt
+!requirements.txt
 *delta
 *.bed
 *.fa
