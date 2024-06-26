@@ -479,12 +479,20 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
                 with torch.no_grad():
                     y_ref = torch.mean(torch.stack([ann.models[m](x_ref).detach().cpu() for m in range(len(ann.models))]), axis=0)
                     y_alt = torch.mean(torch.stack([ann.models[m](x_alt).detach().cpu() for m in range(len(ann.models))]), axis=0)
+                
+                # Remove flanking sequence and permute shape
+                y_ref = y_ref[:, :, flanking_size//2:-flanking_size//2].permute(0, 2, 1)
+                y_alt = y_alt[:, :, flanking_size//2:-flanking_size//2].permute(0, 2, 1)
 
                 # Reverse the predicted scores if on the negative strand and convert back to numpy arrays
                 print('y_ref', y_ref.shape, 'y_alt', y_alt.shape)
                 if strands[i] == '-':
-                    y_ref = torch.flip(y_ref, dims=[1]).numpy()
-                    y_alt = torch.flip(y_alt, dims=[1]).numpy()
+                    y_ref = torch.flip(y_ref, dims=[1])
+                    y_alt = torch.flip(y_alt, dims=[1])
+                
+                # Convert to numpy arrays
+                y_ref = y_ref.numpy()
+                y_alt = y_alt.numpy()
 
             '''end'''
 
