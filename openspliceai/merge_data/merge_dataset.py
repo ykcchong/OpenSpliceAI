@@ -4,7 +4,7 @@ import sys, os
 import time
 # from utils import *
 import argparse
-import spliceaitoolkit.create_data.utils as utils
+import openspliceai.create_data.utils as utils
 
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
