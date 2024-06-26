@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # example from spliceai repo
-# usage: spliceai-toolkit variant [-h] [--model MODEL] [--flanking-size FLANKING_SIZE] [-I [input]] [-O [output]] -R reference -A annotation [-D [distance]] [-M [mask]]
-# spliceai-toolkit variant: error: the following arguments are required: -R, -A
+# usage: openspliceai variant [-h] [--model MODEL] [--flanking-size FLANKING_SIZE] [-I [input]] [-O [output]] -R reference -A annotation [-D [distance]] [-M [mask]]
+# openspliceai variant: error: the following arguments are required: -R, -A
 # NOTE: calls predict method, so will need the same arguments generally
 
 SETUP="/ccb/cybertron/smao10/openspliceai/setup.py"
@@ -26,8 +26,8 @@ THRESHOLD=0.9
 OUTPUT_FILE="$RESULT_DIR/output.log"
 ERROR_FILE="$RESULT_DIR/error.log"
 
-# Run the spliceai-toolkit variant command
-echo spliceai-toolkit variant -R "$REF_GENOME_PATH" -A "$ANNOTATION_PATH" -m "$MODEL_PATH" -f $FLANKING_SIZE -I "$INPUT_PATH" -O "$OUTPUT_PATH" \
+# Run the openspliceai variant command
+echo openspliceai variant -R "$REF_GENOME_PATH" -A "$ANNOTATION_PATH" -m "$MODEL_PATH" -f $FLANKING_SIZE -I "$INPUT_PATH" -O "$OUTPUT_PATH" \
 > "$OUTPUT_FILE" 2> "$ERROR_FILE"
-spliceai-toolkit variant -R "$REF_GENOME_PATH" -A "$ANNOTATION_PATH" -m "$MODEL_PATH" -f $FLANKING_SIZE -I "$INPUT_PATH" -O "$OUTPUT_PATH" \
+openspliceai variant -R "$REF_GENOME_PATH" -A "$ANNOTATION_PATH" -m "$MODEL_PATH" -f $FLANKING_SIZE -I "$INPUT_PATH" -O "$OUTPUT_PATH" \
 > "$OUTPUT_FILE" 2> "$ERROR_FILE"

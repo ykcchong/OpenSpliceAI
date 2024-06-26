@@ -26,7 +26,7 @@ PROJECT_NAME=${SPECIES}_fine-tune_unfreeze_last_residual
 
 mkdir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_${PROJECT_NAME}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/
 
-spliceai-toolkit fine-tune --flanking-size ${FLANKING_SIZE} \
+openspliceai fine-tune --flanking-size ${FLANKING_SIZE} \
 --exp-num ${EXP_NUM} \
 --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_train_ncRNA.h5 \
 --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test_ncRNA.h5 \

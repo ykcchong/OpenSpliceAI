@@ -18,14 +18,14 @@ which python
 python -c "import sys; print(sys.path)"
 
 FLANKING_SIZE=80
-SPECIES=mouse
+SPECIES=zebrafish
 RANDOPM_SEED=12
 LOSS_FUNC=cross_entropy_loss
 EXP_NUM=full_dataset
 
 mkdir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${LOSS_FUNC}_${SPECIES}_adeptive_lr_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/
 
-echo "spliceai-toolkit train --flanking-size ${FLANKING_SIZE} \
+echo "openspliceai train --flanking-size ${FLANKING_SIZE} \
 --exp-num ${EXP_NUM} \
 --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_train.h5 \
 --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test.h5 \
