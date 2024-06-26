@@ -33,6 +33,7 @@ def variant(args):
     model = args.model
     flanking_size = args.flanking_size
     model_type = args.model_type
+    precision = args.precision
 
     # Reading input VCF file
     print('\t[INFO] Reading input VCF file')
@@ -64,7 +65,7 @@ def variant(args):
 
     # Obtain delta score for each variant in VCF
     for record in tqdm(vcf):
-        scores = get_delta_scores(record, ann, distance, mask, flanking_size)
+        scores = get_delta_scores(record, ann, distance, mask, flanking_size, precision)
         if scores:
             record.info['SpliceAI'] = scores
         output.write(record)

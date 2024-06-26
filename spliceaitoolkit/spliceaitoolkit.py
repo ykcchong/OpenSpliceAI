@@ -85,6 +85,7 @@ def parse_args_variant(subparsers):
     parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str, help='Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model')
     parser_variant.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     parser_variant.add_argument('--model-type', '-t', type=str, choices=['keras', 'pytorch'], default='keras', help='Type of model file (keras or pytorch)')
+    parser_variant.add_argument('--precision', '-p', type=int, default=2, help='Number of decimal places to round the output scores')
  
 
 def parse_args(arglist):
