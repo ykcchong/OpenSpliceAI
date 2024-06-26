@@ -4,7 +4,7 @@ import random
 import h5py
 import numpy as np
 from spliceaitoolkit import header
-from spliceaitoolkit.create_data import create_datafile, create_dataset
+from spliceaitoolkit.create_data import create_datafile, create_dataset, verify_h5_file
 from spliceaitoolkit.train import train
 from spliceaitoolkit.fine_tune import fine_tune
 from spliceaitoolkit.predict import predict
@@ -18,8 +18,14 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--genome-fasta', type=str, required=True, help='Path to the FASTA file')
     parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--parse-type', type=str, default='maximum', choices=['maximum', 'all_isoforms'], help='Type of transcript processing')
-    # parser_create_data.add_argument('--chrom-split', type=str, required=True, help='Chromosome split method for training and testing dataset')
-
+    parser_create_data.add_argument('--biotype', type=str, default='protein-coding', choices=['protein-coding', 'non-coding'], help='Biotype of transcript processing')
+    parser_create_data.add_argument('--chr-split', type=str, choices=['train-test','test'], default='train-test', help='Whether to obtain testing or both training and testing groups')
+    '''AM: newly added flags below vv'''
+    parser_create_data.add_argument('--split-method', type=str, choices=['random', 'human'], default='random', help='Chromosome split method for training and testing dataset')
+    parser_create_data.add_argument('--split-ratio', type=float, default=0.8, help='Ratio of training and testing dataset')
+    parser_create_data.add_argument('--canonical-only', action='store_true', default=True, help='Flag to obtain only canonical splice site pairs')
+    parser_create_data.add_argument('--flanking-size', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_create_data.add_argument('--verify-h5', action='store_true', default=False, help='Verify the generated HDF5 file(s)')
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
@@ -61,29 +67,24 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
     parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements directed to stderr)")
 
-
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
-    parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str)
-    parser_variant.add_argument('--flanking-size', '-f', type=int, default=80)
-    parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin,
-                        help='path to the input VCF file, defaults to standard in')
-    parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout,
-                        help='path to the output VCF file, defaults to standard out')
-    parser_variant.add_argument('-R', metavar='reference', required=True,
-                        help='path to the reference genome fasta file')
-    parser_variant.add_argument('-A', metavar='annotation', required=True,
-                        help='"grch37" (GENCODE V24lift37 canonical annotation file in '
-                             'package), "grch38" (GENCODE V24 canonical annotation file in '
-                             'package), or path to a similar custom gene annotation file')
-    parser_variant.add_argument('-D', metavar='distance', nargs='?', default=50,
-                        type=int, choices=range(0, 5000),
-                        help='maximum distance between the variant and gained/lost splice '
-                             'site, defaults to 50')
-    parser_variant.add_argument('-M', metavar='mask', nargs='?', default=0,
-                        type=int, choices=[0, 1],
-                        help='mask scores representing annotated acceptor/donor gain and '
-                             'unannotated acceptor/donor loss, defaults to 0')
+    parser_variant.add_argument('-R', metavar='reference', required=True, help='path to the reference genome fasta file')
+    parser_variant.add_argument('-A', metavar='annotation', required=True, help='"grch37" (GENCODE V24lift37 canonical annotation file in '
+                                                                                'package), "grch38" (GENCODE V24 canonical annotation file in '
+                                                                                'package), or path to a similar custom gene annotation file')
+    parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin, help='path to the input VCF file, defaults to standard in')
+    parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout, help='path to the output VCF file, defaults to standard out')
+    parser_variant.add_argument('-D', metavar='distance', nargs='?', default=50, type=int, choices=range(0, 5000),
+                                    help='maximum distance between the variant and gained/lost splice '
+                                        'site, defaults to 50')
+    parser_variant.add_argument('-M', metavar='mask', nargs='?', default=0, type=int, choices=[0, 1], 
+                                    help='mask scores representing annotated acceptor/donor gain and '
+                                        'unannotated acceptor/donor loss, defaults to 0')
+    '''AM: newly added flags below vv'''
+    parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str, help='Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model')
+    parser_variant.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_variant.add_argument('--model-type', '-t', choices=['keras', 'pytorch'], type='str', default='keras', help='Type of model file (keras or pytorch)')
  
 
 def parse_args(arglist):
@@ -125,6 +126,8 @@ Deep learning framework to train your own SpliceAI model
     if args.command == 'create-data':
         create_datafile.create_datafile(args)
         create_dataset.create_dataset(args)
+        if args.verify_h5:
+            verify_h5_file.verify_h5(args)
     elif args.command == 'train':
         train.train(args)
     elif args.command == 'fine-tune':
