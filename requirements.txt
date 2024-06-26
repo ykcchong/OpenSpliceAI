@@ -17,10 +17,6 @@ fonttools==4.53.0
 fsspec==2024.6.0
 gast @ file:///home/conda/feedstock_root/build_artifacts/gast_1688368721366/work
 gffutils==0.13
-gitdb==4.0.11
-GitPython==3.1.43
-google-pasta==0.2.0
-grpcio @ file:///home/conda/feedstock_root/build_artifacts/grpc-split_1713388282847/work
 h5py @ file:///home/conda/feedstock_root/build_artifacts/h5py_1717664771270/work
 idna @ file:///home/conda/feedstock_root/build_artifacts/idna_1713279365350/work
 importlib_metadata @ file:///home/conda/feedstock_root/build_artifacts/importlib-metadata_1719361860083/work
