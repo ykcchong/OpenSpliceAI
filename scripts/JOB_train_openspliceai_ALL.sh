@@ -19,7 +19,7 @@ python -c "import sys; print(sys.path)"
 
 for FLANKING_SIZE in 80 400 2000 10000
 do
-    SPECIES=MANE
+    SPECIES=ALL
     RANDOPM_SEED=2
     LOSS_FUNC=cross_entropy_loss
     EXP_NUM=full_dataset
@@ -27,7 +27,7 @@ do
 
     mkdir -p /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/SpliceAI_${SPECIES}_${LOSS_FUNC}_w${WEIGHT}_${FLANKING_SIZE}_${EXP_NUM}_rs${RANDOPM_SEED}/
 
-    echo "spliceai-toolkit train --flanking-size ${FLANKING_SIZE} \
+    echo "openspliceai train --flanking-size ${FLANKING_SIZE} \
     --exp-num ${EXP_NUM} \
     --train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_train.h5 \
     --test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_${SPECIES}/dataset_test.h5 \
