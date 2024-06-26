@@ -173,11 +173,34 @@ def load_keras_models(model_path):
         exit()
 
 ##############################################
-## RUNNING PYTORCH PREDICTIONS 
+## FORMATTING INPUT DATA FOR PREDICTION
 ##############################################
 
-def pytorch_predict(model, X):
-    pass
+def one_hot_encode(seq):
+    """
+    One-hot encode a DNA sequence.
+    
+    Args:
+        seq (str): DNA sequence to be encoded.
+    
+    Returns:
+        np.ndarray: One-hot encoded representation of the sequence.
+    """
+
+    # Define a mapping matrix for nucleotide to one-hot encoding
+    map = np.asarray([[0, 0, 0, 0],  # N or any invalid character
+                      [1, 0, 0, 0],  # A
+                      [0, 1, 0, 0],  # C
+                      [0, 0, 1, 0],  # G
+                      [0, 0, 0, 1]]) # T
+
+    # Replace nucleotides with corresponding indices
+    seq = seq.upper().replace('A', '\x01').replace('C', '\x02')
+    seq = seq.replace('G', '\x03').replace('T', '\x04').replace('N', '\x00')
+
+    # Convert the sequence to one-hot encoded numpy array
+    return map[np.fromstring(seq, np.int8) % 5]
+
 
 '''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 ####################################################################################################################################
@@ -199,14 +222,13 @@ class Annotator:
     It initializes with the reference genome, annotation data, and optional model configuration.
     """
     
-    def __init__(self, ref_fasta, annotations, output_dir, model_path='SpliceAI', model_type='keras', CL=80):
+    def __init__(self, ref_fasta, annotations, model_path='SpliceAI', model_type='keras', CL=80):
         """
         Initializes the Annotator with reference genome, annotations, and model settings.
         
         Args:
             ref_fasta (str): Path to the reference genome FASTA file.
             annotations (str): Path or name of the annotation file (e.g., 'grch37', 'grch38').
-            output_dir (str): Directory for output files.
             model_path (str, optional): Path to the model file or type of model ('SpliceAI'). Defaults to SpliceAI.
             model_type (str, optional): Type of model ('keras' or 'pytorch'). Defaults to 'keras'.
             CL (int, optional): Context length parameter for model conversion. Defaults to 80.
@@ -242,7 +264,7 @@ class Annotator:
 
         # Load the reference genome fasta file
         try:
-            self.ref_fasta = Fasta(ref_fasta, rebuild=False)
+            self.ref_fasta = Fasta(ref_fasta, sequence_always_upper=True, rebuild=False)
         except IOError as e:
             logging.error('{}'.format(e))  # Log file read error
             exit()  # Exit if the file cannot be read
@@ -307,33 +329,6 @@ class Annotator:
         dist_ann = (dist_tx_start, dist_tx_end, dist_exon_bdry)  # Package distances into a tuple
 
         return dist_ann
-
-
-def one_hot_encode(seq):
-    """
-    One-hot encode a DNA sequence.
-    
-    Args:
-        seq (str): DNA sequence to be encoded.
-    
-    Returns:
-        np.ndarray: One-hot encoded representation of the sequence.
-    """
-
-    # Define a mapping matrix for nucleotide to one-hot encoding
-    map = np.asarray([[0, 0, 0, 0],  # N or any invalid character
-                      [1, 0, 0, 0],  # A
-                      [0, 1, 0, 0],  # C
-                      [0, 0, 1, 0],  # G
-                      [0, 0, 0, 1]]) # T
-
-    # Replace nucleotides with corresponding indices
-    seq = seq.upper().replace('A', '\x01').replace('C', '\x02')
-    seq = seq.replace('G', '\x03').replace('T', '\x04').replace('N', '\x00')
-
-    # Convert the sequence to one-hot encoded numpy array
-    return map[np.fromstring(seq, np.int8) % 5]
-
 
 def normalise_chrom(source, target):
     """
@@ -412,7 +407,7 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
         logging.warning('Skipping record (ref too long): {}'.format(record))
         return delta_scores
 
-    # Iterate over each alternative allele and each gene index
+    # Iterate over each alternative allele and each gene index to calculate delta score
     for j in range(len(record.alts)):
         for i in range(len(idxs)):
 
@@ -442,19 +437,44 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
             x_ref = one_hot_encode(x_ref)[None, :]
             x_alt = one_hot_encode(x_alt)[None, :]
 
-            # Reverse the sequences if on the negative strand
-            if strands[i] == '-':
-                x_ref = x_ref[:, ::-1, ::-1]
-                x_alt = x_alt[:, ::-1, ::-1]
+            '''AM: added separate handling for PyTorch and Keras models (does not make use of custom predict's power)'''
+            
+            if ann.model_type == 'pytorch':
+                # Convert to PyTorch tensors
+                x_ref = torch.tensor(x_ref, dtype=torch.float32)
+                x_alt = torch.tensor(x_alt, dtype=torch.float32)
 
-            # Predict scores using the models
-            y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
-            y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
+                # Reverse the sequences if on the negative strand
+                if strands[i] == '-':
+                    x_ref = torch.flip(x_ref, dims=[1, 2])
+                    x_alt = torch.flip(x_alt, dims=[1, 2])
 
-            # Reverse the predicted scores if on the negative strand
-            if strands[i] == '-':
-                y_ref = y_ref[:, ::-1]
-                y_alt = y_alt[:, ::-1]
+                # Predict scores using the models
+                with torch.no_grad():
+                    y_ref = torch.mean(torch.stack([ann.models[m](x_ref) for m in range(len(ann.models))]), axis=0)
+                    y_alt = torch.mean(torch.stack([ann.models[m](x_alt) for m in range(len(ann.models))]), axis=0)
+
+                # Reverse the predicted scores if on the negative strand and convert back to numpy arrays
+                if strands[i] == '-':
+                    y_ref = torch.flip(y_ref, dims=[1]).numpy()
+                    y_alt = torch.flip(y_alt, dims=[1]).numpy()
+
+            elif ann.model_type == 'keras':
+                # Reverse the sequences if on the negative strand
+                if strands[i] == '-':
+                    x_ref = x_ref[:, ::-1, ::-1]
+                    x_alt = x_alt[:, ::-1, ::-1]
+
+                # Predict scores using the models
+                y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
+                y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
+
+                # Reverse the predicted scores if on the negative strand
+                if strands[i] == '-':
+                    y_ref = y_ref[:, ::-1]
+                    y_alt = y_alt[:, ::-1]
+                    
+            '''end'''
 
             # Adjust the alternative sequence scores based on reference and alternative lengths
             if ref_len > 1 and alt_len == 1:
@@ -499,4 +519,4 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
                 idx_nd - cov // 2
             ))
 
-    return delta_scores  # Return the list of delta scores
+    return delta_scores 
