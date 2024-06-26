@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from math import ceil
 from sklearn.metrics import average_precision_score
-from spliceaitoolkit.constants import *
+from openspliceai.constants import *
 
 assert CL_max % 2 == 0
 

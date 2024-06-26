@@ -24,8 +24,8 @@ import h5py
 import numpy as np
 import tqdm
 import time
-from spliceaitoolkit.constants import *
-from spliceaitoolkit.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
+from openspliceai.constants import *
+from openspliceai.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
 import argparse          
 
 CHUNK_SIZE = 100 # size of chunks to process data in

@@ -1,5 +1,5 @@
 import pysam 
-from spliceaitoolkit.variant.utils import *
+from openspliceai.variant.utils import *
 
 # vcf = pysam.VariantFile('test.vcf')
 

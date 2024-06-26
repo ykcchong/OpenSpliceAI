@@ -9,7 +9,7 @@ from math import ceil
 import gffutils
 import random
 from sklearn.metrics import average_precision_score
-from spliceaitoolkit.constants import *
+from openspliceai.constants import *
 
 ###################################################
 # Reporting functions

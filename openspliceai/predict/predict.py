@@ -9,11 +9,11 @@ import platform
 import h5py
 import time
 from pyfaidx import Fasta
-from spliceaitoolkit.predict.spliceai import *
-from spliceaitoolkit.predict.utils import *
-from spliceaitoolkit.constants import *
+from openspliceai.predict.spliceai import *
+from openspliceai.predict.utils import *
+from openspliceai.constants import *
 
-# FOR DEBUGGING
+# FOR TESTING PURPOSES
 import psutil
 def log_memory_usage():
     process = psutil.Process(os.getpid())
@@ -1011,6 +1011,8 @@ def predict(args):
         - input_sequence: FASTA File
 
     '''
+    # inputs args.: model, output_dir, flanking_size, input sequence (fasta file), 
+    # outputs: the log files, bed files with scores for all splice sites
 
     print("Running SpliceAI-toolkit with 'predict' mode")
 

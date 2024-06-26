@@ -9,11 +9,11 @@ import onnx
 import platform
 import os, glob
 import re
-from spliceaitoolkit.train.spliceai import SpliceAI
-from spliceaitoolkit.constants import *
+from openspliceai.train.spliceai import SpliceAI
+from openspliceai.constants import *
 
-from spliceaitoolkit.predict.predict import *
-from spliceaitoolkit.predict.utils import *
+from openspliceai.predict.predict import *
+from openspliceai.predict.utils import *
     
 
 ##############################################

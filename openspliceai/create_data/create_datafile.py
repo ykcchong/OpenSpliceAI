@@ -34,7 +34,7 @@ import h5py
 import time
 import argparse
 import gffutils
-import spliceaitoolkit.create_data.utils as utils
+import openspliceai.create_data.utils as utils
 
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts

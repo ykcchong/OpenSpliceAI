@@ -3,12 +3,12 @@ import os, sys, time
 import random
 import h5py
 import numpy as np
-from spliceaitoolkit import header
-from spliceaitoolkit.create_data import create_datafile, create_dataset, verify_h5_file
-from spliceaitoolkit.train import train
-from spliceaitoolkit.fine_tune import fine_tune
-from spliceaitoolkit.predict import predict
-from spliceaitoolkit.variant import variant
+from openspliceai import header
+from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
+from openspliceai.train import train
+from openspliceai.fine_tune import fine_tune
+from openspliceai.predict import predict
+from openspliceai.variant import variant
 
 __VERSION__ = header.__version__
 
@@ -88,7 +88,7 @@ def parse_args_variant(subparsers):
  
 
 def parse_args(arglist):
-    parser = argparse.ArgumentParser(description='SpliceAI toolkit to retrain your own splice site predictor')
+    parser = argparse.ArgumentParser(description='OpenSpliceAI toolkit to help you retrain your own splice site predictor')
     # Create a parent subparser to house the common subcommands.
     subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, fine-tune, variant')
     parse_args_create_data(subparsers)
@@ -111,12 +111,12 @@ Deep learning framework to train your own SpliceAI model
 ====================================================================
 
 
-███████╗██████╗ ██╗     ██╗ ██████╗███████╗ █████╗ ██╗   ████████╗ ██████╗  ██████╗ ██╗     ██╗  ██╗██╗████████╗
-██╔════╝██╔══██╗██║     ██║██╔════╝██╔════╝██╔══██╗██║   ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██║ ██╔╝██║╚══██╔══╝
-███████╗██████╔╝██║     ██║██║     █████╗  ███████║██║█████╗██║   ██║   ██║██║   ██║██║     █████╔╝ ██║   ██║   
-╚════██║██╔═══╝ ██║     ██║██║     ██╔══╝  ██╔══██║██║╚════╝██║   ██║   ██║██║   ██║██║     ██╔═██╗ ██║   ██║   
-███████║██║     ███████╗██║╚██████╗███████╗██║  ██║██║      ██║   ╚██████╔╝╚██████╔╝███████╗██║  ██╗██║   ██║   
-╚══════╝╚═╝     ╚══════╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝      ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝   ╚═╝   
+ ██████╗ ██████╗ ███████╗███╗   ██╗███████╗██████╗ ██╗     ██╗ ██████╗███████╗ █████╗ ██╗
+██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔════╝██╔══██╗██║     ██║██╔════╝██╔════╝██╔══██╗██║
+██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████╗██████╔╝██║     ██║██║     █████╗  ███████║██║
+██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║╚════██║██╔═══╝ ██║     ██║██║     ██╔══╝  ██╔══██║██║
+╚██████╔╝██║     ███████╗██║ ╚████║███████║██║     ███████╗██║╚██████╗███████╗██║  ██║██║
+ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚══════╝╚═╝     ╚══════╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝
     '''
     print(banner, file=sys.stderr)
     print(f"{__VERSION__}\n", file=sys.stderr)

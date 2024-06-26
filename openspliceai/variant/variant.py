@@ -4,7 +4,7 @@ import argparse
 import logging
 import pysam
 import numpy as np
-from spliceaitoolkit.variant.utils import *
+from openspliceai.variant.utils import *
 from tqdm import tqdm
 
 def variant(args):
