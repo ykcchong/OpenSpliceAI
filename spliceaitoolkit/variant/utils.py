@@ -352,7 +352,7 @@ def normalise_chrom(source, target):
 
     return source  # Return source as is if both or neither have 'chr' prefix
 
-def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
+def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000, precision=2):
     """
     Calculate delta scores for variant impacts on splice sites.
     
@@ -525,8 +525,12 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
             mask_pd = np.logical_and((idx_pd - cov // 2 == dist_ann[2]), mask)
             mask_nd = np.logical_and((idx_nd - cov // 2 != dist_ann[2]), mask)
 
-            # Append the calculated delta scores to the result list
-            delta_scores.append("{}|{}|{:.2f}|{:.2f}|{:.2f}|{:.2f}|{}|{}|{}|{}".format(
+            # Create a format string with the desired precision
+            format_str = "{{}}|{{}}|{{:.{}f}}|{{:.{}f}}|{{:.{}f}}|{{:.{}f}}|{{}}|{{}}|{{}}|{{}}".format(
+                precision, precision, precision, precision)
+            
+            # Write delta scores for given alternative allele, gene, and calculated indices
+            delta_scores.append(format_str.format(
                 record.alts[j],
                 genes[i],
                 (y[1, idx_pa, 1] - y[0, idx_pa, 1]) * (1 - mask_pa),
