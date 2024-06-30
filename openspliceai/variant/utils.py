@@ -5,7 +5,6 @@ from pyfaidx import Fasta
 from tensorflow import keras
 import torch
 import logging
-import onnx
 import platform
 import os, glob
 import re
@@ -15,10 +14,14 @@ from openspliceai.constants import *
 from openspliceai.predict.predict import *
 from openspliceai.predict.utils import *
     
-
 ##############################################
 ## LOADING PYTORCH AND KERAS MODELS
 ##############################################
+
+def setup_device():
+        """Select computation device based on availability."""
+        device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
+        return torch.device(device_str)
 
 def load_pytorch_models(model_path, CL):
     """
@@ -32,11 +35,6 @@ def load_pytorch_models(model_path, CL):
     - loaded_models (list): SpliceAI model(s) loaded with given state.
     """
     
-    def setup_device():
-        """Select computation device based on availability."""
-        device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
-        return torch.device(device_str)
-
     def load_model(device, flanking_size):
         """Loads the given model."""
         # Hyper-parameters:
@@ -236,9 +234,9 @@ class Annotator:
 
         # Load annotation file based on provided annotations type
         if annotations == 'grch37':
-            annotations = resource_filename(__name__, 'annotations/grch37.txt')
+            annotations = './data/vcf/grch37.txt'
         elif annotations == 'grch38':
-            annotations = resource_filename(__name__, 'annotations/grch38.txt')
+            annotations = './data/vcf/grch38.txt'
 
         # Load and parse the annotation file
         try:
@@ -272,7 +270,7 @@ class Annotator:
         # Load models based on the specified model type or file
         if model_path == 'SpliceAI':
             paths = ('./models/spliceai/spliceai{}.h5'.format(x) for x in range(1, 6))  # Generate paths for SpliceAI models
-            self.models = [keras.models.load_model(resource_filename(__name__, x)) for x in paths]
+            self.models = [keras.models.load_model(x) for x in paths]
             self.keras = True
         elif model_type == 'keras': # load models using keras
             self.models = load_keras_models(model_path)
@@ -283,6 +281,8 @@ class Annotator:
         else:
             logging.error('Model type {} not supported'.format(model_type))
             exit()
+        
+        print(f'\t[INFO] {len(self.models)} model(s) loaded successfully')
 
     def get_name_and_strand(self, chrom, pos):
         """
@@ -352,7 +352,7 @@ def normalise_chrom(source, target):
 
     return source  # Return source as is if both or neither have 'chr' prefix
 
-def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
+def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000, precision=2):
     """
     Calculate delta scores for variant impacts on splice sites.
     
@@ -371,6 +371,7 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
     cov = 2 * dist_var + 1
     wid = 2 * flanking_size + cov
     delta_scores = []
+    device = setup_device()
 
     # Validate the record fields
     try:
@@ -439,7 +440,27 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
 
             '''AM: added separate handling for PyTorch and Keras models (does not make use of custom predict's power)'''
             
-            if ann.model_type == 'pytorch':
+            if ann.keras: # keras model handling
+                # Reverse the sequences if on the negative strand
+                if strands[i] == '-':
+                    x_ref = x_ref[:, ::-1, ::-1]
+                    x_alt = x_alt[:, ::-1, ::-1]
+
+                # Predict scores using the models
+                y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
+                y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
+                
+                # Reverse the predicted scores if on the negative strand
+                if strands[i] == '-':
+                    y_ref = y_ref[:, ::-1]
+                    y_alt = y_alt[:, ::-1]
+                    
+            else: # pytorch model handling
+                
+                # Reshape tensor to match the model input shape
+                x_ref = x_ref.transpose(0, 2, 1)
+                x_alt = x_alt.transpose(0, 2, 1)
+                
                 # Convert to PyTorch tensors
                 x_ref = torch.tensor(x_ref, dtype=torch.float32)
                 x_alt = torch.tensor(x_alt, dtype=torch.float32)
@@ -449,31 +470,28 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
                     x_ref = torch.flip(x_ref, dims=[1, 2])
                     x_alt = torch.flip(x_alt, dims=[1, 2])
 
+                # Put tensors on device
+                x_ref = x_ref.to(device)
+                x_alt = x_alt.to(device)
+                
                 # Predict scores using the models
                 with torch.no_grad():
-                    y_ref = torch.mean(torch.stack([ann.models[m](x_ref) for m in range(len(ann.models))]), axis=0)
-                    y_alt = torch.mean(torch.stack([ann.models[m](x_alt) for m in range(len(ann.models))]), axis=0)
+                    y_ref = torch.mean(torch.stack([ann.models[m](x_ref).detach().cpu() for m in range(len(ann.models))]), axis=0)
+                    y_alt = torch.mean(torch.stack([ann.models[m](x_alt).detach().cpu() for m in range(len(ann.models))]), axis=0)
+                
+                # Remove flanking sequence and permute shape
+                y_ref = y_ref[:, :, flanking_size//2:-flanking_size//2].permute(0, 2, 1)
+                y_alt = y_alt[:, :, flanking_size//2:-flanking_size//2].permute(0, 2, 1)
 
                 # Reverse the predicted scores if on the negative strand and convert back to numpy arrays
                 if strands[i] == '-':
-                    y_ref = torch.flip(y_ref, dims=[1]).numpy()
-                    y_alt = torch.flip(y_alt, dims=[1]).numpy()
+                    y_ref = torch.flip(y_ref, dims=[1])
+                    y_alt = torch.flip(y_alt, dims=[1])
+                
+                # Convert to numpy arrays
+                y_ref = y_ref.numpy()
+                y_alt = y_alt.numpy()
 
-            elif ann.model_type == 'keras':
-                # Reverse the sequences if on the negative strand
-                if strands[i] == '-':
-                    x_ref = x_ref[:, ::-1, ::-1]
-                    x_alt = x_alt[:, ::-1, ::-1]
-
-                # Predict scores using the models
-                y_ref = np.mean([ann.models[m].predict(x_ref) for m in range(len(ann.models))], axis=0)
-                y_alt = np.mean([ann.models[m].predict(x_alt) for m in range(len(ann.models))], axis=0)
-
-                # Reverse the predicted scores if on the negative strand
-                if strands[i] == '-':
-                    y_ref = y_ref[:, ::-1]
-                    y_alt = y_alt[:, ::-1]
-                    
             '''end'''
 
             # Adjust the alternative sequence scores based on reference and alternative lengths
@@ -505,8 +523,12 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000):
             mask_pd = np.logical_and((idx_pd - cov // 2 == dist_ann[2]), mask)
             mask_nd = np.logical_and((idx_nd - cov // 2 != dist_ann[2]), mask)
 
-            # Append the calculated delta scores to the result list
-            delta_scores.append("{}|{}|{:.2f}|{:.2f}|{:.2f}|{:.2f}|{}|{}|{}|{}".format(
+            # Create a format string with the desired precision
+            format_str = "{{}}|{{}}|{{:.{}f}}|{{:.{}f}}|{{:.{}f}}|{{:.{}f}}|{{}}|{{}}|{{}}|{{}}".format(
+                precision, precision, precision, precision)
+            
+            # Write delta scores for given alternative allele, gene, and calculated indices
+            delta_scores.append(format_str.format(
                 record.alts[j],
                 genes[i],
                 (y[1, idx_pa, 1] - y[0, idx_pa, 1]) * (1 - mask_pa),

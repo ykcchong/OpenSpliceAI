@@ -155,11 +155,66 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
 
-    criterion = torch.nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
-    
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE}
+    # # Defaul optimizer and scheduler
+    # optimizer = optim.Adam(model.parameters(), lr=1e-3)
+    # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+    return model, None, optimizer, scheduler, params
+
+
+def classwise_accuracy(true_classes, predicted_classes, num_classes):
+    class_accuracies = []
+    for i in range(num_classes):
+        true_positives = np.sum((predicted_classes == i) & (true_classes == i))
+        total_class_samples = np.sum(true_classes == i)
+        if total_class_samples > 0:
+            accuracy = true_positives / total_class_samples
+        else:
+            accuracy = 0.0  # Or set to an appropriate value for classes with no samples
+        class_accuracies.append(accuracy)
+    return class_accuracies
+
+
+def metrics(batch_ypred, batch_ylabel, metric_files, run_mode):
+    _, predicted_classes = torch.max(batch_ypred, 1)  # Ensure this matches your data shape correctly
+    true_classes = torch.argmax(batch_ylabel, dim=1)  # Adjust the axis if necessary
+    # Convert tensors to numpy for compatibility with scikit-learn
+    true_classes = true_classes.numpy()
+    predicted_classes = predicted_classes.numpy()
+    # Flatten arrays if they're 2D (for multi-class, not multi-label)
+    true_classes_flat = true_classes.flatten()
+    predicted_classes_flat = predicted_classes.flatten()
+    # Now, calculate the metrics without iterating over each class
+    accuracy = accuracy_score(true_classes_flat, predicted_classes_flat)
+    precision, recall, f1, _ = precision_recall_fscore_support(true_classes_flat, predicted_classes_flat, average=None)
+    class_accuracies = classwise_accuracy(true_classes, predicted_classes, 3)
+    overall_accuracy = np.mean(class_accuracies)
+    print(f"Overall Accuracy: {overall_accuracy}")
+    for k, v in metric_files.items():
+        with open(v, 'a') as f:
+            if k == "accuracy":
+                f.write(f"{overall_accuracy}\n")
+    ss_types = ["Non-splice", "acceptor", "donor"]
+    for i, (acc, prec, rec, f1_score) in enumerate(zip(class_accuracies, precision, recall, f1)):
+        print(f"Class {ss_types[i]}\t: Accuracy={acc}, Precision={prec}, Recall={rec}, F1={f1_score}")
+        if ss_types[i] == "Non-splice":
+            continue
+        for k, v in metric_files.items():
+            with open(v, 'a') as f:
+                if k == f"{ss_types[i]}_precision":
+                    f.write(f"{prec}\n")
+                elif k == f"{ss_types[i]}_recall":
+                    f.write(f"{rec}\n")
+                elif k == f"{ss_types[i]}_f1":
+                    f.write(f"{f1_score}\n")
+                elif k == f"{ss_types[i]}_accuracy":
+                    f.write(f"{acc}\n")
+        wandb.log({
+            f'{run_mode}/{ss_types[i]} precision': prec,
+            f'{run_mode}/{ss_types[i]} recall': rec,
+            f'{run_mode}/{ss_types[i]} F1': f1_score,
+            f'{run_mode}/{ss_types[i]} accuracy': acc
+        })
 
     return model, criterion, optimizer, scheduler, params
 
@@ -256,7 +311,11 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
     batch_ypred = []
 
 
+<<<<<<< HEAD:openspliceai/train/train.py
 def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
+=======
+def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, flanking_size, run_mode):
+>>>>>>> alan:spliceaitoolkit/train/train.py
     """
     Validates the SpliceAI model on a given dataset.
     (Similar to train_epoch, but without performing backpropagation or updating model parameters)
@@ -290,9 +349,13 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
         pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
         for batch in pbar:
             DNAs, labels = batch[0].to(device), batch[1].to(device)
+<<<<<<< HEAD:openspliceai/train/train.py
             # print("\n\tDNAs.shape: ", DNAs.shape)
             # print("\tlabels.shape: ", labels.shape)
             DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+=======
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], flanking_size, params["N_GPUS"])
+>>>>>>> alan:spliceaitoolkit/train/train.py
             DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
             # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
             # print("\tAfter clipping labels.shape: ", labels.shape)
@@ -321,7 +384,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
 
 
-def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, run_mode, sample_freq):
+def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, flanking_size, run_mode):
     """
     Performs one epoch of training on the SpliceAI model.
 
@@ -340,7 +403,6 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
     - params (dict): Dictionary of parameters related to model and training.
     - metric_files (dict): Dictionary containing paths to log files for various metrics.
     - run_mode (str): Indicates the phase of training (e.g., "train", "validation").
-    - sample_freq (int): Frequency of sampling for evaluation and logging.
     """
 
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
@@ -361,7 +423,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             DNAs, labels = batch[0].to(device), batch[1].to(device)
             # print("\n\tDNAs.shape: ", DNAs.shape)
             # print("\tlabels.shape: ", labels.shape)
-            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
+            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], flanking_size, params["N_GPUS"])
             DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
             # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
             # print("\tAfter clipping labels.shape: ", labels.shape)
@@ -495,10 +557,53 @@ def train(args):
             f'train/learning_rate': current_lr,
         })
         start_time = time.time()
+<<<<<<< HEAD:openspliceai/train/train.py
         train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
         valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
         valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
         torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+=======
+        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, flanking_size, run_mode="train")
+        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, flanking_size, run_mode="validation")
+        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, flanking_size, run_mode="test")
+        
+        # # Scheduler step with validation loss
+        # scheduler.step(test_loss)
+        # # Check for early stopping or model improvement
+        # if test_loss.item() <= best_val_loss:
+        #     best_val_loss = test_loss.item()
+        #     # Consider saving the best model here
+        #     torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+        #     print("New best model saved.")
+        #     epochs_no_improve = 0
+        # else:
+        #     epochs_no_improve += 1
+        #     print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
+        #     if epochs_no_improve >= n_patience:
+        #         print("Early stopping triggered.")
+        #         break  # Break out of the loop to stop training
+        # # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+        # print("--- %s seconds ---" % (time.time() - start_time))
+        # print("--------------------------------------------------------------")
+
+        
+        # Scheduler step with validation loss
+        scheduler.step(val_loss)
+        # Check for early stopping or model improvement
+        if val_loss.item() < best_val_loss:
+            best_val_loss = val_loss.item()
+            # Consider saving the best model here
+            torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+            print("New best model saved.")
+            epochs_no_improve = 0
+        else:
+            epochs_no_improve += 1
+            print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
+            if epochs_no_improve >= n_patience:
+                print("Early stopping triggered.")
+                break  # Break out of the loop to stop training
+        # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+>>>>>>> alan:spliceaitoolkit/train/train.py
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
     train_h5f.close()

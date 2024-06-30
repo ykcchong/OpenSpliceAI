@@ -7,6 +7,8 @@ import numpy as np
 from openspliceai.variant.utils import *
 from tqdm import tqdm
 
+# NOTE: if running with gpu, note that cudnn version should be 8.9.6 or higher, numpy <2.0.0
+
 def variant(args):
     print("Running SpliceAI-toolkit with 'variant' mode")
     start_time = time.time()
@@ -30,6 +32,7 @@ def variant(args):
     model = args.model
     flanking_size = args.flanking_size
     model_type = args.model_type
+    precision = args.precision
 
     # Reading input VCF file
     print('\t[INFO] Reading input VCF file')
@@ -61,7 +64,7 @@ def variant(args):
 
     # Obtain delta score for each variant in VCF
     for record in tqdm(vcf):
-        scores = get_delta_scores(record, ann, distance, mask, flanking_size)
+        scores = get_delta_scores(record, ann, distance, mask, flanking_size, precision)
         if scores:
             record.info['SpliceAI'] = scores
         output.write(record)
