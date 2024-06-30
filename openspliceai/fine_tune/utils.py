@@ -9,13 +9,13 @@ from math import ceil
 from sklearn.metrics import average_precision_score
 from openspliceai.constants import *
 
-assert CL_max % 2 == 0
+# assert CL_max % 2 == 0
 
 def ceil_div(x, y):
     return int(ceil(float(x)/y))
 
 
-def clip_datapoints(X, Y, CL, N_GPUS):
+def clip_datapoints(X, Y, CL, CL_max, N_GPUS):
     # This function is necessary to make sure of the following:
     # (i) Each time model_m.fit is called, the number of datapoints is a
     # multiple of N_GPUS. Failure to ensure this often results in crashes.

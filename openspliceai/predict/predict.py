@@ -657,7 +657,8 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 
                 DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                 DNAs = DNAs.to(torch.float32).to(device)
-                y_pred = model(DNAs)
+                with torch.no_grad():
+                    y_pred = model(DNAs)
                 y_pred = y_pred.detach().cpu()
 
                 if debug:
@@ -692,7 +693,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
         predict_path = f'{output_dir}predict.pt'
 
         # load all data
-        X = torch.load(dataset_path)
+        X = torch.load(dataset_path).transpose(0, 2, 1)
         X = torch.tensor(X, dtype=torch.float32)
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
@@ -705,7 +706,8 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
             DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
 
-            y_pred = model(DNAs)
+            with torch.no_grad():
+                y_pred = model(DNAs)
 
             batch_ypred.append(y_pred.detach().cpu())
             count += 1
@@ -922,7 +924,8 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
 
                     DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                     DNAs = DNAs.to(torch.float32).to(device)
-                    y_pred = model(DNAs)
+                    with torch.no_grad():
+                        y_pred = model(DNAs)
                     y_pred = y_pred.detach().cpu()
                     count += len(y_pred)  # update the count for the current batch
 
@@ -964,7 +967,7 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
     else: # read from the PyTorch file
 
         # load all data
-        X = torch.load(dataset_path)
+        X = torch.load(dataset_path).transpose(0, 2, 1)
         X = torch.tensor(X, dtype=torch.float32)
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
@@ -976,7 +979,8 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
             DNAs = batch[0].to(device)
             DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
-            y_pred = model(DNAs)
+            with torch.no_grad():
+                y_pred = model(DNAs)
             y_pred = y_pred.detach().cpu()
             count += 1
 
