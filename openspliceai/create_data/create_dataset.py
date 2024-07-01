@@ -72,47 +72,28 @@ def create_dataset(args):
         print(f"\tWriting {output_file} ... ")
         with h5py.File(output_file, 'w') as h5f2:
             seq_num = len(SEQ)
-
-            print("seq_num: ", seq_num)
-            print("STRAND.shape[0]: ", STRAND.shape[0])
-            print("TX_START.shape[0]: ", TX_START.shape[0])
-            print("TX_END.shape[0]: ", TX_END.shape[0])
-            print("LABEL.shape[0]: ", LABEL.shape[0])
-
             # create dataset
             num_chunks = ceil_div(seq_num, CHUNK_SIZE) # ensures that even if seq_num < CHUNK_SIZE, will still create a chunk
-            for i in tqdm(range(num_chunks), desc='Processing chunks...'):
-
+            for i in tqdm.tqdm(range(num_chunks), desc='Processing chunks...'):
                 # each dataset has CHUNK_SIZE genes
                 if i == num_chunks - 1: # if last chunk, process remainder or full chunk size if no remainder
                     NEW_CHUNK_SIZE = seq_num % CHUNK_SIZE or CHUNK_SIZE 
                 else:
                     NEW_CHUNK_SIZE = CHUNK_SIZE
-
                 X_batch, Y_batch = [], [[] for _ in range(1)]
-
                 for j in range(NEW_CHUNK_SIZE):
                     idx = i*CHUNK_SIZE + j
-
                     seq_decode = SEQ[idx].decode('ascii')
                     label_decode = LABEL[idx].decode('ascii')
-                    
-                    # strand_decode = STRAND[idx].decode('ascii')
-                    # tx_start_decode = TX_START[idx].decode('ascii')
-                    # tx_end_decode = TX_END[idx].decode('ascii')
-
                     fixed_seq = replace_non_acgt_to_n(seq_decode)
                     X, Y = create_datapoints(fixed_seq, label_decode, CL_max=args.flanking_size)
-                    print('shapes', X.shape, Y.shape)   
-
                     X_batch.extend(X)
                     Y_batch[0].extend(Y[0])
-
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
-                print("X_batch.shape: ", X_batch.shape)
+                # print("X_batch.shape: ", X_batch.shape)
                 Y_batch[0] = np.asarray(Y_batch[0]).astype('int8')
-                print("len(Y_batch[0]): ", len(Y_batch[0]))
+                # print("len(Y_batch[0]): ", len(Y_batch[0]))
                 h5f2.create_dataset('X' + str(i), data=X_batch)
                 h5f2.create_dataset('Y' + str(i), data=Y_batch)
 

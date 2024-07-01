@@ -59,7 +59,7 @@ def setup_device():
     return torch.device(device_str)
 
 
-def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, loss_fun):
+def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, loss_fun):
     """
     Initializes and creates project directories for storing model outputs and logs.
 
@@ -69,7 +69,6 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     - flanking_size (int): Size of the flanking sequences used in the model.
     - exp_num (int): Experiment number for distinguishing between different runs.
     - sequence_length (int): Length of the sequences used in the model.
-    - model_arch (str): Architecture of the model.
     - loss_fun (str): Loss function used for training the model.
 
     Returns:
@@ -81,7 +80,7 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     ####################################
     # Modify the model verson here!!
     ####################################
-    MODEL_VERSION = f"{model_arch}_{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
+    MODEL_VERSION = f"{loss_fun}_{project_name}_{sequence_length}_{flanking_size}_{exp_num}"
     ####################################
     # Modify the model verson here!!
     ####################################
@@ -96,7 +95,7 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     return model_output_base, log_output_train_base, log_output_val_base, log_output_test_base
 
 
-def initialize_model_and_optim(device, flanking_size, model_arch):
+def initialize_model_and_optim(device, flanking_size):
     """
     Initializes the SpliceAI model, criterion (loss function), optimizer, and learning rate scheduler, 
     based on the provided flanking size and model architecture. 
@@ -104,7 +103,6 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     Parameters:
     - device (torch.device): The computational device to use (CUDA, MPS, or CPU).
     - flanking_size (int): The size of the flanking sequences, influencing the model architecture.
-    - model_arch (str): The chosen architecture of the model, affecting how it's initialized.
 
     Returns:
     - model (torch.nn.Module): The initialized SpliceAI model.
@@ -152,12 +150,12 @@ def initialize_model_and_optim(device, flanking_size, model_arch):
     print(model, file=sys.stderr)
 
     # criterion = nn.BCELoss()
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
 
     # # Defaul optimizer and scheduler
     # optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    # scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
     return model, None, optimizer, scheduler, params
 
@@ -311,11 +309,7 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
     batch_ypred = []
 
 
-<<<<<<< HEAD:openspliceai/train/train.py
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, run_mode, sample_freq):
-=======
-def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, flanking_size, run_mode):
->>>>>>> alan:spliceaitoolkit/train/train.py
+def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_files, flanking_size, run_mode, sample_freq):
     """
     Validates the SpliceAI model on a given dataset.
     (Similar to train_epoch, but without performing backpropagation or updating model parameters)
@@ -336,7 +330,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.eval()
     running_loss = 0.0
-    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    np.random.seed(params["RANDOM_SEED"])  # You can choose any number as a seed
     shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
     print("shuffled_idxs: ", shuffled_idxs)
     batch_ylabel = []
@@ -349,13 +343,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
         pbar = tqdm(loader, leave=False, total=len(loader), desc=f'Shard {i}/{len(shuffled_idxs)}')
         for batch in pbar:
             DNAs, labels = batch[0].to(device), batch[1].to(device)
-<<<<<<< HEAD:openspliceai/train/train.py
-            # print("\n\tDNAs.shape: ", DNAs.shape)
-            # print("\tlabels.shape: ", labels.shape)
-            DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], 2)
-=======
             DNAs, labels = clip_datapoints(DNAs, labels, params["CL"], flanking_size, params["N_GPUS"])
->>>>>>> alan:spliceaitoolkit/train/train.py
             DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
             # print("\n\tAfter clipping DNAs.shape: ", DNAs.shape)
             # print("\tAfter clipping labels.shape: ", labels.shape)
@@ -382,6 +370,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
+    return loss
 
 
 def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, flanking_size, run_mode):
@@ -454,7 +443,7 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             #     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode)
         pbar.close()
     model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
-
+    return loss
 
 def train(args):
     """
@@ -476,15 +465,13 @@ def train(args):
         - test_dataset (str): Path to the testing dataset file.
         - disable_wandb (bool): Flag to disable logging to Weights & Biases.
     """
-
-    print("Running SpliceAI-toolkit with 'train' mode")
+    print("Running OpenSpliceAI with 'train' mode")
 
     output_dir = args.output_dir
     project_name = args.project_name
     sequence_length = SL
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
-    model_arch = args.model
     assert int(flanking_size) in [80, 400, 2000, 10000]
     # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     if args.disable_wandb:
@@ -493,7 +480,7 @@ def train(args):
     device = setup_device()
     print("device: ", device, file=sys.stderr)
 
-    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, model_arch, args.loss)
+    model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, args.loss)
     print("* Project name: ", args.project_name, file=sys.stderr)
     print("* Model_output_base: ", model_output_base, file=sys.stderr)
     print("* Log_output_train_base: ", log_output_train_base, file=sys.stderr)
@@ -503,7 +490,6 @@ def train(args):
     testing_dataset = args.test_dataset
     print("Training_dataset: ", training_dataset, file=sys.stderr)
     print("Testing_dataset: ", testing_dataset, file=sys.stderr)
-    print("Model architecture: ", model_arch, file=sys.stderr)
     print("Loss function: ", args.loss, file=sys.stderr)
     print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
     print("Exp number: ", args.exp_num, file=sys.stderr)
@@ -513,7 +499,7 @@ def train(args):
     batch_num = len(train_h5f.keys()) // 2 # about num genes
     print("Batch_num: ", batch_num, file=sys.stderr)
 
-    np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
+    np.random.seed(args.random_seed)  # You can choose any number as a seed
     idxs = np.random.permutation(batch_num)
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
@@ -522,8 +508,8 @@ def train(args):
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
 
-    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_arch)
-    params["RANDOM_SEED"] = RANDOM_SEED
+    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size)
+    params["RANDOM_SEED"] = args.random_seed
     train_metric_files = {
         'topk_donor': f'{log_output_train_base}/donor_topk.txt',
         'auprc_donor': f'{log_output_train_base}/donor_accuracy.txt',
@@ -549,6 +535,7 @@ def train(args):
         'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
     }
     SAMPLE_FREQ = 1000
+    best_val_loss = float('inf')
     for epoch in range(EPOCH_NUM):
         print("\n--------------------------------------------------------------")
         current_lr = optimizer.param_groups[0]['lr']
@@ -557,15 +544,13 @@ def train(args):
             f'train/learning_rate': current_lr,
         })
         start_time = time.time()
-<<<<<<< HEAD:openspliceai/train/train.py
-        train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, run_mode="train", sample_freq=SAMPLE_FREQ)
-        valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, run_mode="validation", sample_freq=SAMPLE_FREQ)
-        valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
-        torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
-=======
         train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, flanking_size, run_mode="train")
-        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, flanking_size, run_mode="validation")
-        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, flanking_size, run_mode="test")
+        val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, flanking_size, "validation", SAMPLE_FREQ)
+        test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, flanking_size, "test", SAMPLE_FREQ)
+
+        print(f"Training Loss: {train_loss}")
+        print(f"Validation Loss: {val_loss}")
+        print(f"Testing Loss: {test_loss}")
         
         # # Scheduler step with validation loss
         # scheduler.step(test_loss)
@@ -603,7 +588,6 @@ def train(args):
                 print("Early stopping triggered.")
                 break  # Break out of the loop to stop training
         # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
->>>>>>> alan:spliceaitoolkit/train/train.py
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
     train_h5f.close()

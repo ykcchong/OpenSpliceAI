@@ -15,7 +15,7 @@ from openspliceai.constants import *
 # Reporting functions
 ###################################################
 
-def check_and_count_motifs(seq, labels, donor_motif_counts, acceptor_motif_counts):
+def check_and_count_motifs(seq, labels, strand, donor_motif_counts, acceptor_motif_counts):
     """
     Check sequences for donor and acceptor motifs and count their occurrences.
 
@@ -36,14 +36,17 @@ def print_motif_counts(donor_motif_counts, acceptor_motif_counts):
     """
     Print the counts of donor and acceptor motifs.
     """
-    print("Donor motifs:")
+    print("*******************")
+    print("Splice site motif counts:")
+    print("\tDonor motifs:")
     for motif, count in donor_motif_counts.items():
-        print(f"{motif}: {count}")
-    print("\nAcceptor motifs:")
+        print(f"\t{motif}: {count}")
+    print("\n\tAcceptor motifs:")
     for motif, count in acceptor_motif_counts.items():
-        print(f"{motif}: {count}")
+        print(f"\t{motif}: {count}")
     print("\nTotal donor motifs: ", sum(donor_motif_counts.values()))
     print("Total acceptor motifs: ", sum(acceptor_motif_counts.values()))
+    print("*******************")
     
     
 ###################################################
