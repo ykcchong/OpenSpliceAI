@@ -19,7 +19,7 @@ def threshold_predictions(y_probs, threshold=0.5):
     """Threshold probabilities to get binary predictions."""
     return (y_probs > threshold).astype(int)
 
-def clip_datapoints(X, Y, CL, N_GPUS):
+def clip_datapoints(X, Y, CL, CL_max, N_GPUS):
     """
     This function is necessary to make sure of the following:
     (i) Each time model_m.fit is called, the number of datapoints is a

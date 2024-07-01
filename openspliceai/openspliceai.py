@@ -122,8 +122,7 @@ Deep learning framework to train your own SpliceAI model
     print(banner, file=sys.stderr)
     print(f"{__VERSION__}\n", file=sys.stderr)
     args = parse_args(arglist)
-    print(args)
-
+    
     if args.command == 'create-data':
         create_datafile.create_datafile(args)
         create_dataset.create_dataset(args)
