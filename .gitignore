@@ -8,6 +8,10 @@
 *.bed
 *.fa
 
+scripts/JOB_train*
+openspliceai/*create_dataset/
+openspliceai/*create_dataset_spliceAI/
+openspliceai/*spliceAI_pytorch_model/
 experiments/non-coding_eval/
 data/
 wandb/
