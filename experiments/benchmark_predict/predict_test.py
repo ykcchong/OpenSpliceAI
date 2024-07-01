@@ -19,14 +19,25 @@ def log_memory_usage():
     process = psutil.Process(os.getpid())
     print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
 
-HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
-FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
-CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
-SPLIT_FASTA_THRESHOLD = 1500000 # maximum length of fasta entry before splitting
-
 #####################
 ##      SETUP      ##
 #####################
+
+def initialize_globals(flanking_size, hdf_threshold_len=0, flush_predict_threshold=500, chunk_size=100, split_fasta_threshold=1500000):
+    
+    assert int(flanking_size) in [80, 400, 2000, 10000]
+    
+    global CL_max                  # context length for sequence prediction (flanking size sum)
+    global HDF_THRESHOLD_LEN       # maximum size before reading sequence into an HDF file for storage
+    global FLUSH_PREDICT_THRESHOLD # maximum number of predictions before flushing to file
+    global CHUNK_SIZE              # chunk size for loading hdf5 dataset
+    global SPLIT_FASTA_THRESHOLD   # maximum length of fasta entry before splitting
+    
+    CL_max = flanking_size
+    HDF_THRESHOLD_LEN = hdf_threshold_len
+    FLUSH_PREDICT_THRESHOLD = flush_predict_threshold
+    CHUNK_SIZE = chunk_size
+    SPLIT_FASTA_THRESHOLD = split_fasta_threshold
 
 def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='SpliceAI'):
     """Initialize project directories and create them if they don't exist."""
@@ -118,13 +129,18 @@ def split_fasta(genes, split_fasta_file):
     name_pattern = re.compile(r'(.*)(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+])\)')
     chrom_pattern = re.compile(r'(chr[a-zA-Z0-9_]+)')
     
-    def create_name(record, start_pos, segment_seq):
+    def create_name(record, start_pos, end_pos):
+        '''
+        Write a line of the split FASTA file.
+        
+        Params:
+        - record: Gene record
+        - start_pos: Relative start position of the segment (1-indexed)
+        - end_pos: Relative end position of the segment (1-indexed)
+        '''
+        
         # default extended name
         segment_name = record.long_name
-        
-        # define start and end for this segment
-        start = start_pos + 1
-        end = start_pos + len(segment_seq)
         
         # search for the pattern in the name
         match = name_pattern.search(segment_name)
@@ -132,7 +148,12 @@ def split_fasta(genes, split_fasta_file):
             prefix = match.group(1)
             chromosome = match.group(2)
             strand = match.group(5)
+            abs_start = int(match.group(3))
             
+            # compute true absolute start and end positions
+            start = abs_start - 1 + start_pos
+            end = abs_start - 1 + end_pos
+                        
             segment_name = f"{prefix}{chromosome}:{start}-{end}({strand})"
             
         else:
@@ -145,7 +166,7 @@ def split_fasta(genes, split_fasta_file):
             strand = '.' # NOTE: unknown strands will be treated as a forward strand further downstream (supply neg_strands argument to get_sequences() to override)
             
             # construct the fixed string with the split denoted
-            segment_name = f"{seqid}:{start}-{end}({strand})"
+            segment_name = f"{seqid}:{start_pos}-{end_pos}({strand})"
         
         return segment_name
                     
@@ -162,7 +183,7 @@ def split_fasta(genes, split_fasta_file):
                     segment_seq = genes[record.name][start_slice:end_slice].seq # added flanking sequences to preserve predictions 
                     
                     # formulate the sequence name using pattern matching
-                    segment_name = create_name(record, start_slice, segment_seq)
+                    segment_name = create_name(record, start_slice+1, end_slice)
                     
                     output_file.write(f">{segment_name}\n")
                     output_file.write(f"{segment_seq}\n")
@@ -170,7 +191,7 @@ def split_fasta(genes, split_fasta_file):
             else:
                 # write sequence as is (still ensuring name in format)
                 segment_seq = genes[record.name][:]
-                segment_name = create_name(record, 0, segment_seq)
+                segment_name = create_name(record, 1, len(segment_seq))
             
                 output_file.write(f">{segment_name}\n")
                 output_file.write(f"{segment_seq}\n")
@@ -190,7 +211,6 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
     Returns:
     - Path to datafile.
     """
-    global CL_max 
 
     # detect sequence length, determine file saving method to use
     total_length = 0
@@ -219,7 +239,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
         split_fasta(genes, split_fasta_file)
 
         # re-loads the pyfaidx Fasta object with split genes
-        genes = Fasta(split_fasta_file, one_based_attributes=True, read_long_names=True, sequence_always_upper=True) # Need long name to handle duplicate seqids after splits
+        genes = Fasta(split_fasta_file, one_based_attributes=True, read_long_names=True, sequence_always_upper=True) # need long name to handle duplicate seqids after splits
         print(f"\t[INFO] Saved and loaded {split_fasta_file}.")
 
     NAME = [] # Gene Header
@@ -273,7 +293,6 @@ def create_datapoints(input_string, debug=False):
     Returns:
     - X (np.ndarray): The one-hot encoded input nucleotide sequence.
     """
-    global CL_max 
 
     # NOTE: No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     
@@ -312,7 +331,6 @@ def reformat_data(X0, debug=False):
     Returns:
     - numpy.ndarray: Reformatted sequence data.
     """
-    global CL_max 
     
     if debug:
         print('\n\t[DEBUG] reformat_data', file=sys.stderr)
@@ -553,7 +571,6 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
     Additionally, Y is also converted to a list (the .h5 files store 
     them as an array).
     """
-    global CL_max 
 
     rem = X.shape[0] % N_GPUS
     clip = (CL_max-CL)//2
@@ -1031,47 +1048,35 @@ def predict(args):
     # get all input args
     output_dir = args.output_dir
     sequence_length = SL
-    flanking_size = int(args.flanking_size)
+    flanking_size = args.flanking_size
     model_path = args.model
     input_sequence = args.input_sequence
     gff_file = args.annotation_file
-    threshold = float(args.threshold) if args.threshold else 1e-6
-    # threads = int(args.threads) if args.threads else 1
+    threshold = args.threshold
     debug = args.debug
     predict_all = args.predict_all
+    hdf_threshold_len = args.hdf_threshold
+    flush_predict_threshold = args.flush_threshold
+    split_fasta_threshold = args.split_threshold
+    chunk_size = args.chunk_size
     
-    global CL_max 
-    CL_max = flanking_size
+    # initialize global variables
+    initialize_globals(flanking_size, hdf_threshold_len, flush_predict_threshold, chunk_size, split_fasta_threshold)
 
-    assert int(flanking_size) in [80, 400, 2000, 10000]
-
-    print(f'Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, model: {model_path}, input_sequence: {input_sequence}, gff_file: {gff_file}')
+    print(f'''Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, threshold: {threshold}, in {'debug, ' if debug else ''}{'turbo' if not predict_all else 'all'} mode.
+          model: {model_path}, 
+          input_sequence: {input_sequence}, 
+          gff_file: {gff_file},
+          output_dir: {output_dir},
+          hdf_threshold_len: {hdf_threshold_len}, flush_predict_threshold: {flush_predict_threshold}, split_fasta_threshold: {split_fasta_threshold}, chunk_size: {chunk_size}''')
 
     # create output directory
     os.makedirs(output_dir, exist_ok=True)
     output_base = initialize_paths(output_dir, flanking_size, sequence_length)
-    print("* output_base: ", output_base, file=sys.stderr)
+    print("Output path: ", output_base, file=sys.stderr)
     print("Model path: ", model_path, file=sys.stderr)
     print("Flanking sequence size: ", flanking_size, file=sys.stderr)
     print("Sequence length: ", sequence_length, file=sys.stderr)
-    
-    
-    
-    ### PART 3: Loading model
-    print("--- Step 3: Load model ... ---", flush=True)
-    start_time = time.time()
-
-    # setup device
-    device = setup_device()
-
-    # load model from current state
-    model, params = load_model(device, flanking_size)
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    model = model.to(device)
-    print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
-
-    print("--- %s seconds ---" % (time.time() - start_time))
-    
     
     # PART 1: Extracting input sequence
     print("--- Step 1: Extracting input sequence ... ---", flush=True)
@@ -1095,6 +1100,22 @@ def predict(args):
     start_time = time.time()
 
     dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+
+    ### PART 3: Loading model
+    print("--- Step 3: Load model ... ---", flush=True)
+    start_time = time.time()
+
+    # setup device
+    device = setup_device()
+
+    # load model from current state
+    model, params = load_model(device, flanking_size)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model = model.to(device)
+    print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -1127,8 +1148,10 @@ def predict(args):
 
         print("--- %s seconds ---" % (time.time() - start_time))  
 
+
 if __name__ == "__main__":
     parser_predict = argparse.ArgumentParser(description='Predicts splice sites using SpliceAI model')
+    
     parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
     parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
@@ -1137,6 +1160,11 @@ if __name__ == "__main__":
     parser_predict.add_argument('--threshold', '-t', type=str, required=False, help="Threshold to determine acceptor and donor sites")
     parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
     parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements directed to stderr)")
+    parser_predict.add_argument('--hdf-threshold', type=int, default=0, help='Maximum size before reading sequence into an HDF file for storage')
+    parser_predict.add_argument('--flush-threshold', type=int, default=500, help='Maximum number of predictions before flushing to file')
+    parser_predict.add_argument('--split-threshold', type=int, default=1500000, help='Maximum length of FASTA entry before splitting')
+    parser_predict.add_argument('--chunk-size', type=int, default=100, help='Chunk size for loading HDF5 dataset')
+    
     args = parser_predict.parse_args()
 
     predict(args)
