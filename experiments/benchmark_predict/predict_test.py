@@ -784,58 +784,64 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         print('\tacceptor\tdonor (assuming + strand):', file=sys.stderr)
         print('\t',acceptor_scores.shape, donor_scores.shape, file=sys.stderr)
         print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
-
-    # iterate over the positions and write to the respective BED files
-    for pos in range(len(acceptor_scores)): # donor and acceptor should have same num of scores 
-
-        # parse out key information from name
-        pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
-        match = pattern.match(seq_name)
         
-        if match:
-            start = int(match.group(2))
-            end = int(match.group(3))
-            strand = match.group(4)
-            name = seq_name[:-2] # remove endings
-            
-            if strand == '.': # in case of unknown/unspecified strand, gets the manually specified strand and use full name
-                strand = match.group(5)
-                name = seq_name
-            
+    # parse out key information from name
+    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
+    match = pattern.match(seq_name)
 
-            # obtain scores
-            acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
-            donor_score = donor_scores[pos] if strand=='+' else acceptor_scores[pos]
+    if match:
+        start = int(match.group(2))
+        end = int(match.group(3))
+        strand = match.group(4)
+        name = seq_name[:-2] # remove endings
+        
+        if strand == '.': # in case of unknown/unspecified strand, gets the manually specified strand and use full name
+            strand = match.group(5)
+            name = seq_name
 
-            # handle file writing based on strand
-            if strand == '+':
+        # handle file writing based on strand
+        if strand == '+':
+            for pos in range(len(acceptor_scores)): # NOTE: donor and acceptor should have same num of scores 
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
                     acceptor_bed.write(f"{name}\t{start+pos-2}\t{start+pos}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
                     donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
-            elif strand == '-':
+        elif strand == '-':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = donor_scores[pos]
+                donor_score = acceptor_scores[pos]
                 if acceptor_score > threshold:
                     acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
                     donor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tDonor\t{donor_score:.6f}\n")
-            else:
-                print(f'\t[ERR] Undefined strand {strand}. Skipping...')
-                continue
+        else:
+            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
-        else: # does not match pattern, could be due to not having gff file, keep writing it
-            # print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
+    else: # does not match pattern, could be due to not having gff file, keep writing it
 
-            strand = seq_name[-1] # use the ending as the strand (when lack other information)
-            
-            # obtain scores
-            acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
-            donor_score = donor_scores[pos] if strand=='+' else acceptor_scores[pos]
-
-            # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
-            if acceptor_score > threshold:
-                acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
-            if donor_score > threshold:
-                donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        strand = seq_name[-1] # use the ending as the strand (when lack other information)
+        
+        # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
+        if strand == '+':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        elif strand == '-':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = donor_scores[pos]
+                donor_score = acceptor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        else:
+            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
 
 # NOTE: need to handle naming when gff file not provided.
@@ -1052,7 +1058,7 @@ def predict(args):
     model_path = args.model
     input_sequence = args.input_sequence
     gff_file = args.annotation_file
-    threshold = args.threshold
+    threshold = np.float32(args.threshold)
     debug = args.debug
     predict_all = args.predict_all
     hdf_threshold_len = args.hdf_threshold
@@ -1152,14 +1158,14 @@ def predict(args):
 if __name__ == "__main__":
     parser_predict = argparse.ArgumentParser(description='Predicts splice sites using SpliceAI model')
     
-    parser_predict.add_argument('--model', '-m', default="SpliceAI", type=str)
+    parser_predict.add_argument('--model', '-m', type=str, default="SpliceAI", help='Path to a PyTorch SpliceAI model file or "SpliceAI" for the default model')
     parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
     parser_predict.add_argument('--annotation-file', '-a', type=str, required=False, help="Path to GFF file of coordinates for genes")
-    parser_predict.add_argument('--threshold', '-t', type=str, required=False, help="Threshold to determine acceptor and donor sites")
+    parser_predict.add_argument('--threshold', '-t', type=float, default=1e-6, help="Threshold to determine acceptor and donor sites")
     parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
-    parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements directed to stderr)")
+    parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements are printed to stderr)")
     parser_predict.add_argument('--hdf-threshold', type=int, default=0, help='Maximum size before reading sequence into an HDF file for storage')
     parser_predict.add_argument('--flush-threshold', type=int, default=500, help='Maximum number of predictions before flushing to file')
     parser_predict.add_argument('--split-threshold', type=int, default=1500000, help='Maximum length of FASTA entry before splitting')
