@@ -36,10 +36,10 @@ SCALENE_COMMAND="scalene --outfile $OUTPUT_PATH/scalene.html"
 
 if [ "$USE_ANNOTATION" -eq 1 ]; then
     # with annotation
-    COMMAND="$SCALENE_COMMAND --- ./experiments/benchmark_predict/predict_test.py -m $MODEL_PATH -o $OUTPUT_PATH -f $FLANKING_SIZE -i $DATA_PATH -a $ANNOTATION_PATH -t $THRESHOLD > $OUTPUT_FILE 2> $ERROR_FILE"
+    COMMAND="$SCALENE_COMMAND --- ./experiments/benchmark_predict/spliceai_default_test.py -m $MODEL_PATH -o $OUTPUT_PATH -f $FLANKING_SIZE -i $DATA_PATH -a $ANNOTATION_PATH -t $THRESHOLD > $OUTPUT_FILE 2> $ERROR_FILE"
 else
     # without annotation
-    COMMAND="$SCALENE_COMMAND --- ./experiments/benchmark_predict/predict_test.py -m $MODEL_PATH -o $OUTPUT_PATH -f $FLANKING_SIZE -i $DATA_PATH -t $THRESHOLD > $OUTPUT_FILE 2> $ERROR_FILE"
+    COMMAND="$SCALENE_COMMAND --- ./experiments/benchmark_predict/spliceai_default_test.py -m $MODEL_PATH -o $OUTPUT_PATH -f $FLANKING_SIZE -i $DATA_PATH -t $THRESHOLD > $OUTPUT_FILE 2> $ERROR_FILE"
 fi
 
 # Echo the command to verify it

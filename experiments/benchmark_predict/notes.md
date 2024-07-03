@@ -20,11 +20,14 @@ scalene [-options] spliceai_default_pred.py [-program_args]
 ## task
 predict on grch38 chr1
 
-** Do not run in predict-all or debug modes
-
 ## params
 - flanking size: 80, 400, 2000, 10000
 - without vs with annotation
 - pytorch vs. keras spliceai model
 
 16 runs
+
+# special notes
+- Do not run in predict-all or debug modes
+- use the Live Preview (Microsoft) extension to preview the html outputs natively
+- tested the cli version, does not have as much information, but can redirect all outputs to files
