@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# Benchmark task: predict on chr1 
-# Params: flanking size (80, 400, 2000, 10000), without vs with annotation, pytorch vs. keras spliceai model
-
 cd /ccb/cybertron/smao10/openspliceai
  
 NATIVE_DIR="./experiments/benchmark_predict"
@@ -20,9 +17,9 @@ USE_ANNOTATION=1
 
 MODEL_PATH="./models/spliceai-mane/${FLANKING_SIZE}nt/model_${FLANKING_SIZE}nt_rs42.pt"
 OUTPUT_PATH="$NATIVE_DIR/results/pytorch_${FLANKING_SIZE}nt_anno${USE_ANNOTATION}"
-DATA_PATH="./data/toy/human/chr1.fa"
+DATA_PATH="./data/toy/human/chr19.fa"
 
-ANNOTATION_PATH="./data/toy/human/chr1.gff"
+ANNOTATION_PATH="./data/toy/human/chr19.gff"
 
 THRESHOLD=0.9
 

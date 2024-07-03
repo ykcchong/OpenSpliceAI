@@ -75,6 +75,9 @@ def load_pytorch_models(model_path, CL):
 
         return model, params
     
+    # Setup device
+    device = setup_device()
+    
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
         model_files = glob.glob(os.path.join(model_path, '*.pt')) # gets all PyTorch models from supplied directory
@@ -85,7 +88,7 @@ def load_pytorch_models(model_path, CL):
         models = []
         for model_file in model_files:
             try:
-                model = torch.load(model_file)
+                model = torch.load(model_file, map_location=device)
                 models.append(model)
             except Exception as e:
                 logging.error(f"Error loading PyTorch model from file {model_file}: {e}. Skipping...")
@@ -96,7 +99,7 @@ def load_pytorch_models(model_path, CL):
     
     elif os.path.isfile(model_path):
         try:
-            models = [torch.load(model_path)]
+            models = [torch.load(model_path, map_location=device)]
         except Exception as e:
             logging.error(f"Error loading PyTorch model from file {model_path}: {e}.")
             exit()
@@ -105,18 +108,17 @@ def load_pytorch_models(model_path, CL):
         logging.error(f"Invalid path: {model_path}")
         exit()
     
-    # Setup device and load state of model to device
+    # Load state of model to device
     # NOTE: supplied model paths should be state dicts, not model files  
-    device = setup_device() # setup device
-    loaded_models = []      # store loaded models
+    loaded_models = []
     
     for state_dict in models:
         try: 
-            model, params = load_model(device, CL)                 # loads new SpliceAI model with correct hyperparams
-            model.load_state_dict(state_dict, map_location=device) # loads state dict
-            model = model.to(device)                               # puts model on device
-            model.eval()                                           # puts model in evaluation mode
-            loaded_models.append(model)                            # appends model to list of loaded models  
+            model, params = load_model(device, CL) # loads new SpliceAI model with correct hyperparams
+            model.load_state_dict(state_dict)      # loads state dict
+            model = model.to(device)               # puts model on device
+            model.eval()                           # puts model in evaluation mode
+            loaded_models.append(model)            # appends model to list of loaded models  
         except Exception as e:
             logging.error(f"Error processing model for device: {e}. Skipping...")
             
