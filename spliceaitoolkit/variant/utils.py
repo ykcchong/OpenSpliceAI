@@ -10,9 +10,6 @@ import os, glob
 import re
 from spliceaitoolkit.predict.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
-
-# from spliceaitoolkit.predict.predict import *
-# from spliceaitoolkit.predict.utils import *
     
 ##############################################
 ## LOADING PYTORCH AND KERAS MODELS
@@ -115,11 +112,11 @@ def load_pytorch_models(model_path, CL):
     
     for state_dict in models:
         try: 
-            model, params = load_model(device, CL) # loads new SpliceAI model with correct hyperparams
-            model.load_state_dict(state_dict)      # loads state dict
-            model = model.to(device)               # puts model on device
-            model.eval()                           # puts model in evaluation mode
-            loaded_models.append(model)            # appends model to list of loaded models  
+            model, params = load_model(device, CL)                 # loads new SpliceAI model with correct hyperparams
+            model.load_state_dict(state_dict, map_location=device) # loads state dict
+            model = model.to(device)                               # puts model on device
+            model.eval()                                           # puts model in evaluation mode
+            loaded_models.append(model)                            # appends model to list of loaded models  
         except Exception as e:
             logging.error(f"Error processing model for device: {e}. Skipping...")
             
@@ -200,19 +197,11 @@ def one_hot_encode(seq):
     return map[np.fromstring(seq, np.int8) % 5]
 
 
-'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
-####################################################################################################################################
-####################################################################################################################################
 ####################################################################################################################################
 #######                                                                                                                      #######
-#######                                                                                                                      #######
-#######                                                 ORIGINAL                                                             #######
-#######                                                                                                                      #######
+#######                                             ANNOTATOR CLASS                                                          #######
 #######                                                                                                                      #######
 ####################################################################################################################################
-####################################################################################################################################
-####################################################################################################################################
-'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
 class Annotator:
     """
@@ -329,6 +318,10 @@ class Annotator:
         dist_ann = (dist_tx_start, dist_tx_end, dist_exon_bdry)  # Package distances into a tuple
 
         return dist_ann
+    
+##############################################
+## CALCULATING DELTA SCORES
+##############################################
 
 def normalise_chrom(source, target):
     """

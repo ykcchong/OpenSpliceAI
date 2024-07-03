@@ -1,5 +1,12 @@
-import os
-import sys
+'''
+variant.py
+This command annotates variants in a VCF file using SpliceAI-toolkit. It reads the input VCF file, annotates 
+each variant with delta scores and delta positions, and writes the annotated variants to an output VCF file. 
+It uses the Annotator class to annotate variants based on the reference genome and annotation provided. The 
+annotated variants are written to the output VCF file with the 'SpliceAI' INFO field containing the delta 
+scores and delta positions for acceptor gain (AG), acceptor loss (AL), donor gain (DG), and donor loss (DL). 
+'''
+
 import argparse
 import logging
 import pysam
@@ -34,6 +41,11 @@ def variant(args):
     flanking_size = args.flanking_size
     model_type = args.model_type
     precision = args.precision
+    
+    print(f'''Running with genome: {ref_genome}, annotation: {annotation}, 
+          model(s): {model}, model_type: {model_type}, 
+          input: {input_vcf}, output: {output_vcf}, 
+          distance: {distance}, mask: {mask}, flanking_size: {flanking_size}, precision: {precision}''')
 
     # Reading input VCF file
     print('\t[INFO] Reading input VCF file')
@@ -52,7 +64,6 @@ def variant(args):
 
     # Generating output VCF file
     print('\t[INFO] Generating output VCF file')
-    output_dir = os.path.dirname(output_vcf)
     try:
         output = pysam.VariantFile(output_vcf, mode='w', header=header)
     except (IOError, ValueError) as e:
