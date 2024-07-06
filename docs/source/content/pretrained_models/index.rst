@@ -35,9 +35,9 @@
 
 |
 
-.. _same_species-section:
 
-Release SpliceAI-toolkit models
+
+Release OpenSpliceAI models
 ====================================
 
 
@@ -46,6 +46,11 @@ Release SpliceAI-toolkit models
 
     * :ref:`human_mane_spliceai`
     * :ref:`human_refseq_spliceai`
+    * :ref:`mouse_spliceai`
+    * :ref:`zebrafish_spliceai`
+    * :ref:`bee_insect_spliceai`
+    * :ref:`thale_cress_plant_spliceai`
+
 
 .. toctree::
     :hidden:
