@@ -43,8 +43,8 @@
 
     <embed>
         <div class="sidebar-logo-container" style="padding-bottom:-10px">
-            <img class="sidebar-logo only-light" src="_static/SpliceAI-toolkit_black.png" alt="Light Logo">
-            <img class="sidebar-logo only-dark" src="_static/SpliceAI-toolkit_white.png" alt="Dark Logo">
+            <img class="sidebar-logo only-light" src="_static/logo_black.png" alt="Light Logo">
+            <img class="sidebar-logo only-dark" src="_static/logo_white.png" alt="Dark Logo">
         </div>
     </embed>
 
@@ -58,10 +58,10 @@
     :target: https://pepy.tech/project/lifton
 
 .. image:: https://img.shields.io/github/downloads/Kuanhao-Chao/lifton/total.svg?style=social&logo=github&label=Download
-    :target: https://github.com/Kuanhao-Chao/lifton/releases
+    :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://img.shields.io/badge/platform-macOS_/Linux-green.svg
-    :target: https://github.com/Kuanhao-Chao/spliceAI-toolkit/releases
+    :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://colab.research.google.com/assets/colab-badge.svg
     :target: https://colab.research.google.com/github/Kuanhao-Chao/lifton/blob/main/notebook/lifton_example.ipynb
