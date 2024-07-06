@@ -91,8 +91,8 @@ html_theme_options = {
     'collapse_navigation': True,
     'navigation_depth': -1,
 
-    "light_logo": "SpliceAI-toolkit_black.png",
-    "dark_logo": "SpliceAI-toolkit_white.png",
+    "light_logo": "logo_black.png",
+    "dark_logo": "logo_white.png",
 
     "footer_icons": [
         {
