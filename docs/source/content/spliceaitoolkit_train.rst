@@ -58,23 +58,23 @@ Input files
 
 To run this example, you will need the following two files. They can be either downloaded through the provided links or generated using the :ref:`create_data_subcommand` subcommand.
 
-1. `dataset_train.h5 <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/dataset_train.h5>`_: this is the dataset for model training. 
-2. `dataset_test.h5 <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/dataset_test.h5>`_: this is the dataset for model testing. 
+1. `dataset_train.h5 <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-mane/dataset_train.h5>`_: this is the dataset for model training. 
+2. `dataset_test.h5 <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-mane/dataset_test.h5>`_: this is the dataset for model testing. 
 
 
 Commands
 +++++++++++++++++++++++++++++++++++
 
-The command of spliceAI-toolkit to train the spliceAI-Pytorch model is as follows:
+The command of OpenSpliceAI to train the spliceAI-Pytorch model is as follows:
 
 
 .. code-block:: bash
 
-   spliceai-toolkit train --flanking-size 10000 \
+   openspliceai train --flanking-size 10000 \
    --exp-num full_dataset \
    --train-dataset /ccb/cybertron/khchao/data/train_test_dataset_MANE_test/dataset_train.h5 \
    --test-dataset /ccb/cybertron/khchao/data/train_test_dataset_MANE_test/dataset_test.h5 \
-   --output-dir /ccb/cybertron/khchao/spliceAI-toolkit/results/model_train_outdir/ \
+   --output-dir /ccb/cybertron/khchao/OpenSpliceAI/results/model_train_outdir/ \
    --project-name human_MANE_adeptive_lr \
    --random-seed 22 \
    --model SpliceAI \
@@ -86,7 +86,7 @@ After successfully running the :code:`train` subcommand, you will get the follow
 Output files
 +++++++++++++++++++++++++++++++++++
 
-* `dataset_train.h5 <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-mane/SpliceAI-MANE-10000nt.pt>`_: the trained SpliceAI-Pytorch model.
+* `dataset_train.h5 <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-mane/SpliceAI-MANE-10000nt.pt>`_: the trained SpliceAI-Pytorch model.
 
 
 |
@@ -100,7 +100,7 @@ Usage
 
 .. code-block:: text
 
-   usage: spliceai-toolkit train [-h] [--disable-wandb] --output-dir OUTPUT_DIR [--project-name PROJECT_NAME] [--flanking-size FLANKING_SIZE]
+   usage: openspliceai train [-h] [--disable-wandb] --output-dir OUTPUT_DIR [--project-name PROJECT_NAME] [--flanking-size FLANKING_SIZE]
                                  [--random-seed RANDOM_SEED] [--exp-num EXP_NUM] [--train-dataset TRAIN_DATASET] [--test-dataset TEST_DATASET]
                                  [--loss LOSS] [--model MODEL]
 
