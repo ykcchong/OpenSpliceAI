@@ -19,10 +19,10 @@ USE_ANNOTATION=1
 ############################################################
 
 MODEL_PATH="./models/spliceai-mane/${FLANKING_SIZE}nt/model_${FLANKING_SIZE}nt_rs42.pt"
-OUTPUT_PATH="$NATIVE_DIR/results/pytorch_${FLANKING_SIZE}nt_anno${USE_ANNOTATION}"
+OUTPUT_PATH="$NATIVE_DIR/results/pytorch_chr1_${FLANKING_SIZE}nt_anno${USE_ANNOTATION}"
 DATA_PATH="./data/toy/human/chr1.fa"
 
-ANNOTATION_PATH="./data/toy/human/chr1.gff"
+ANNOTATION_PATH="./data/toy/human/chr1_subset100.gff"
 
 THRESHOLD=0.9
 

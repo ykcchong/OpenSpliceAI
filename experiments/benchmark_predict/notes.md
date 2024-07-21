@@ -31,3 +31,25 @@ predict on grch38 chr1
 - Do not run in predict-all or debug modes
 - use the Live Preview (Microsoft) extension to preview the html outputs natively
 - tested the cli version, does not have as much information, but can redirect all outputs to files
+
+## extracting information from profile.json scalene output
+- elapsed_time_sec
+- locate the `predict_and_write` line
+    "n_avg_mb": 10.307589530944824,
+    "n_copy_mb_s": 0.0,
+    "n_core_utilization": 0.030044843064412876,
+    "n_cpu_percent_c": 1.1387174628407477,
+    "n_cpu_percent_python": 0.150917624305348,
+    "n_gpu_avg_memory_mb": 308.3333333333333,
+    "n_gpu_peak_memory_mb": 342.0,
+    "n_gpu_percent": 0,
+    "n_growth_mb": 10.307589530944824,
+    "n_malloc_mb": 10.307589530944824,
+    "n_mallocs": 1,
+    "n_peak_mb": 10.307589530944824,
+    "n_python_fraction": 0.19941300000000003,
+    "n_sys_percent": 2.970015096329677,
+    "n_usage_fraction": 0.03215881989925033
+- growth_rate
+- max_footprint_mb
+- samples -> plot memory over time

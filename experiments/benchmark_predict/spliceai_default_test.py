@@ -2,6 +2,12 @@
 Default SpliceAI prediction for benchmarking using Keras model.
 - derived from SpliceAI repository
 - uses all 5 models and averages scores
+
+Notes:
+- uses the same step 1 (yielding NAME and SEQ) and write_batch_to_bed() logic from our repo for consistency with I/O operations
+    - running spliceai model normally also causes out-of-memory error, so had to include our splitting logic
+- does not use datasets/batching as we do, instead follows the exact logic from the SpliceAI repo
+
 '''
 import argparse
 import numpy as np
@@ -11,6 +17,7 @@ import h5py
 import os
 import re
 import sys
+import time
 
 ####################
 ### FROM PYTORCH ###
@@ -27,6 +34,15 @@ def initialize_globals(flanking_size, split_fasta_threshold=1500000):
     CL_max = flanking_size
     SPLIT_FASTA_THRESHOLD = split_fasta_threshold
     HDF_THRESHOLD_LEN = 0
+
+def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='SpliceAI'):
+    """Initialize project directories and create them if they don't exist."""
+
+    BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
+    model_pred_outdir = f"{output_dir}/{BASENAME}/"
+    os.makedirs(model_pred_outdir, exist_ok=True)
+
+    return model_pred_outdir
 
 def process_gff(fasta_file, gff_file, output_dir):
     """
@@ -254,11 +270,87 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
     
     return datafile_path, NAME, SEQ
 
+  
+def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, threshold=1e-6, debug=False):
+
+    # flatten the predictions to a 2D array [total positions, channels]
+    if debug:
+        print('\traw prediction:', file=sys.stderr)
+        print('\t',gene_predictions.shape, file=sys.stderr)
+        print('\t',gene_predictions[:5], file=sys.stderr)
+
+    acceptor_scores = gene_predictions[0, :, 1]  # Acceptor channel
+    donor_scores = gene_predictions[0, :, 2]     # Donor channel
+    
+    if debug:
+        print('\tacceptor\tdonor (assuming + strand):', file=sys.stderr)
+        print('\t',acceptor_scores.shape, donor_scores.shape, file=sys.stderr)
+        print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
+        
+    # parse out key information from name
+    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
+    match = pattern.match(seq_name)
+
+    if match:
+        start = int(match.group(2))
+        end = int(match.group(3))
+        strand = match.group(4)
+        name = seq_name[:-2] # remove endings
+        
+        if strand == '.': # in case of unknown/unspecified strand, gets the manually specified strand and use full name
+            strand = match.group(5)
+            name = seq_name
+
+        # handle file writing based on strand
+        if strand == '+':
+            for pos in range(len(acceptor_scores)): # NOTE: donor and acceptor should have same num of scores 
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{name}\t{start+pos-2}\t{start+pos}\tAcceptor\t{acceptor_score:.6f}\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
+        elif strand == '-':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = donor_scores[pos]
+                donor_score = acceptor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tDonor\t{donor_score:.6f}\n")
+        else:
+            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
+
+    else: # does not match pattern, could be due to not having gff file, keep writing it
+
+        strand = seq_name[-1] # use the ending as the strand (when lack other information)
+        
+        # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
+        if strand == '+':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        elif strand == '-':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = donor_scores[pos]
+                donor_score = acceptor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        else:
+            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
 
 #####################
 ### FROM SPLICEAI ###
 #####################
+
+# NOTE: the previous steps guarantee that all input sequences will be forward stranded
 
 # One-hot encoding function
 def one_hot_encode(seq):
@@ -273,25 +365,86 @@ def one_hot_encode(seq):
 
     return map[np.fromstring(seq, np.int8) % 5]
 
-# Normalizing chromosome name
-def normalise_chrom(source, target):
-    def has_prefix(x):
-        return x.startswith('chr')
+# Prediction function - adapted from our generate_bed() and the SpliceAI repo guide
+def predict_and_write(NAME, SEQ, output_dir, threshold=1e-6, debug=False):
+    
+    # initialize output BED files
+    acceptor_bed_path = f'{output_dir}acceptor_predictions.bed'
+    donor_bed_path = f'{output_dir}donor_predictions.bed'
+    acceptor_bed = open(acceptor_bed_path, 'w')
+    donor_bed = open(donor_bed_path, 'w')
+    
+    # initialize SpliceAI models
+    context = CL_max
+    paths = (f'models/SpliceAI/SpliceNet{context}_c{x}.h5' for x in range(1, 6))
+    models = [load_model(x) for x in paths]
+    
+    # run predict and write
+    for input_sequence, seq_name in zip(SEQ, NAME):
+        x = one_hot_encode('N'*(context//2) + input_sequence + 'N'*(context//2))[None, :]
+        y = np.mean([models[m].predict(x) for m in range(5)], axis=0)
 
-    if has_prefix(source) and not has_prefix(target):
-        return source.strip('chr')
-    elif not has_prefix(source) and has_prefix(target):
-        return 'chr'+source
-
-    return source
-
-# Prediction function - derived from SpliceAI get_delta_score()
+        # y is gene_predictions
+        write_batch_to_bed(seq_name, y, acceptor_bed, donor_bed, threshold=threshold, debug=debug)
 
 
+#####################
+### MAIN FUNCTION ###
+#####################
 
+def predict(args):
+    
+    print("Running SpliceAI keras-mode")
 
-def get_models(flanking_size):
-    return [load_model(f'./models/SpliceAI/SpliceNet{flanking_size}_c{i}.h5') for i in range(1, 6)]
+    # get all input args
+    output_dir = args.output_dir
+    sequence_length = 5000
+    flanking_size = args.flanking_size
+    input_sequence = args.input_sequence
+    gff_file = args.annotation_file
+    threshold = np.float32(args.threshold)
+    debug = False
+    split_fasta_threshold = args.split_threshold
+    
+    # initialize global variables
+    initialize_globals(flanking_size, split_fasta_threshold)
+
+    print(f'''Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, threshold: {threshold}, keras mode.
+          input_sequence: {input_sequence}, 
+          gff_file: {gff_file},
+          output_dir: {output_dir},
+          split_fasta_threshold: {split_fasta_threshold}''')
+
+    # create output directory
+    os.makedirs(output_dir, exist_ok=True)
+    output_base = initialize_paths(output_dir, flanking_size, sequence_length)
+    print("Output path: ", output_base, file=sys.stderr)
+    print("Flanking sequence size: ", flanking_size, file=sys.stderr)
+    print("Sequence length: ", sequence_length, file=sys.stderr)
+    
+    # PART 1: Extracting input sequence
+    print("--- Step 1: Extracting input sequence ... ---", flush=True)
+    start_time = time.time()
+
+    # if gff file is provided, extract just the gene regions into a new FASTA file
+    if gff_file: 
+        print('\t[INFO] GFF file provided: extracting gene sequences.')
+        new_fasta = process_gff(input_sequence, gff_file, output_base)
+        datafile_path, NAME, SEQ = get_sequences(new_fasta, output_base)
+    else:
+        # otherwise, collect all sequences from FASTA into file
+        datafile_path, NAME, SEQ = get_sequences(input_sequence, output_base)
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+        
+    ### PART 4o: Get only predictions and write to BED
+    print("--- Step 2: Predict and write to BED ... ---", flush=True)
+    start_time = time.time()
+    
+    predict_file = predict_and_write(NAME, SEQ, output_base, threshold=threshold, debug=debug)
+
+    print("--- %s seconds ---" % (time.time() - start_time))  
 
 # Example usage
 if __name__ == "__main__":
@@ -312,14 +465,6 @@ if __name__ == "__main__":
     # parser_predict.add_argument('--chunk-size', type=int, default=100, help='Chunk size for loading HDF5 dataset')
     
     args = parser_predict.parse_args()
-    
-    initialize_globals(args.flanking_size, args.split_threshold)
-
-    models = get_models(args.flanking_size)
-    fasta_file = args.input_sequence
-    annotation_file = args.annotation_file
-    threshold = args.threshold
-    output_dir = args.output_dir
 
     # Make predictions
-    predictions
+    predictions = predict(args)
