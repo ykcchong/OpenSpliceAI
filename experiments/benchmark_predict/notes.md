@@ -53,3 +53,12 @@ predict on grch38 chr1
 - growth_rate
 - max_footprint_mb
 - samples -> plot memory over time
+
+# debug
+python predict_test.py -m ../../models/spliceai-mane/10000nt/model_10000nt_rs42.pt -o results_test_10k -f 10000 -i ./data/chr1.fa -a ./data/chr1_subset100.gff -t 0.9 -D > ./results_test_10k/output.log 2> ./results_test_10k/error.log
+
+scalene predict_test.py -m ../../models/spliceai-mane/10000nt/model_10000nt_rs42.pt -o results_scalene_10k -f 10000 -i ./data/chr1.fa -a ./data/chr1_subset100.gff -t 0.9 -D > ./results_scalene_10k/output.log 2> ./results_scalene_10k/error.log
+
+/usr/bin/time -v python  predict_test.py -m ../../models/spliceai-mane/10000nt/model_10000nt_rs42.pt -o results_scalene_10k -f 10000 -i ./data/chr1.fa -a ./data/chr1_subset100.gff -t 0.9 -D -p  > ./results_scalene_10k/output.log 2> ./results_scalene_10k/error.log
+
+/usr/bin/time -v python spliceai_default_test.py -o results_time_10k -f 10000 -i ./data/chr1.fa -a ./data/chr1_subset100.gff -t 0.9  > ./results_time_10k/output.log 2> ./results_time_10k/error.log
