@@ -1,29 +1,23 @@
 #!/bin/bash
 
 # Master benchmark script: predict on chr1
-# Params: flanking size, model type (keras or pytorch)
+# Params: flanking size, model type (keras or pytorch), subset size
 
 # Check for correct number of arguments
-if [ "$#" -ne 2 ]; then
-    echo "Usage: $0 <model_type> <flanking_size>"
+if [ "$#" -ne 3 ]; then
+    echo "Usage: $0 <model_type> <flanking_size> <subset_size>"
     exit 1
 fi
 
 MODEL_TYPE=$1
 FLANKING_SIZE=$2
-SUBSET_SIZE=500
+SUBSET_SIZE=$3
 
 # Set paths
-cd /ccb/cybertron/smao10/openspliceai
-
 NATIVE_DIR="./experiments/benchmark_predict"
-SETUP_SCRIPT="setup.py"
-DATA_PATH="./data/toy/human/chr1.fa"
-ANNOTATION_PATH="./data/toy/human/chr1_subset${SUBSET_SIZE}.gff"
+DATA_PATH="./experiments/benchmark_predict/data/chr1.fa"
+ANNOTATION_PATH="./experiments/benchmark_predict/data/chr1_subset${SUBSET_SIZE}.gff"
 THRESHOLD=0.9
-
-# Run the setup script
-python $SETUP_SCRIPT install
 
 USE_ANNOTATION=1
 
@@ -35,7 +29,7 @@ if [ "$MODEL_TYPE" == "pytorch" ]; then
     MODEL_ARG="-m $MODEL_PATH"
 elif [ "$MODEL_TYPE" == "keras" ]; then
     SCRIPT_PATH="./experiments/benchmark_predict/spliceai_default_test.py"
-    OUTPUT_PARENT_DIR="$NATIVE_DIR/results/keras_chr1_${FLANKING_SIZE}nt_anno${USE_ANNOTATION}"
+    OUTPUT_PARENT_DIR="$NATIVE_DIR/results/keras_chr1_sub${SUBSET_SIZE}_${FLANKING_SIZE}nt_anno${USE_ANNOTATION}"
     MODEL_ARG=""
 else
     echo "Invalid model type. Please choose 'keras' or 'pytorch'."
@@ -50,7 +44,7 @@ for i in {1..5}; do
     OUTPUT_PATH="$OUTPUT_PARENT_DIR/trial_$i"
     OUTPUT_FILE="$OUTPUT_PATH/output.log"
     ERROR_FILE="$OUTPUT_PATH/error.log"
-    SCALENE_COMMAND="scalene --outfile $OUTPUT_PATH/scalene.html"
+    SCALENE_COMMAND="scalene --outfile $OUTPUT_PATH/scalene.html --no-browser"
 
     mkdir -p "$OUTPUT_PATH"
 
@@ -68,4 +62,7 @@ for i in {1..5}; do
 
     # Execute the command
     eval $COMMAND
+
+    # Remove the output directory except for the Scalene output
+    rm -r "$OUTPUT_PATH/SpliceAI_5000_${FLANKING_SIZE}"
 done
