@@ -376,7 +376,7 @@ def predict_and_write(NAME, SEQ, output_dir, threshold=1e-6, debug=False):
     
     # initialize SpliceAI models
     context = CL_max
-    paths = (f'../../models/SpliceAI/SpliceNet{context}_c{x}.h5' for x in range(1, 6))
+    paths = (f'./models/SpliceAI/SpliceNet{context}_c{x}.h5' for x in range(1, 6))
     models = [load_model(x) for x in paths]
     
     # run predict and write
