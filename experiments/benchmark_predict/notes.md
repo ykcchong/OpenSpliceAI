@@ -34,7 +34,7 @@ predict on grch38 chr1
 
 ## extracting information from profile.json scalene output
 - elapsed_time_sec
-- locate the `predict_and_write` line
+- locate the `predict_and_write` line (files -> "/ccb/cybertron/smao10/openspliceai/experiments/benchmark_predict/predict_test.py" -> functions -> line = "predict_and_write")
     "n_avg_mb": 10.307589530944824,
     "n_copy_mb_s": 0.0,
     "n_core_utilization": 0.030044843064412876,
