@@ -4,6 +4,8 @@ import json
 import sys
 import os
 import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression
 
 def generate_paths(subsets, dataset, use_anno):
     path_list = []
@@ -79,9 +81,41 @@ def extract_jsons(paths):
     return pd.DataFrame(data)
 
 
+def fit_line_of_best_fit(samples):
+    # Extract all points from the samples
+    all_points = np.concatenate(samples)
+    X = all_points[:, 0].reshape(-1, 1)
+    y = all_points[:, 1]
+    
+    # Fit a linear regression model
+    model = LinearRegression().fit(X, y)
+    
+    # Predict y values for the given X values
+    y_pred = model.predict(X)
+    
+    # Return the line of best fit as a list of points
+    return list(zip(X.flatten(), y_pred))
+
 def calculate_averages(dataframe):
     grouped = dataframe.groupby(['subset_size', 'model_type', 'flanking_size'])
-    averages = grouped.mean().reset_index()
+    
+    averages_list = []
+    for name, group in grouped:
+        average_row = group.mean(numeric_only=True).to_dict()
+        average_row['subset_size'], average_row['model_type'], average_row['flanking_size'] = name
+        
+        # Collect all sample points
+        samples = group['samples'].tolist()
+        
+        # Fit line of best fit
+        line_of_best_fit = fit_line_of_best_fit(samples)
+        
+        # Store the line of best fit in the average row
+        average_row['samples'] = line_of_best_fit
+        
+        averages_list.append(average_row)
+    
+    averages = pd.DataFrame(averages_list)
     return averages
 
 
@@ -99,12 +133,13 @@ def write_data_to_file(dataframe, averages):
         averages.to_csv(f, index=False)
             
 def main():
-    subsets = [100, 200, 500, 1000]
+    subsets = [50, 100, 200, 300, 400, 500, 1000]
     use_anno = 1
     dataset = 'MANE'
 
     path_list = generate_paths(subsets, dataset, use_anno)
     df = extract_jsons(path_list)
+    print(df.head())
     averages = calculate_averages(df)
     write_data_to_file(df, averages)
     print('Data and averages written')
