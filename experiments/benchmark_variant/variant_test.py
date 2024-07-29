@@ -1,18 +1,10 @@
-'''
-variant.py
-This command annotates variants in a VCF file using SpliceAI-toolkit. It reads the input VCF file, annotates 
-each variant with delta scores and delta positions, and writes the annotated variants to an output VCF file. 
-It uses the Annotator class to annotate variants based on the reference genome and annotation provided. The 
-annotated variants are written to the output VCF file with the 'SpliceAI' INFO field containing the delta 
-scores and delta positions for acceptor gain (AG), acceptor loss (AL), donor gain (DG), and donor loss (DL). 
-'''
-
+import argparse
 import logging
 import pysam
 import time
 from spliceaitoolkit.variant.utils import *
 from tqdm import tqdm
-import os
+import sys, os
 
 # NOTE: if running with gpu, note that cudnn version should be 8.9.6 or higher, numpy <2.0.0
 
@@ -87,3 +79,27 @@ def variant(args):
     logging.info('Annotation completed and written to output VCF file')
     
     print("--- %s seconds ---" % (time.time() - start_time))
+
+if __name__ == '__main__':
+    parser_variant = argparse.ArgumentParser(description='Label genetic variations with their predicted effects on splicing.')
+
+    parser_variant.add_argument('-R', metavar='reference', required=True, help='path to the reference genome fasta file')
+    parser_variant.add_argument('-A', metavar='annotation', required=True, help='"grch37" (GENCODE V24lift37 canonical annotation file in '
+                                                                                'package), "grch38" (GENCODE V24 canonical annotation file in '
+                                                                                'package), or path to a similar custom gene annotation file')
+    parser_variant.add_argument('-I', metavar='input', nargs='?', default=sys.stdin, help='path to the input VCF file, defaults to standard in')
+    parser_variant.add_argument('-O', metavar='output', nargs='?', default=sys.stdout, help='path to the output VCF file, defaults to standard out')
+    parser_variant.add_argument('-D', metavar='distance', nargs='?', default=50, type=int, choices=range(0, 5000),
+                                    help='maximum distance between the variant and gained/lost splice '
+                                        'site, defaults to 50')
+    parser_variant.add_argument('-M', metavar='mask', nargs='?', default=0, type=int, choices=[0, 1], 
+                                    help='mask scores representing annotated acceptor/donor gain and '
+                                        'unannotated acceptor/donor loss, defaults to 0')
+    parser_variant.add_argument('--model', '-m', default="SpliceAI", type=str, help='Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model')
+    parser_variant.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_variant.add_argument('--model-type', '-t', type=str, choices=['keras', 'pytorch'], default='pytorch', help='Type of model file (keras or pytorch)')
+    parser_variant.add_argument('--precision', '-p', type=int, default=2, help='Number of decimal places to round the output scores')
+
+    args = parser_variant.parse_args()
+
+    variant(args)

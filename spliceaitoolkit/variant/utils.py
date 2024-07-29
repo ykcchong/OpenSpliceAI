@@ -2,12 +2,10 @@ from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
-from tensorflow import keras
-import torch
 import logging
 import platform
 import os, glob
-import re
+import torch
 from spliceaitoolkit.predict.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
     
@@ -138,6 +136,8 @@ def load_keras_models(model_path):
     Returns:
     - models (list): List of loaded Keras models.
     """
+    from tensorflow import keras
+    
     if os.path.isdir(model_path): # directory supplied
         model_files = glob.glob(os.path.join(model_path, '*.h5')) # get all Keras models from a directory
         if not model_files:
@@ -260,6 +260,7 @@ class Annotator:
 
         # Load models based on the specified model type or file
         if model_path == 'SpliceAI':
+            from tensorflow import keras
             paths = ('./models/spliceai/spliceai{}.h5'.format(x) for x in range(1, 6))  # Generate paths for SpliceAI models
             self.models = [keras.models.load_model(x) for x in paths]
             self.keras = True

@@ -2,12 +2,13 @@ from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
+# from tensorflow import keras
 from keras.models import load_model
 import logging
 
 class Annotator:
 
-    def __init__(self, ref_fasta, annotations):
+    def __init__(self, ref_fasta, annotations, flanking):
 
         if annotations == 'grch37':
             annotations = resource_filename(__name__, 'annotations/grch37.txt')
@@ -38,8 +39,9 @@ class Annotator:
             logging.error('{}'.format(e))
             exit()
 
-        paths = ('models/spliceai{}.h5'.format(x) for x in range(1, 6))
-        self.models = [load_model(resource_filename(__name__, x)) for x in paths]
+        # TODO: modify this for the benchmark to use the SpliceAI/ dir models
+        paths = (f'models/SpliceAI/SpliceNet{flanking}_c{x}.h5' for x in range(1, 6))
+        self.models = [load_model(x) for x in paths]
 
     def get_name_and_strand(self, chrom, pos):
 
@@ -205,8 +207,6 @@ import sys
 import argparse
 import logging
 import pysam
-from spliceai.utils import Annotator, get_delta_scores
-
 
 from sys import stdin as std_in
 from sys import stdout as std_out
@@ -233,6 +233,7 @@ def get_options():
                         type=int, choices=[0, 1],
                         help='mask scores representing annotated acceptor/donor gain and '
                              'unannotated acceptor/donor loss, defaults to 0')
+    parser.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     args = parser.parse_args()
 
     return args
@@ -241,6 +242,7 @@ def get_options():
 def main():
 
     args = get_options()
+    flanking = args.flanking_size
 
     if None in [args.I, args.O, args.D, args.M]:
         logging.error('Usage: spliceai [-h] [-I [input]] [-O [output]] -R reference -A annotation '
@@ -265,7 +267,7 @@ def main():
         logging.error('{}'.format(e))
         exit()
 
-    ann = Annotator(args.R, args.A)
+    ann = Annotator(args.R, args.A, flanking)
 
     for record in vcf:
         scores = get_delta_scores(record, ann, args.D, args.M)
