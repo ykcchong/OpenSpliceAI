@@ -1,4 +1,4 @@
-# extracts all the benchmarking results, assuming we're in the benchmark_predict dir
+# extracts all the benchmarking results, assuming we're in the benchmark_variant dir
 
 import json
 import sys
@@ -7,13 +7,13 @@ import pandas as pd
 import numpy as np
 from sklearn.linear_model import LinearRegression
 
-def generate_paths(subsets, dataset, use_anno):
+def generate_paths(subsets, dataset):
     path_list = []
     for subset in subsets:
         base_dir = f'results_{subset}'
         for model in ['keras', 'pytorch']:
             for flanking_size in [80, 400, 2000, 10000]:
-                parent_dir = f'{model}_{dataset}_sub{subset}_{flanking_size}nt_anno{use_anno}'
+                parent_dir = f'{model}_{dataset}_sub{subset}_{flanking_size}nt'
                 path_list.append([os.path.join(base_dir, parent_dir, f'trial_{trial}', 'profile.json') for trial in [1, 2, 3, 4, 5]])
     return path_list
 
@@ -32,13 +32,14 @@ def extract_jsons(paths):
 
                 # handle different version
                 if 'keras' in path:
-                    for line in json_data['files']['/ccb/cybertron/smao10/openspliceai/experiments/benchmark_predict/spliceai_default_test.py']['functions']:
-                        if line['line'] == 'predict_and_write':
-                            predict_data = line
+                    for line in json_data['files']['/ccb/cybertron/smao10/openspliceai/experiments/benchmark_variant/spliceai_orig.py']['functions']:
+                        if line['line'] == 'get_delta_scores':
+                            variant_data = line
                 elif 'pytorch' in path:
-                    for line in json_data["files"]["/ccb/cybertron/smao10/openspliceai/experiments/benchmark_predict/predict_test.py"]["functions"]:
-                        if line['line'] == 'predict_and_write':
-                            predict_data = line
+                    for line in json_data["files"]["/ccb/cybertron/smao10/openspliceai/experiments/benchmark_variant/variant_test.py"]["functions"]:
+                        #if line['line'] == "        scores = get_delta_scores(record, ann, distance, mask, flanking_size, precision)\n":
+                        if line['line'] == 'variant':
+                            variant_data = line
                 else:
                     print("[ERROR] Malformed path!")
                     sys.exit(1)
@@ -59,21 +60,21 @@ def extract_jsons(paths):
                     "elapsed_time_sec": json_data.get("elapsed_time_sec", 0),
                     "growth_rate": json_data.get("growth_rate", 0),
                     "max_footprint_mb": json_data.get("max_footprint_mb", 0),
-                    "n_avg_mb": predict_data.get("n_avg_mb", 0),
-                    "n_copy_mb_s": predict_data.get("n_copy_mb_s", 0),
-                    "n_core_utilization": predict_data.get("n_core_utilization", 0),
-                    "n_cpu_percent_c": predict_data.get("n_cpu_percent_c", 0),
-                    "n_cpu_percent_python": predict_data.get("n_cpu_percent_python", 0),
-                    "n_gpu_avg_memory_mb": predict_data.get("n_gpu_avg_memory_mb", 0),
-                    "n_gpu_peak_memory_mb": predict_data.get("n_gpu_peak_memory_mb", 0),
-                    "n_gpu_percent": predict_data.get("n_gpu_percent", 0),
-                    "n_growth_mb": predict_data.get("n_growth_mb", 0),
-                    "n_malloc_mb": predict_data.get("n_malloc_mb", 0),
-                    "n_mallocs": predict_data.get("n_mallocs", 0),
-                    "n_peak_mb": predict_data.get("n_peak_mb", 0),
-                    "n_python_fraction": predict_data.get("n_python_fraction", 0),
-                    "n_sys_percent": predict_data.get("n_sys_percent", 0),
-                    "n_usage_fraction": predict_data.get("n_usage_fraction", 0),
+                    "n_avg_mb": variant_data.get("n_avg_mb", 0),
+                    "n_copy_mb_s": variant_data.get("n_copy_mb_s", 0),
+                    "n_core_utilization": variant_data.get("n_core_utilization", 0),
+                    "n_cpu_percent_c": variant_data.get("n_cpu_percent_c", 0),
+                    "n_cpu_percent_python": variant_data.get("n_cpu_percent_python", 0),
+                    "n_gpu_avg_memory_mb": variant_data.get("n_gpu_avg_memory_mb", 0),
+                    "n_gpu_peak_memory_mb": variant_data.get("n_gpu_peak_memory_mb", 0),
+                    "n_gpu_percent": variant_data.get("n_gpu_percent", 0),
+                    "n_growth_mb": variant_data.get("n_growth_mb", 0),
+                    "n_malloc_mb": variant_data.get("n_malloc_mb", 0),
+                    "n_mallocs": variant_data.get("n_mallocs", 0),
+                    "n_peak_mb": variant_data.get("n_peak_mb", 0),
+                    "n_python_fraction": variant_data.get("n_python_fraction", 0),
+                    "n_sys_percent": variant_data.get("n_sys_percent", 0),
+                    "n_usage_fraction": variant_data.get("n_usage_fraction", 0),
                     "samples": json_data.get("samples", 0)
                 }
                 data.append(row)
@@ -133,11 +134,10 @@ def write_data_to_file(dataframe, averages):
         averages.to_csv(f, index=False)
             
 def main():
-    subsets = [50, 100, 200, 300, 400, 500, 1000]
-    use_anno = 1
-    dataset = 'MANE'
+    subsets = [10, 50, 100, 250, 500, 1000]
+    dataset = 'VCF'
 
-    path_list = generate_paths(subsets, dataset, use_anno)
+    path_list = generate_paths(subsets, dataset)
     df = extract_jsons(path_list)
     print(df.head())
     averages = calculate_averages(df)

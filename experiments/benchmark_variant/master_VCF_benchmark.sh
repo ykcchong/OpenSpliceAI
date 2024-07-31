@@ -19,7 +19,7 @@ SUBSET_SIZE=$3
 # Set paths
 NATIVE_DIR="./experiments/benchmark_variant"
 DATA_PATH="./data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna"
-VCF_PATH="./data/vcf/hg38_mills100g_subset${SUBSET_SIZE}.vcf"
+VCF_PATH="./data/vcf/hg38_mills1000g_subset${SUBSET_SIZE}.vcf"
 ANNOTATION_PATH="./data/vcf/grch38.txt"
 
 # Set the script path and output parent directory based on model type

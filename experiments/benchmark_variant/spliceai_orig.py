@@ -5,6 +5,7 @@ from pyfaidx import Fasta
 # from tensorflow import keras
 from keras.models import load_model
 import logging
+import time
 
 class Annotator:
 
@@ -241,6 +242,9 @@ def get_options():
 
 def main():
 
+    print("Running SpliceAI")
+    start_time = time.time()
+
     args = get_options()
     flanking = args.flanking_size
 
@@ -277,6 +281,8 @@ def main():
 
     vcf.close()
     output.close()
+
+    print("--- %s seconds ---" % (time.time() - start_time))
 
 
 if __name__ == '__main__':
