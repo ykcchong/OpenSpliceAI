@@ -64,11 +64,38 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
     CL = 2 * np.sum(AR * (W - 1))
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
+    
+    # Initialize the model
     model = SpliceAI(L, W, AR).to(device)
+    
+    # Print the shapes of the parameters in the initialized model
+    print("\nInitialized model parameter shapes:")
+    for name, param in model.named_parameters():
+        print(f"{name}: {param.shape}", end=", ")
 
     # Load the pretrained model
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    model.to(device)
+    state_dict = torch.load(model_path, map_location=device)
+    
+    # Print the shapes of the parameters
+    print("\nState dict parameter shapes:")
+    for name, param in state_dict.items():
+        print(f"{name}: {param.shape}", end=", ")
+    
+    # Manually load state dict into the model, handling size mismatches
+    model_dict = model.state_dict()
+
+    # Filter out unnecessary keys
+    state_dict = {k: v for k, v in state_dict.items() if k in model_dict and v.size() == model_dict[k].size()}
+
+    # Overwrite entries in the existing state dict
+    model_dict.update(state_dict)
+
+    # Load state dict into the model, ignoring missing and unexpected keys
+    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
+
+    # Print missing and unexpected keys
+    print("\nMissing keys:", missing_keys)
+    print("Unexpected keys:", unexpected_keys)
 
     # Freeze all layers first
     for param in model.parameters():
@@ -76,10 +103,9 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
 
     # Unfreeze the last `unfreeze` layers
     if unfreeze > 0:
-        layers = list(model.children())[-unfreeze:]  # Assuming the model layers are accessible like this
-        for layer in layers:
-            for param in layer.parameters():
-                param.requires_grad = True
+        # Unfreeze the last few layers (example: last residual unit)
+        for param in model.residual_units[-unfreeze].parameters():
+            param.requires_grad = True
 
     # Set up optimizer and scheduler
     optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
@@ -87,12 +113,8 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
 
     print(model, file=sys.stderr)
     
-    optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
-    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
-    
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
     return model, None, optimizer, scheduler, params
-
 
 def classwise_accuracy(true_classes, predicted_classes, num_classes):
     class_accuracies = []
