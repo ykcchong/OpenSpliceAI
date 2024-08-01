@@ -44,6 +44,7 @@ def plot_subset(averages, metrics, outdir): # Plot across subset sizes
         plt.title(f'{metric} vs. subset_size')
         plt.xlabel('Subset Size (# genes in MANE)')
         plt.ylabel(metric)
+        plt.yscale('log')
         plt.legend(title='Flanking Size / Model Type')
         plt.grid(True)
         plt.savefig(os.path.join(outdir, f'{metric}_subset_size.png'))
@@ -56,7 +57,7 @@ def main():
     averages_file = 'aggregated_results.csv'
     averages = pd.read_csv(averages_file)
     outdir1 = './plots_FLANKING'
-    outdir2 = './plots_SUBSET'
+    outdir2 = './plots_SUBSET_log'
     
 
     #plot_flanking(averages, metrics, subsets, outdir1)
