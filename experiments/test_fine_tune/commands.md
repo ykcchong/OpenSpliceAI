@@ -1,0 +1,3 @@
+spliceai-toolkit create-data --annotation-gff data/ref_genome/homo_sapiens//MANE//v1.3/MANE.GRCh38.v1.3.refseq_genomic.gff --genome-fasta data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna --output-dir experiments/test_fine_tune/
+
+spliceai-toolkit fine-tune -o experiments/test_fine_tune/ -s finetune -m models/spliceai-mouse/2000nt/model_2000nt_rs12.pt -train experiments/test_fine_tune/dataset_train.h5 -test experiments/test_fine_tune/dataset_test.h5 
