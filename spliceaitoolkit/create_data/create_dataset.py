@@ -22,11 +22,10 @@ Functions:
 
 import h5py
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import time
 from spliceaitoolkit.constants import *
-from spliceaitoolkit.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
-import argparse          
+from spliceaitoolkit.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints       
 
 CHUNK_SIZE = 100 # size of chunks to process data in
 
@@ -97,22 +96,16 @@ def create_dataset(args):
                     seq_decode = SEQ[idx].decode('ascii')
                     label_decode = LABEL[idx].decode('ascii')
                     
-                    # strand_decode = STRAND[idx].decode('ascii')
-                    # tx_start_decode = TX_START[idx].decode('ascii')
-                    # tx_end_decode = TX_END[idx].decode('ascii')
-
                     fixed_seq = replace_non_acgt_to_n(seq_decode)
                     X, Y = create_datapoints(fixed_seq, label_decode, CL_max=args.flanking_size)
-                    print('shapes', X.shape, Y.shape)   
 
                     X_batch.extend(X)
                     Y_batch[0].extend(Y[0])
 
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
-                print("X_batch.shape: ", X_batch.shape)
                 Y_batch[0] = np.asarray(Y_batch[0]).astype('int8')
-                print("len(Y_batch[0]): ", len(Y_batch[0]))
+
                 h5f2.create_dataset('X' + str(i), data=X_batch)
                 h5f2.create_dataset('Y' + str(i), data=Y_batch)
 

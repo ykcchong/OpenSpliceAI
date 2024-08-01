@@ -31,9 +31,8 @@ import os
 from Bio import SeqIO
 import numpy as np
 import h5py
+from tqdm import tqdm
 import time
-import argparse
-import gffutils
 import spliceaitoolkit.create_data.utils as utils
 
 donor_motif_counts = {}  # Initialize counts
@@ -59,15 +58,15 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
         h5fname = output_dir + f'datafile_{data_type}.h5'
     h5f = h5py.File(h5fname, 'w')
     GENE_COUNTER = 0
-    for gene in db.features_of_type('gene'):
+    for gene in tqdm(db.features_of_type('gene'), total=len(list(db.features_of_type('gene')))):
         if "exception" in gene.attributes.keys() and gene.attributes["exception"][0] == "trans-splicing":
             continue
         if gene.seqid not in chrom_dict:
             continue
-        if biotype =="protein-coding":
+        if biotype == "protein-coding":
             if gene.attributes["gene_biotype"][0] != "protein_coding":
                 continue
-        elif biotype =="non-coding":
+        elif biotype == "non-coding":
             if gene.attributes["gene_biotype"][0] != "lncRNA" and gene.attributes["gene_biotype"][0] != "ncRNA":
                 continue
         else:
@@ -82,7 +81,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
         if gene.strand == '-':
             gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
         gene_seq = str(gene_seq.upper())
-        print(f"Processing gene {gene_id} on chromosome {gene.seqid}..., len(gene_seq): {len(gene_seq)}")
+        tqdm.write(f"Processing gene {gene_id} on chromosome {gene.seqid}, length: {len(gene_seq)}")
         labels = [0] * len(gene_seq)  # Initialize all labels to 0
         if biotype =="protein-coding":
             transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
@@ -91,7 +90,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
         if len(transcripts) == 0:
             continue
         elif len(transcripts) > 1:
-            print(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
+            tqdm.write(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
         ############################################
         # Selecting which mode to process the data
         ############################################
@@ -147,7 +146,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
             SEQ.append(gene_seq)
             LABEL.append(labels_str)
             fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
-            utils.check_and_count_motifs(gene_seq, labels, gene.strand, donor_motif_counts, acceptor_motif_counts)
+            utils.check_and_count_motifs(gene_seq, labels, donor_motif_counts, acceptor_motif_counts)
     fw_stats.close()
     dt = h5py.string_dtype(encoding='utf-8')
     h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
