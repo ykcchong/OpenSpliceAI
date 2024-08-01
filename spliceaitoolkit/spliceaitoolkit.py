@@ -6,6 +6,7 @@ import numpy as np
 from spliceaitoolkit import header
 from spliceaitoolkit.create_data import create_datafile, create_dataset, verify_h5_file
 from spliceaitoolkit.train import train
+from spliceaitoolkit.calibrate import calibrate
 from spliceaitoolkit.fine_tune import fine_tune
 from spliceaitoolkit.predict import predict
 from spliceaitoolkit.variant import variant
@@ -40,6 +41,10 @@ def parse_args_train(subparsers):
     parser_train.add_argument('--loss', '-l', type=str, default="cross_entropy_loss", help='The loss function to train SpliceAI model')
     parser_train.add_argument('--model', '-m', default="SpliceAI", type=str)
 
+def parse_args_calibrate(subparsers):
+    parser_calibrate = subparsers.add_parser('calibrate', help='Calibrate the SpliceAI model')
+    parser_calibrate.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
+    pass
 
 def parse_args_fine_tune(subparsers):
     parser_fine_tune = subparsers.add_parser('fine-tune', help='Fine-tune a pre-trained SpliceAI model on new data.')
@@ -64,7 +69,6 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
     parser_predict.add_argument('--annotation-file', '-a', type=str, required=False, help="Path to GFF file of coordinates for genes")
     parser_predict.add_argument('--threshold', '-t', type=float, default=1e-6, help="Threshold to determine acceptor and donor sites")
-    # parser_predict.add_argument('--threads', '-@', type=str, required=False, help="Number of threads to execute")
     parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
     parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements are printed to stderr)")
     '''AM: very optional flags below vv'''
@@ -97,9 +101,10 @@ def parse_args_variant(subparsers):
 def parse_args(arglist):
     parser = argparse.ArgumentParser(description='SpliceAI toolkit to retrain your own splice site predictor')
     # Create a parent subparser to house the common subcommands.
-    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, predict, fine-tune, variant')
+    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, calibrate, predict, fine-tune, variant')
     parse_args_create_data(subparsers)
     parse_args_train(subparsers)
+    parse_args_calibrate(subparsers)
     parse_args_fine_tune(subparsers)
     parse_args_predict(subparsers)
     parse_args_variant(subparsers)
@@ -137,6 +142,8 @@ Deep learning framework to train your own SpliceAI model
             verify_h5_file.verify_h5(args)
     elif args.command == 'train':
         train.train(args)
+    elif args.command == 'calibrate':
+        calibrate.calibrate(args)
     elif args.command == 'fine-tune':
         fine_tune.fine_tune(args)
     elif args.command == 'predict':
