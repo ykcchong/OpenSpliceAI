@@ -147,7 +147,8 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
             SEQ.append(gene_seq)
             LABEL.append(labels_str)
             fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
-            utils.check_and_count_motifs(gene_seq, labels, gene.strand, donor_motif_counts, acceptor_motif_counts)
+            utils.check_and_count_motifs(gene_seq, labels, donor_motif_counts, acceptor_motif_counts)
+
     fw_stats.close()
     dt = h5py.string_dtype(encoding='utf-8')
     h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
