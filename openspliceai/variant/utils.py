@@ -2,8 +2,6 @@ from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
-from tensorflow import keras
-import torch
 import logging
 import platform
 import os, glob
@@ -78,6 +76,9 @@ def load_pytorch_models(model_path, CL):
 
         return model, params
     
+    # Setup device
+    device = setup_device()
+    
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
         model_files = glob.glob(os.path.join(model_path, '*.pt')) # gets all PyTorch models from supplied directory
@@ -88,7 +89,7 @@ def load_pytorch_models(model_path, CL):
         models = []
         for model_file in model_files:
             try:
-                model = torch.load(model_file)
+                model = torch.load(model_file, map_location=device)
                 models.append(model)
             except Exception as e:
                 logging.error(f"Error loading PyTorch model from file {model_file}: {e}. Skipping...")
@@ -99,7 +100,7 @@ def load_pytorch_models(model_path, CL):
     
     elif os.path.isfile(model_path):
         try:
-            models = [torch.load(model_path)]
+            models = [torch.load(model_path, map_location=device)]
         except Exception as e:
             logging.error(f"Error loading PyTorch model from file {model_path}: {e}.")
             exit()
@@ -108,10 +109,9 @@ def load_pytorch_models(model_path, CL):
         logging.error(f"Invalid path: {model_path}")
         exit()
     
-    # Setup device and load state of model to device
+    # Load state of model to device
     # NOTE: supplied model paths should be state dicts, not model files  
-    device = setup_device() # setup device
-    loaded_models = []      # store loaded models
+    loaded_models = []
     
     for state_dict in models:
         try: 
@@ -139,6 +139,8 @@ def load_keras_models(model_path):
     Returns:
     - models (list): List of loaded Keras models.
     """
+    from tensorflow import keras
+    
     if os.path.isdir(model_path): # directory supplied
         model_files = glob.glob(os.path.join(model_path, '*.h5')) # get all Keras models from a directory
         if not model_files:
@@ -200,19 +202,11 @@ def one_hot_encode(seq):
     return map[np.fromstring(seq, np.int8) % 5]
 
 
-'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
-####################################################################################################################################
-####################################################################################################################################
 ####################################################################################################################################
 #######                                                                                                                      #######
-#######                                                                                                                      #######
-#######                                                 ORIGINAL                                                             #######
-#######                                                                                                                      #######
+#######                                             ANNOTATOR CLASS                                                          #######
 #######                                                                                                                      #######
 ####################################################################################################################################
-####################################################################################################################################
-####################################################################################################################################
-'''~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~'''
 
 class Annotator:
     """
@@ -269,6 +263,7 @@ class Annotator:
 
         # Load models based on the specified model type or file
         if model_path == 'SpliceAI':
+            from tensorflow import keras
             paths = ('./models/spliceai/spliceai{}.h5'.format(x) for x in range(1, 6))  # Generate paths for SpliceAI models
             self.models = [keras.models.load_model(x) for x in paths]
             self.keras = True
@@ -329,6 +324,10 @@ class Annotator:
         dist_ann = (dist_tx_start, dist_tx_end, dist_exon_bdry)  # Package distances into a tuple
 
         return dist_ann
+    
+##############################################
+## CALCULATING DELTA SCORES
+##############################################
 
 def normalise_chrom(source, target):
     """

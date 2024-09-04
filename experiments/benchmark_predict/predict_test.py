@@ -9,11 +9,11 @@ import platform
 import h5py
 import time
 from pyfaidx import Fasta
-from openspliceai.predict.spliceai import *
-from openspliceai.predict.utils import *
-from openspliceai.constants import *
+from spliceaitoolkit.predict.spliceai import *
+from spliceaitoolkit.predict.utils import *
+from spliceaitoolkit.constants import *
 
-# FOR TESTING PURPOSES
+# FOR DEBUGGING
 import psutil
 def log_memory_usage():
     process = psutil.Process(os.getpid())
@@ -1048,8 +1048,6 @@ def predict(args):
         - input_sequence: FASTA File
 
     '''
-    # inputs args.: model, output_dir, flanking_size, input sequence (fasta file), 
-    # outputs: the log files, bed files with scores for all splice sites
 
     print("Running SpliceAI-toolkit with 'predict' mode")
 
@@ -1155,3 +1153,24 @@ def predict(args):
         predict_file = predict_and_write(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))  
+
+
+if __name__ == "__main__":
+    parser_predict = argparse.ArgumentParser(description='Predicts splice sites using SpliceAI model')
+    
+    parser_predict.add_argument('--model', '-m', type=str, default="SpliceAI", help='Path to a PyTorch SpliceAI model file or "SpliceAI" for the default model')
+    parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
+    parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
+    parser_predict.add_argument('--annotation-file', '-a', type=str, required=False, help="Path to GFF file of coordinates for genes")
+    parser_predict.add_argument('--threshold', '-t', type=float, default=1e-6, help="Threshold to determine acceptor and donor sites")
+    parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")
+    parser_predict.add_argument('--debug', '-D', action='store_true', required=False, help="Run in debug mode (debug statements are printed to stderr)")
+    parser_predict.add_argument('--hdf-threshold', type=int, default=0, help='Maximum size before reading sequence into an HDF file for storage')
+    parser_predict.add_argument('--flush-threshold', type=int, default=500, help='Maximum number of predictions before flushing to file')
+    parser_predict.add_argument('--split-threshold', type=int, default=1500000, help='Maximum length of FASTA entry before splitting')
+    parser_predict.add_argument('--chunk-size', type=int, default=100, help='Chunk size for loading HDF5 dataset')
+    
+    args = parser_predict.parse_args()
+
+    predict(args)

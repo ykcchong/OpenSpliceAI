@@ -22,7 +22,7 @@ Functions:
 
 import h5py
 import numpy as np
-import tqdm
+from tqdm import tqdm
 import time
 from openspliceai.constants import *
 from openspliceai.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
@@ -91,9 +91,8 @@ def create_dataset(args):
                     Y_batch[0].extend(Y[0])
                 # Convert batches to arrays and save as HDF5
                 X_batch = np.asarray(X_batch).astype('int8')
-                # print("X_batch.shape: ", X_batch.shape)
                 Y_batch[0] = np.asarray(Y_batch[0]).astype('int8')
-                # print("len(Y_batch[0]): ", len(Y_batch[0]))
+
                 h5f2.create_dataset('X' + str(i), data=X_batch)
                 h5f2.create_dataset('Y' + str(i), data=Y_batch)
 

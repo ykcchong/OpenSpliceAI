@@ -34,7 +34,7 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     return model_output_base, log_output_train_base, log_output_val_base, log_output_test_base
 
 
-def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
+def initialize_model_and_optim(device, flanking_size, model_path, num_layers_to_unfreeze):
     L = 32
     N_GPUS = 2
     W = np.asarray([11, 11, 11, 11])
@@ -64,48 +64,22 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
     CL = 2 * np.sum(AR * (W - 1))
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
-    
-    # Initialize the model
     model = SpliceAI(L, W, AR).to(device)
-    
-    # Print the shapes of the parameters in the initialized model
-    print("\nInitialized model parameter shapes:")
-    for name, param in model.named_parameters():
-        print(f"{name}: {param.shape}", end=", ")
 
     # Load the pretrained model
-    state_dict = torch.load(model_path, map_location=device)
-    
-    # Print the shapes of the parameters
-    print("\nState dict parameter shapes:")
-    for name, param in state_dict.items():
-        print(f"{name}: {param.shape}", end=", ")
-    
-    # Manually load state dict into the model, handling size mismatches
-    model_dict = model.state_dict()
-
-    # Filter out unnecessary keys
-    state_dict = {k: v for k, v in state_dict.items() if k in model_dict and v.size() == model_dict[k].size()}
-
-    # Overwrite entries in the existing state dict
-    model_dict.update(state_dict)
-
-    # Load state dict into the model, ignoring missing and unexpected keys
-    missing_keys, unexpected_keys = model.load_state_dict(state_dict, strict=False)
-
-    # Print missing and unexpected keys
-    print("\nMissing keys:", missing_keys)
-    print("Unexpected keys:", unexpected_keys)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
 
     # Freeze all layers first
     for param in model.parameters():
         param.requires_grad = False
 
-    # Unfreeze the last `unfreeze` layers
-    if unfreeze > 0:
-        # Unfreeze the last few layers (example: last residual unit)
-        for param in model.residual_units[-unfreeze].parameters():
-            param.requires_grad = True
+    # Unfreeze the last `num_layers_to_unfreeze` layers
+    if num_layers_to_unfreeze > 0:
+        layers = list(model.children())[-num_layers_to_unfreeze:]  # Assuming the model layers are accessible like this
+        for layer in layers:
+            for param in layer.parameters():
+                param.requires_grad = True
 
     # Set up optimizer and scheduler
     optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
@@ -113,8 +87,12 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
 
     print(model, file=sys.stderr)
     
+    optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
+    scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=2, verbose=True)
+    
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
     return model, None, optimizer, scheduler, params
+
 
 def classwise_accuracy(true_classes, predicted_classes, num_classes):
     class_accuracies = []
@@ -314,7 +292,7 @@ def fine_tune(args):
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
     model_path = args.model_path
-    unfreeze = args.unfreeze
+    num_layers_to_unfreeze = args.num_layers_to_unfreeze
     assert int(flanking_size) in [80, 400, 2000, 10000]
     if args.disable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
@@ -357,7 +335,7 @@ def fine_tune(args):
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
 
-    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_path, unfreeze)
+    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_path, num_layers_to_unfreeze)
     params["RANDOM_SEED"] = RANDOM_SEED
     train_metric_files = {
         'donor_topk_all': f'{log_output_train_base}/donor_topk_all.txt',
@@ -451,3 +429,20 @@ def fine_tune(args):
         print("--------------------------------------------------------------")
     train_h5f.close()
     test_h5f.close()
+
+
+if __name__ == "__main__":
+    parser_fine_tune = argparse.ArgumentParser(description="Fine-tune the SpliceAI model on new data")
+    parser_fine_tune.add_argument("--output_dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
+    parser_fine_tune.add_argument("--project_name", '-s', type=str, required=True, help="Project name for organizing outputs")
+    parser_fine_tune.add_argument("--exp_num", '-e', type=int, default=0, help="Experiment number")
+    parser_fine_tune.add_argument("--flanking_size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
+    parser_fine_tune.add_argument("--model_path", '-m', type=str, required=True, help="Model architecture to use")
+    parser_fine_tune.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for training")
+    parser_fine_tune.add_argument("--train_dataset", '-train', type=str, required=True, help="Path to the training dataset")
+    parser_fine_tune.add_argument("--test_dataset", '-test', type=str, required=True, help="Path to the testing dataset")
+    parser_fine_tune.add_argument("--disable_wandb", '-d', action='store_true', default=False, help="Disable Weights & Biases logging")
+    parser_fine_tune.add_argument("--random_seed", '-r', type=int, default=42, help="Random seed for reproducibility")
+    parser_fine_tune.add_argument("--unfreeze", '-u', type=int, default=1, help="Number of layers to unfreeze for fine-tuning")
+    args = parser_fine_tune.parse_args()
+    fine_tune(args)
