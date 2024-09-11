@@ -6,6 +6,7 @@ import numpy as np
 from openspliceai import header
 from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
 from openspliceai.train import train
+from openspliceai.calibrate import calibrate
 from openspliceai.fine_tune import fine_tune
 from openspliceai.predict import predict
 from openspliceai.variant import variant
@@ -29,7 +30,7 @@ def parse_args_create_data(subparsers):
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
-    parser_train.add_argument('--disable-wandb', '-d', action='store_true', default=False)
+    parser_train.add_argument("--enable_wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
     parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_train.add_argument('--project-name', '-s', type=str)
     parser_train.add_argument('--flanking-size', '-f', type=int, default=80)
@@ -55,7 +56,7 @@ def parse_args_fine_tune(subparsers):
     parser_fine_tune.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for training")
     parser_fine_tune.add_argument("--train_dataset", '-train', type=str, required=True, help="Path to the training dataset")
     parser_fine_tune.add_argument("--test_dataset", '-test', type=str, required=True, help="Path to the testing dataset")
-    parser_fine_tune.add_argument("--disable_wandb", '-d', action='store_true', default=False, help="Disable Weights & Biases logging")
+    parser_fine_tune.add_argument("--enable_wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
     parser_fine_tune.add_argument("--random_seed", '-r', type=int, default=42, help="Random seed for reproducibility")
     parser_fine_tune.add_argument("--unfreeze", '-u', type=int, default=1, help="Number of layers to unfreeze for fine-tuning")
 
