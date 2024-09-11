@@ -74,7 +74,7 @@ def create_dataset(args):
             seq_num = len(SEQ)
             # create dataset
             num_chunks = ceil_div(seq_num, CHUNK_SIZE) # ensures that even if seq_num < CHUNK_SIZE, will still create a chunk
-            for i in tqdm.tqdm(range(num_chunks), desc='Processing chunks...'):
+            for i in tqdm(range(num_chunks), desc='Processing chunks...'):
                 # each dataset has CHUNK_SIZE genes
                 if i == num_chunks - 1: # if last chunk, process remainder or full chunk size if no remainder
                     NEW_CHUNK_SIZE = seq_num % CHUNK_SIZE or CHUNK_SIZE 

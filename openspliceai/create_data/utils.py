@@ -15,14 +15,13 @@ from openspliceai.constants import *
 # Reporting functions
 ###################################################
 
-def check_and_count_motifs(seq, labels, strand, donor_motif_counts, acceptor_motif_counts):
+def check_and_count_motifs(seq, labels, donor_motif_counts, acceptor_motif_counts):
     """
     Check sequences for donor and acceptor motifs and count their occurrences.
 
     Parameters:
     - seq: The DNA sequence (str).
     - labels: Array of labels indicating locations of interest in the sequence.
-    - strand: The strand (+ or -) indicating the direction of the gene.
     """     
     for i, label in enumerate(labels):
         if label == 2:  # Donor site

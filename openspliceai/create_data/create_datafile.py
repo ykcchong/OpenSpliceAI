@@ -14,7 +14,7 @@ Usage:
 
     Optional arguments:
         - db_file: Specifies the filename for the database. Default is 'gff.db'.
-        - parse_type: Choose between processing the 'maximum' transcript length or 'all_isoforms'.
+        - parse_type: Choose between processing the 'canonical' transcript length or 'all_isoforms'.
 
 Example:
     python create_datafile.py --annotation_gff path/to/gff --genome_fasta path/to/fasta --output_dir path/to/output
@@ -22,7 +22,7 @@ Example:
 Functions:
     create_or_load_db(gff_file, db_file='gff.db'): Create or load a gffutils database.
     check_and_count_motifs(seq, labels, strand): Check and count motifs at splice sites.
-    get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="maximum"): Process gene sequences.
+    get_sequences_and_labels(db, fasta_file, output_dir, type, chrom_dict, parse_type="canonical"): Process gene sequences.
     print_motif_counts(): Print the counts of donor and acceptor motifs.
     create_datafile(args): Main function to create the data file from genomic data.
 """
@@ -39,7 +39,7 @@ import openspliceai.create_data.utils as utils
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
 
-def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, parse_type="maximum", biotype="protein-coding", canonical_only=True):
+def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, parse_type="canonical", biotype="protein-coding", canonical_only=True):
     """
     Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
     and label donor and acceptor sites correctly based on strand orientation.
@@ -74,7 +74,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
             continue
         chrom_dict[gene.seqid] += 1
         gene_id = gene.id
-        
+
         ############################################
         # Process the gene sequence
         ############################################
@@ -82,7 +82,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
         if gene.strand == '-':
             gene_seq = gene_seq.reverse_complement() # reverse complement the sequence
         gene_seq = str(gene_seq.upper())
-        print(f"Processing gene {gene_id} on chromosome {gene.seqid}..., len(gene_seq): {len(gene_seq)}")
+        print(f"\tProcessing gene {gene_id} on chromosome {gene.seqid}..., len(gene_seq): {len(gene_seq)}")
         labels = [0] * len(gene_seq)  # Initialize all labels to 0
         if biotype =="protein-coding":
             transcripts = list(db.children(gene, featuretype='mRNA', order_by='start'))
@@ -96,7 +96,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
         # Selecting which mode to process the data
         ############################################
         transcripts_ls = []
-        if parse_type == 'maximum':
+        if parse_type == 'canonical':
             max_trans = transcripts[0]
             max_len = max_trans.end - max_trans.start + 1
             for transcript in transcripts:
@@ -148,7 +148,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
             LABEL.append(labels_str)
             fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
             utils.check_and_count_motifs(gene_seq, labels, donor_motif_counts, acceptor_motif_counts)
-
+    print(f"Total SEQ: {len(SEQ)}")
     fw_stats.close()
     dt = h5py.string_dtype(encoding='utf-8')
     h5f.create_dataset('NAME', data=np.asarray(NAME, dtype=dt) , dtype=dt)
@@ -159,6 +159,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, data_type, chrom_dict, pa
     h5f.create_dataset('SEQ', data=np.asarray(SEQ, dtype=dt) , dtype=dt)
     h5f.create_dataset('LABEL', data=np.asarray(LABEL, dtype=dt) , dtype=dt)
     h5f.close()
+
 
 def create_datafile(args):
     """
@@ -175,7 +176,7 @@ def create_datafile(args):
         - output_dir (str): The directory where the HDF5 files will be saved.
         - annotation_gff (str): Path to the GFF file containing genome annotations.
         - genome_fasta (str): Path to the FASTA file containing genome sequences.
-        - parse_type (str): Specifies how to handle genes with multiple transcripts ('maximum' or 'all_isoforms').
+        - parse_type (str): Specifies how to handle genes with multiple transcripts ('canonical' or 'all_isoforms').
         - split_method (str): Method for splitting chromosomes into training and testing groups ('random' or 'human').
         - split_ratio (float): Ratio of training and testing datasets.
     """
