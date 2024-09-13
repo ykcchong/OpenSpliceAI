@@ -7,8 +7,8 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
-from spliceaitoolkit.train.spliceai import *
-from spliceaitoolkit.train.utils import *
+from spliceaitoolkit.fine_tune.spliceai import *
+from spliceaitoolkit.fine_tune.utils import *
 from spliceaitoolkit.constants import *
 import h5py
 import time
@@ -36,32 +36,34 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
 
 def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
     L = 32
-    N_GPUS = 2
     W = np.asarray([11, 11, 11, 11])
     AR = np.asarray([1, 1, 1, 1])
-    BATCH_SIZE = 18 * N_GPUS
+    N_GPUS = 2
+    BATCH_SIZE = 18*N_GPUS
+
     if int(flanking_size) == 80:
         W = np.asarray([11, 11, 11, 11])
         AR = np.asarray([1, 1, 1, 1])
-        BATCH_SIZE = 18 * N_GPUS
+        BATCH_SIZE = 18*N_GPUS
     elif int(flanking_size) == 400:
         W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
         AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
-        BATCH_SIZE = 18 * N_GPUS
+        BATCH_SIZE = 18*N_GPUS
     elif int(flanking_size) == 2000:
         W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
                         21, 21, 21, 21])
         AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
                         10, 10, 10, 10])
-        BATCH_SIZE = 12 * N_GPUS
+        BATCH_SIZE = 12*N_GPUS
     elif int(flanking_size) == 10000:
         W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
                         21, 21, 21, 21, 41, 41, 41, 41])
         AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
                         10, 10, 10, 10, 25, 25, 25, 25])
-        BATCH_SIZE = 6 * N_GPUS
+        BATCH_SIZE = 6*N_GPUS
+
+    CL = 2 * np.sum(AR*(W-1))
     
-    CL = 2 * np.sum(AR * (W - 1))
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     
@@ -103,7 +105,7 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
 
     # Unfreeze the last `unfreeze` layers
     if unfreeze > 0:
-        # Unfreeze the last few layers (example: last residual unit)
+        # Unfreeze the last few residual units
         for param in model.residual_units[-unfreeze].parameters():
             param.requires_grad = True
 
@@ -284,6 +286,10 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             DNAs, labels = DNAs.to(torch.float32).to(device), labels.to(torch.float32).to(device)
             optimizer.zero_grad()
             yp = model(DNAs)
+            
+            print("yp: ", yp, yp.shape)
+            print("labels: ", labels, labels.shape)
+            
             if criterion == "cross_entropy_loss":
                 loss = categorical_crossentropy_2d(labels, yp)
             elif criterion == "focal_loss":
@@ -295,7 +301,9 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             running_loss += loss.item()
             batch_ylabel.append(labels.detach().cpu())
             batch_ypred.append(yp.detach().cpu())
-            print_dict["loss"] = loss.item()
+            
+            print('Loss', loss.item())
+            
             pbar.set_postfix(print_dict)
             pbar.update(1)
             batch_idx += 1
