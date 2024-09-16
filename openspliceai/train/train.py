@@ -15,7 +15,7 @@ Usage:
 Example:
     python train.py --output_dir=./outputs --project_name="SpliceAI" --flanking_size=200 --exp_num=1
                     --model="SpliceAI" --loss="cross_entropy" --train_dataset="./data/train.h5"
-                    --test_dataset="./data/test.h5" --disable_wandb=False
+                    --test_dataset="./data/test.h5" --enable_wandb=False
 
 Functions:
 - `setup_device()`: Determines the best computational device (CUDA, MPS, CPU) available for training.
@@ -463,7 +463,7 @@ def train(args):
         - loss (str): Loss function for training the model.
         - train_dataset (str): Path to the training dataset file.
         - test_dataset (str): Path to the testing dataset file.
-        - disable_wandb (bool): Flag to disable logging to Weights & Biases.
+        - enable_wandb (bool): Flag to disable logging to Weights & Biases.
     """
     print("Running OpenSpliceAI with 'train' mode")
 
@@ -474,7 +474,7 @@ def train(args):
     exp_num = args.exp_num
     assert int(flanking_size) in [80, 400, 2000, 10000]
     # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
-    if args.disable_wandb:
+    if not args.enable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
     wandb.init(project=f'{project_name}', reinit=True)
     device = setup_device()
@@ -504,9 +504,9 @@ def train(args):
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    print("train_idxs: ", train_idxs, file=sys.stderr)
-    print("val_idxs: ", val_idxs, file=sys.stderr)
-    print("test_idxs: ", test_idxs, file=sys.stderr)
+    # print("train_idxs: ", train_idxs, file=sys.stderr)
+    # print("val_idxs: ", val_idxs, file=sys.stderr)
+    # print("test_idxs: ", test_idxs, file=sys.stderr)
 
     model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size)
     params["RANDOM_SEED"] = args.random_seed
@@ -535,6 +535,7 @@ def train(args):
         'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
     }
     SAMPLE_FREQ = 1000
+    n_patience = 5
     best_val_loss = float('inf')
     for epoch in range(EPOCH_NUM):
         print("\n--------------------------------------------------------------")
@@ -552,41 +553,22 @@ def train(args):
         print(f"Validation Loss: {val_loss}")
         print(f"Testing Loss: {test_loss}")
         
-        # # Scheduler step with validation loss
-        # scheduler.step(test_loss)
-        # # Check for early stopping or model improvement
-        # if test_loss.item() <= best_val_loss:
-        #     best_val_loss = test_loss.item()
-        #     # Consider saving the best model here
-        #     torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
-        #     print("New best model saved.")
-        #     epochs_no_improve = 0
-        # else:
-        #     epochs_no_improve += 1
-        #     print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
-        #     if epochs_no_improve >= n_patience:
-        #         print("Early stopping triggered.")
-        #         break  # Break out of the loop to stop training
-        # # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
-        # print("--- %s seconds ---" % (time.time() - start_time))
-        # print("--------------------------------------------------------------")
-
-        
-        # Scheduler step with validation loss
-        scheduler.step(val_loss)
-        # Check for early stopping or model improvement
-        if val_loss.item() < best_val_loss:
-            best_val_loss = val_loss.item()
-            # Consider saving the best model here
-            torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
-            print("New best model saved.")
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-            print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
-            if epochs_no_improve >= n_patience:
-                print("Early stopping triggered.")
-                break  # Break out of the loop to stop training
+        if args.early_stopping:
+            # Scheduler step with validation loss
+            scheduler.step(val_loss)
+            # Check for early stopping or model improvement
+            if val_loss.item() < best_val_loss:
+                best_val_loss = val_loss.item()
+                # Consider saving the best model here
+                torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+                print("New best model saved.")
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
+                if epochs_no_improve >= n_patience:
+                    print("Early stopping triggered.")
+                    break  # Break out of the loop to stop training
         # torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
