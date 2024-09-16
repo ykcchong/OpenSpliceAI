@@ -1,67 +1,15 @@
-# ########################################
-# # Train zebra_fish SpliceAI-model
-# ########################################
-# openspliceai train --flanking-size 10000 \
-# --exp-num dataset_h5py_version \
-# --training-target zebra_fish \
-# --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/zebra_fish/dataset_train.h5 \
-# --test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/zebra_fish/dataset_test.h5 \
-# --project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
-# --project-name zebra_fish_h5py_dataset \
-# --output-dir ./zebra_fish/ \
-# --model SpliceAI \
-# > train_splan_zebra_fish.log 2> train_splan_zebra_fish_error.log
+#!/bin/bash
 
-########################################
-# Train bee SpliceAI-model
-########################################
-# openspliceai train --flanking-size 10000 \
-# --exp-num dataset_h5py_version \
-# --training-target bee \
-# --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/bee/dataset_train.h5 \
-# --test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/bee/dataset_test.h5 \
-# --project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
-# --project-name arabadop_h5py_dataset \
-# --output-dir ./bee/ \
-# --model SpliceAI \
-# > train_splan.log 2> train_splan_error.log
-
-# ########################################
-# # Train arabadopsis SpliceAI-model
-# ########################################
-# openspliceai train --flanking-size 10000 \
-# --exp-num dataset_h5py_version \
-# --training-target arabadop \
-# --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/arabadop/dataset_train.h5 \
-# --test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/arabadop/dataset_test.h5 \
-# --project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
-# --project-name arabadop_h5py_dataset \
-# --output-dir ./arabadop/ \
-# --model SpliceAI \
-# > train_splan.log 2> train_splan_error.log
-
-########################################
-# Train RefSeq SpliceAI-model
-########################################
-# openspliceai train --flanking-size 10000 \
-# --exp-num full_dataset_h5py_version \
-# --training-target RefSeq_canonical \
-# --train-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/RefSeq_canonical/dataset_train.h5 \
-# --test-dataset /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/scripts/RefSeq_canonical/dataset_test.h5 \
-# --project-root /Users/chaokuan-hao/Documents/Projects/spliceAI-toolkit/ \
-# --project-name RefSeq_canonical_h5py_dataset \
-# --output-dir ./RefSeq_canonical/ \
-# --model SpliceAI \
-# > train_splan_canonical.log 2> train_splan_canonical_error.log
+OUTPUT_DIR="../results/fine-tune/"
+mkdir -p $OUTPUT_DIR
+OUTPUT_FILE="$OUTPUT_DIR/output.log"
+ERROR_FILE="$OUTPUT_DIR/error.log"
 
 openspliceai fine-tune --flanking-size 80 \
---exp-num full_dataset \
---train-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_RefSeq_noncoding/dataset_train.h5 \
---test-dataset /home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_RefSeq_noncoding/dataset_test.h5 \
---output-dir /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/results/model_train_outdir/ \
---project-name human_RefSeq_noncoding_fine-tune \
---random-seed 22 \
---input-model  /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/models/spliceai-mane/10000nt/model_10000nt_rs12.pt \
---loss cross_entropy_loss > train_splan_MANE_adeptive_lr_2_80.log 2> train_splan_MANE_adeptive_lr_2_error_80.log
-
-# --loss focal_loss \ 
+--train-dataset ../results/create-data/dataset_train.h5 \
+--test-dataset ../results/create-data/dataset_test.h5 \
+--output-dir $OUTPUT_DIR \
+--project-name human_MANE_chr21_chr22_test \
+--pretrained-model  /home/kchao10/data_ssalzbe1/khchao/OpenSpliceAI/models/spliceai-mane/80nt/model_80nt_rs12.pt \
+--random-seed 11 \
+--loss cross_entropy_loss > $OUTPUT_FILE 2> $ERROR_FILE

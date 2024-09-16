@@ -7,9 +7,9 @@ import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import platform
-from spliceaitoolkit.train.spliceai import *
-from spliceaitoolkit.train.utils import *
-from spliceaitoolkit.constants import *
+from openspliceai.train.spliceai import *
+from openspliceai.train.utils import *
+from openspliceai.constants import *
 import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
@@ -34,7 +34,7 @@ def initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_
     return model_output_base, log_output_train_base, log_output_val_base, log_output_test_base
 
 
-def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
+def initialize_model_and_optim(device, flanking_size, pretrained_model, unfreeze, unfreeze_all):
     L = 32
     N_GPUS = 2
     W = np.asarray([11, 11, 11, 11])
@@ -74,7 +74,7 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
         print(f"{name}: {param.shape}", end=", ")
 
     # Load the pretrained model
-    state_dict = torch.load(model_path, map_location=device)
+    state_dict = torch.load(pretrained_model, map_location=device)
     
     # Print the shapes of the parameters
     print("\nState dict parameter shapes:")
@@ -97,15 +97,16 @@ def initialize_model_and_optim(device, flanking_size, model_path, unfreeze):
     print("\nMissing keys:", missing_keys)
     print("Unexpected keys:", unexpected_keys)
 
-    # Freeze all layers first
-    for param in model.parameters():
-        param.requires_grad = False
+    if not unfreeze_all:
+        # Freeze all layers first
+        for param in model.parameters():
+            param.requires_grad = False
 
-    # Unfreeze the last `unfreeze` layers
-    if unfreeze > 0:
-        # Unfreeze the last few layers (example: last residual unit)
-        for param in model.residual_units[-unfreeze].parameters():
-            param.requires_grad = True
+        # Unfreeze the last `unfreeze` layers
+        if unfreeze > 0:
+            # Unfreeze the last few layers (example: last residual unit)
+            for param in model.residual_units[-unfreeze].parameters():
+                param.requires_grad = True
 
     # Set up optimizer and scheduler
     optimizer = optim.AdamW(filter(lambda p: p.requires_grad, model.parameters()), lr=1e-4)
@@ -313,10 +314,10 @@ def fine_tune(args):
     sequence_length = SL
     flanking_size = int(args.flanking_size)
     exp_num = args.exp_num
-    model_path = args.model_path
+    pretrained_model = args.pretrained_model
     unfreeze = args.unfreeze
     assert int(flanking_size) in [80, 400, 2000, 10000]
-    if args.disable_wandb:
+    if not args.enable_wandb:
         os.environ['WANDB_MODE'] = 'disabled'
     
     wandb.init(project=f'{project_name}', reinit=True)
@@ -334,7 +335,7 @@ def fine_tune(args):
 
     print("Training_dataset: ", training_dataset, file=sys.stderr)
     print("Testing_dataset: ", testing_dataset, file=sys.stderr)
-    print("Model architecture: ", model_path, file=sys.stderr)
+    print("Model architecture: ", pretrained_model, file=sys.stderr)
     print("Loss function: ", args.loss, file=sys.stderr)
     print("Flanking sequence size: ", args.flanking_size, file=sys.stderr)
     print("Exp number: ", args.exp_num, file=sys.stderr)
@@ -357,7 +358,7 @@ def fine_tune(args):
     print("val_idxs: ", val_idxs, file=sys.stderr)
     print("test_idxs: ", test_idxs, file=sys.stderr)
 
-    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, model_path, unfreeze)
+    model, criterion, optimizer, scheduler, params = initialize_model_and_optim(device, flanking_size, pretrained_model, unfreeze, args.unfreeze_all)
     params["RANDOM_SEED"] = RANDOM_SEED
     train_metric_files = {
         'donor_topk_all': f'{log_output_train_base}/donor_topk_all.txt',
@@ -423,30 +424,35 @@ def fine_tune(args):
     best_val_loss = float('inf')
     epochs_no_improve = 0
     n_patience = 5
-    for epoch in range(20):
+    for epoch in range(EPOCH_NUM):
         print("\n--------------------------------------------------------------")
         current_lr = optimizer.param_groups[0]['lr']
         print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
         wandb.log({
-            f'train/learning_rate': current_lr,
+            f'fine-tune/learning_rate': current_lr,
         })
         start_time = time.time()
         train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, flanking_size, run_mode="train")
         val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, flanking_size, run_mode="validation")
         test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, params, test_metric_files, flanking_size, run_mode="test")
+
+        print(f"Training Loss: {train_loss}")
+        print(f"Validation Loss: {val_loss}")
+        print(f"Testing Loss: {test_loss}")
         
-        scheduler.step(val_loss)
-        if val_loss.item() < best_val_loss:
-            best_val_loss = val_loss.item()
-            torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
-            print("New best model saved.")
-            epochs_no_improve = 0
-        else:
-            epochs_no_improve += 1
-            print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
-            if epochs_no_improve >= n_patience:
-                print("Early stopping triggered.")
-                break
+        if args.early_stopping:
+            scheduler.step(val_loss)
+            if val_loss.item() < best_val_loss:
+                best_val_loss = val_loss.item()
+                torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
+                print("New best model saved.")
+                epochs_no_improve = 0
+            else:
+                epochs_no_improve += 1
+                print(f"No improvement in validation loss for {epochs_no_improve} epochs.")
+                if epochs_no_improve >= n_patience:
+                    print("Early stopping triggered.")
+                    break
         print("--- %s seconds ---" % (time.time() - start_time))
         print("--------------------------------------------------------------")
     train_h5f.close()

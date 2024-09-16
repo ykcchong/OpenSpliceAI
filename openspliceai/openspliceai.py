@@ -55,11 +55,12 @@ def parse_args_fine_tune(subparsers):
     parser_fine_tune.add_argument("--project-name", '-s', type=str, required=True, help="Project name for the fine-tuning experiment")
     parser_fine_tune.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
     parser_fine_tune.add_argument("--flanking-size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
-    parser_fine_tune.add_argument("--model-path", '-m', type=str, required=True, help="Path to the pre-trained model")
+    parser_fine_tune.add_argument("--pretrained-model", '-m', type=str, required=True, help="Path to the pre-trained model")
     parser_fine_tune.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for fine-tuning")
     parser_fine_tune.add_argument("--train-dataset", '-train', type=str, required=True, help="Path to the training dataset")
     parser_fine_tune.add_argument("--test-dataset", '-test', type=str, required=True, help="Path to the testing dataset")
     parser_fine_tune.add_argument("--random-seed", '-r', type=int, default=42, help="Random seed for reproducibility")
+    parser_fine_tune.add_argument("--unfreeze-all", '-A', action='store_true', default=True, help='Unfreeze all layers for fine-tuning')
     parser_fine_tune.add_argument("--unfreeze", '-u', type=int, default=1, help="Number of layers to unfreeze for fine-tuning")
 
 
