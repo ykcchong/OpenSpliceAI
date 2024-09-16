@@ -30,7 +30,8 @@ def parse_args_create_data(subparsers):
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
-    parser_train.add_argument("--enable_wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
+    parser_train.add_argument("--enable-wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
+    parser_train.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
     parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_train.add_argument('--project-name', '-s', type=str)
     parser_train.add_argument('--flanking-size', '-f', type=int, default=80)
@@ -38,7 +39,7 @@ def parse_args_train(subparsers):
     parser_train.add_argument('--exp-num', '-e', type=str, default=0)
     parser_train.add_argument('--train-dataset', '-train', type=str)
     parser_train.add_argument('--test-dataset', '-test', type=str)
-    parser_train.add_argument('--loss', '-l', type=str, default="cross_entropy_loss", help='The loss function to train SpliceAI model')
+    parser_train.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for training")
     parser_train.add_argument('--model', '-m', default="SpliceAI", type=str)
 
 def parse_args_calibrate(subparsers):
@@ -48,16 +49,17 @@ def parse_args_calibrate(subparsers):
 
 def parse_args_fine_tune(subparsers):
     parser_fine_tune = subparsers.add_parser('fine-tune', help='Fine-tune a pre-trained SpliceAI model on new data.')
-    parser_fine_tune.add_argument("--output_dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
-    parser_fine_tune.add_argument("--project_name", '-s', type=str, required=True, help="Project name for organizing outputs")
-    parser_fine_tune.add_argument("--exp_num", '-e', type=int, default=0, help="Experiment number")
-    parser_fine_tune.add_argument("--flanking_size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
-    parser_fine_tune.add_argument("--model_path", '-m', type=str, required=True, help="Path to the pre-trained model")
-    parser_fine_tune.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for training")
-    parser_fine_tune.add_argument("--train_dataset", '-train', type=str, required=True, help="Path to the training dataset")
-    parser_fine_tune.add_argument("--test_dataset", '-test', type=str, required=True, help="Path to the testing dataset")
-    parser_fine_tune.add_argument("--enable_wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
-    parser_fine_tune.add_argument("--random_seed", '-r', type=int, default=42, help="Random seed for reproducibility")
+    parser_fine_tune.add_argument("--enable-wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
+    parser_fine_tune.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
+    parser_fine_tune.add_argument("--output-dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
+    parser_fine_tune.add_argument("--project-name", '-s', type=str, required=True, help="Project name for the fine-tuning experiment")
+    parser_fine_tune.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
+    parser_fine_tune.add_argument("--flanking-size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
+    parser_fine_tune.add_argument("--model-path", '-m', type=str, required=True, help="Path to the pre-trained model")
+    parser_fine_tune.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for fine-tuning")
+    parser_fine_tune.add_argument("--train-dataset", '-train', type=str, required=True, help="Path to the training dataset")
+    parser_fine_tune.add_argument("--test-dataset", '-test', type=str, required=True, help="Path to the testing dataset")
+    parser_fine_tune.add_argument("--random-seed", '-r', type=int, default=42, help="Random seed for reproducibility")
     parser_fine_tune.add_argument("--unfreeze", '-u', type=int, default=1, help="Number of layers to unfreeze for fine-tuning")
 
 
