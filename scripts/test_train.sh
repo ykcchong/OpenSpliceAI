@@ -6,6 +6,7 @@ OUTPUT_FILE="$OUTPUT_DIR/output.log"
 ERROR_FILE="$OUTPUT_DIR/error.log"
 
 openspliceai train --flanking-size 80 \
+--early-stopping \
 --train-dataset ../results/create-data/dataset_train.h5 \
 --test-dataset ../results/create-data/dataset_test.h5 \
 --output-dir $OUTPUT_DIR \

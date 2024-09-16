@@ -30,8 +30,10 @@ def parse_args_create_data(subparsers):
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
+    parser_train.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
     parser_train.add_argument("--enable-wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
     parser_train.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
+    parser_train.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
     parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
     parser_train.add_argument('--project-name', '-s', type=str, required=True, help="Project name for the fine-tuning experiment")
     parser_train.add_argument('--exp-num', '-e', type=str, default=0, help="Experiment number")
@@ -49,8 +51,10 @@ def parse_args_calibrate(subparsers):
 
 def parse_args_fine_tune(subparsers):
     parser_fine_tune = subparsers.add_parser('fine-tune', help='Fine-tune a pre-trained SpliceAI model on new data.')
+    parser_fine_tune.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
     parser_fine_tune.add_argument("--enable-wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
     parser_fine_tune.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
+    parser_fine_tune.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
     parser_fine_tune.add_argument("--output-dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
     parser_fine_tune.add_argument("--project-name", '-s', type=str, required=True, help="Project name for the fine-tuning experiment")
     parser_fine_tune.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
