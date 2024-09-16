@@ -86,7 +86,7 @@ def create_dataset(args):
                     seq_decode = SEQ[idx].decode('ascii')
                     label_decode = LABEL[idx].decode('ascii')
                     fixed_seq = replace_non_acgt_to_n(seq_decode)
-                    X, Y = create_datapoints(fixed_seq, label_decode, CL_max=args.flanking_size)
+                    X, Y = create_datapoints(fixed_seq, label_decode)
                     X_batch.extend(X)
                     Y_batch[0].extend(Y[0])
                 # Convert batches to arrays and save as HDF5

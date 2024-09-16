@@ -168,7 +168,7 @@ def replace_non_acgt_to_n(input_string):
     allowed_chars = {'A', 'C', 'G', 'T'}    
     return ''.join(char if char in allowed_chars else 'N' for char in input_string)
 
-def reformat_data(X0, Y0, CL_max=80):
+def reformat_data(X0, Y0):
     """
     Reformat sequence and label data into fixed-size blocks for processing.
     This function converts X0, Y0 of the create_datapoints function into
@@ -203,7 +203,7 @@ def reformat_data(X0, Y0, CL_max=80):
 
     return Xd, Yd  
 
-def create_datapoints(seq, label, CL_max=80):
+def create_datapoints(seq, label):
     """
     This function first converts the sequence into an integer array, where
     A, C, G, T, N are mapped to 1, 2, 3, 4, 0 respectively. If the strand is
