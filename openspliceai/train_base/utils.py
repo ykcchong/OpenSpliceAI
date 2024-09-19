@@ -41,11 +41,22 @@ def load_datasets(args):
 
 def generate_indices(batch_num, random_seed, test_h5f):
     np.random.seed(random_seed)
-    idxs = np.random.permutation(batch_num)
-    train_idxs = idxs[:int(0.9 * batch_num)]
-    val_idxs = idxs[int(0.9 * batch_num):]
+    # idxs = np.random.permutation(batch_num)
+    # train_idxs = idxs[:int(0.9 * batch_num)]
+    # val_idxs = idxs[int(0.9 * batch_num):]
+    # test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    # Generate and shuffle indices for training set
+    train_idxs = np.arange(batch_num)
+    np.random.shuffle(train_idxs)    
+    # Generate indices for test set
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    np.random.shuffle(test_idxs)
+    # Split test set into test and validation
+    val_size = int(0.5 * len(test_idxs))  # 10% for validation
+    val_idxs = test_idxs[:val_size]
+    test_idxs = test_idxs[val_size:]
     return train_idxs, val_idxs, test_idxs
+
 
 def create_metric_files(log_output_base):
     metric_types = ['donor_topk_all', 'donor_topk', 'donor_auprc', 'donor_accuracy', 'donor_precision', 
