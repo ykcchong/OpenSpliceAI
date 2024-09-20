@@ -27,6 +27,8 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--canonical-only', action='store_true', default=True, help='Flag to obtain only canonical splice site pairs')
     parser_create_data.add_argument('--flanking-size', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
     parser_create_data.add_argument('--verify-h5', action='store_true', default=False, help='Verify the generated HDF5 file(s)')
+    parser_create_data.add_argument('--min-identity', type=float, default=0.8, help='Minimum minimap2 alignment identity for paralog removal between training and testing dataset')
+    parser_create_data.add_argument('--min-coverage', type=float, default=0.5, help='Minimum minimap2 alignment coverage for paralog removal between training and testing dataset')
 
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
@@ -46,8 +48,20 @@ def parse_args_train(subparsers):
 
 def parse_args_calibrate(subparsers):
     parser_calibrate = subparsers.add_parser('calibrate', help='Calibrate the SpliceAI model')
-    parser_calibrate.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    pass
+    parser_calibrate.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
+    parser_calibrate.add_argument("--enable-wandb", '-d', action='store_true', default=False, help="Enable Weights & Biases logging")
+    parser_calibrate.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
+    parser_calibrate.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
+    parser_calibrate.add_argument("--output-dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
+    parser_calibrate.add_argument("--project-name", '-s', type=str, required=True, help="Project name for the fine-tuning experiment")
+    parser_calibrate.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
+    parser_calibrate.add_argument("--flanking-size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
+    parser_calibrate.add_argument("--random-seed", '-r', type=int, default=42, help="Random seed for reproducibility")
+    parser_calibrate.add_argument("--pretrained-model", '-m', type=str, required=True, help="Path to the pre-trained model")
+    parser_calibrate.add_argument("--train-dataset", '-train', type=str, required=True, help="Path to the training dataset")
+    parser_calibrate.add_argument("--test-dataset", '-test', type=str, required=True, help="Path to the testing dataset")
+    parser_calibrate.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for fine-tuning")
+
 
 def parse_args_fine_tune(subparsers):
     parser_fine_tune = subparsers.add_parser('fine-tune', help='Fine-tune a pre-trained SpliceAI model on new data.')
