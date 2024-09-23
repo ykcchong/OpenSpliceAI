@@ -85,7 +85,6 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, parse_type="c
                     elif gene.strand == '-':
                         d_idx = len(labels) - second_site-1
                         a_idx = len(labels) - first_site-1
-
                     # Check if the donor / acceptor sites are valid
                     d_motif = str(gene_seq[d_idx+1:d_idx+3])
                     a_motif = str(gene_seq[a_idx-2:a_idx])
@@ -109,7 +108,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, parse_type="c
     fw_stats.close()
     return [NAME, CHROM, STRAND, TX_START, TX_END, SEQ, LABEL]
 
-    
+
 def create_datafile(args):
     print("--- Step 1: Creating datafile.h5 ... ---")
     start_time = time.process_time()

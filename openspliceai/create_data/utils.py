@@ -65,18 +65,21 @@ def split_chromosomes(db, method='random', split_ratio=0.8):
     if method == 'random':
         total_length = sum(chromosome_lengths.values())
         target_train_length = total_length * split_ratio
+        target_test_length = total_length * (1-split_ratio)
         chromosomes = list(chromosome_lengths.keys())
         random.shuffle(chromosomes)
         train_chroms = {}
         test_chroms = {}
         current_train_length = 0
+        current_test_length = 0 
         
         for chrom in chromosomes:
-            if current_train_length < target_train_length:
+            if current_test_length < target_test_length:
+                test_chroms[chrom] = chromosome_lengths[chrom]
+                current_test_length += chromosome_lengths[chrom]
+            else:
                 train_chroms[chrom] = chromosome_lengths[chrom]
                 current_train_length += chromosome_lengths[chrom]
-            else:
-                test_chroms[chrom] = chromosome_lengths[chrom]
     elif method == 'human':
         # following SpliceAI default splitting for human chromosomes
         train_chroms = {
