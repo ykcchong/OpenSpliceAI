@@ -42,7 +42,6 @@ from openspliceai.constants import *
 import time
 import wandb # weights and biases: need to connect to this one
 
-
 def initialize_model_and_optim(device, flanking_size):
     """
     Initializes the SpliceAI model, criterion (loss function), optimizer, and learning rate scheduler, 
