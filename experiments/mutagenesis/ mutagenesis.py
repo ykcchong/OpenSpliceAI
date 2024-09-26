@@ -487,7 +487,7 @@ def mutagenesis(args):
         models, device = load_models(model_path, model_type, flanking_size)
 
         # Run the mutagenesis experiment
-        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position)
+        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site)
 
 
 
