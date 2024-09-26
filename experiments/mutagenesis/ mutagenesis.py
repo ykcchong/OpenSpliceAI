@@ -415,26 +415,26 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     ### GENERATE PLOTS ###
     
     # Generate DNA logos for acceptor and donor score changes
-    if site == 'acceptor':
-        acceptor_score_change_df = acceptor_df.apply(
+    acceptor_score_change_df = acceptor_df.apply(
             lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
             axis=1
         )
+    donor_score_change_df = donor_df.apply(
+            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+            axis=1
+        )
+    if site == 'acceptor':
         generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
     else:
-        donor_score_change_df = donor_df.apply(
-            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
-            axis=1
-        )
         generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
     
     
     # Calculate average score change for each base and plot
+    acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+    donor_score_change = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
     if site == 'acceptor':
-        acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
         plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
     else:
-        donor_score_change = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
         plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
     
     ### WRITE SCORES TO FILE ###
