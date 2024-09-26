@@ -313,9 +313,6 @@ def predict_pytorch(models, flanking_size, seq, strand='+', device='cuda'):
 
     # Convert to PyTorch tensor
     x = torch.tensor(x, dtype=torch.float32).to(device)
-    
-    print(x.shape)
-    print(x)
 
     # Reverse the sequence if on the negative strand
     if strand == '-':
@@ -324,9 +321,7 @@ def predict_pytorch(models, flanking_size, seq, strand='+', device='cuda'):
     # Predict the scores using the models
     with torch.no_grad():
         y = torch.mean(torch.stack([models[m](x).detach().cpu() for m in range(len(models))]), axis=0)
-
-    print(y.shape)
-
+        
     # Remove flanking sequence and permute shape
     y = y.permute(0, 2, 1)
 
@@ -337,8 +332,6 @@ def predict_pytorch(models, flanking_size, seq, strand='+', device='cuda'):
     # Extract donor and acceptor scores
     y = y.numpy()
     
-    print(y.shape)
-    print(y)
     acceptor_scores = y[0, :, 1]
     donor_scores = y[0, :, 2]
     
@@ -419,31 +412,54 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             if model_type == 'keras':
                 K.clear_session() # clear the session after each prediction
 
+    ### GENERATE PLOTS ###
+    
+    # Generate DNA logos for acceptor and donor score changes
+    acceptor_score_change_df = acceptor_df.apply(
+        lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+        axis=1
+    )
+    donor_score_change_df = donor_df.apply(
+        lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+        axis=1
+    )
+    generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png') # TODO: check how it plots this score
+    generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
+    
+    
     # Calculate score change for each base
     acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
     donor_score_change = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
     print(acceptor_score_change, donor_score_change)
-
-    # Generate DNA logos for acceptor and donor score changes
-    generate_dna_logo(acceptor_df, f'{output_dir}/acceptor_dna_logo.png')
-    generate_dna_logo(donor_df, f'{output_dir}/donor_dna_logo.png')
-
+    
     # Plot average score change for both acceptor and donor
     plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
     plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
+    
+    ### WRITE SCORES TO FILE ###
+    
+    # Add prefixes to differentiate between acceptor and donor columns
+    acceptor_combined_df = pd.concat([acceptor_df, acceptor_score_change_df.add_suffix('_change')], axis=1)
+    acceptor_combined_df = acceptor_combined_df.add_prefix('acceptor_')
+
+    donor_combined_df = pd.concat([donor_df, donor_score_change_df.add_suffix('_change')], axis=1)
+    donor_combined_df = donor_combined_df.add_prefix('donor_')
+
+    # Concatenate acceptor and donor DataFrames column-wise or row-wise depending on your structure
+    # Here, we concatenate row-wise to keep all data in one single file
+    combined_df = pd.concat([acceptor_combined_df, donor_combined_df], axis=1)
+
+    # Save everything to a single CSV file
+    combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
 
 
 def mutagenesis(args):
-    
-    import itertools
-    
-    #model_types = ['pytorch', 'keras']
-    model_types = ['keras']
-    # sites = ['donor', 'acceptor']
-    sites = ['donor']
-    #flanking_sizes = [80, 400, 2000, 10000]
-    flanking_sizes = [10000]
-    exp_number = 1
+        
+    model_types = ['pytorch', 'keras']
+    sites = ['donor', 'acceptor']
+    scoring_positions = {'donor': 198, 'acceptor': 201}
+    flanking_sizes = [80, 400, 2000, 10000]
+    exp_number = 2
     sample_number = 1
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
@@ -455,13 +471,7 @@ def mutagenesis(args):
             print('not possible')
             exit(1)
         
-        if site == 'donor':
-            scoring_position = 198
-        elif site == 'acceptor':
-            scoring_position = 201
-        else:
-            print('not possible')
-            exit(1)
+        scoring_position = scoring_positions[site]
             
         fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/data/{site}_{sample_number}.fa'
         
