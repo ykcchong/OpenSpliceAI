@@ -238,7 +238,7 @@ def calculate_average_score_change(ref_scores, mut_scores):
     return ref_scores - np.mean(mut_scores, axis=0)
 
 # Function to generate DNA logo
-def generate_dna_logo(score_changes, output_file, start=100, end=300):
+def generate_dna_logo(score_changes, output_file, start=140, end=260):
     
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
     # Ensure valid start and end range
@@ -254,7 +254,7 @@ def generate_dna_logo(score_changes, output_file, start=100, end=300):
     plt.savefig(output_file)
 
 # Function to generate line plot for average score change
-def plot_average_score_change(average_score_change, output_file, start=100, end=300):
+def plot_average_score_change(average_score_change, output_file, start=0, end=400):
     # Ensure valid start and end range
     if start < 0 or end > len(average_score_change):
         raise ValueError("Invalid start or end range for the given data.")
@@ -351,7 +351,7 @@ def predict(models, model_type, flanking_size, seq, strand='+', device='cuda'):
 ##############################################
 
 # Main function for mutagenesis experiment
-def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position):
+def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site):
     '''Mutate all bases, score donor/acceptor site.'''
     # Load fasta file
     sequences = Fasta(fasta_file)
@@ -415,26 +415,27 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     ### GENERATE PLOTS ###
     
     # Generate DNA logos for acceptor and donor score changes
-    acceptor_score_change_df = acceptor_df.apply(
-        lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
-        axis=1
-    )
-    donor_score_change_df = donor_df.apply(
-        lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
-        axis=1
-    )
-    generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png') # TODO: check how it plots this score
-    generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
+    if site == 'acceptor':
+        acceptor_score_change_df = acceptor_df.apply(
+            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+            axis=1
+        )
+        generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
+    else:
+        donor_score_change_df = donor_df.apply(
+            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+            axis=1
+        )
+        generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
     
     
-    # Calculate score change for each base
-    acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
-    donor_score_change = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
-    print(acceptor_score_change, donor_score_change)
-    
-    # Plot average score change for both acceptor and donor
-    plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
-    plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
+    # Calculate average score change for each base and plot
+    if site == 'acceptor':
+        acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+        plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
+    else:
+        donor_score_change = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+        plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
     
     ### WRITE SCORES TO FILE ###
     
@@ -459,7 +460,7 @@ def mutagenesis(args):
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
     flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 2
+    exp_number = 3
     sample_number = 1
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
