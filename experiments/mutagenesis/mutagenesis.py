@@ -460,8 +460,8 @@ def mutagenesis(args):
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
     flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 3
-    sample_number = 1
+    exp_number = 4
+    sample_number = 2
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":

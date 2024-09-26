@@ -682,7 +682,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
                 if debug:
                     print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
 
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
+                # DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                 DNAs = DNAs.to(torch.float32).to(device)
                 with torch.no_grad():
                     y_pred = model(DNAs)
