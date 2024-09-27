@@ -351,14 +351,16 @@ def predict(models, model_type, flanking_size, seq, strand='+', device='cuda'):
 ##############################################
 
 # Main function for mutagenesis experiment
-def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site):
+def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400):
     '''Mutate all bases, score donor/acceptor site.'''
     # Load fasta file
     sequences = Fasta(fasta_file)
     
-    # Dataframes to store raw scores for acceptor and donor
-    acceptor_df = pd.DataFrame()
-    donor_df = pd.DataFrame()
+    # Initialize DataFrames to store cumulative sums and counts
+    cumulative_acceptor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])
+    cumulative_donor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])
+
+    count_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])  # Store counts for averaging
 
     # Iterate over each transcript
     for seq_id in sequences.keys():
@@ -393,7 +395,6 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
 
             # Mutate the base and get scores for each mutation
             for i, mut_base in enumerate(mutations):
-                
                 mut_sequence = sequence[:pos] + mut_base + sequence[pos + 1:]
                 
                 # Predict the scores for the mutated sequence
@@ -404,50 +405,56 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
                 acceptor_scores[base_order.index(mut_base) + 1] = mut_acceptor_score
                 donor_scores[base_order.index(mut_base) + 1] = mut_donor_score
 
-            # Append the scores for this position to the dataframe
-            acceptor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] = acceptor_scores
-            donor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] = donor_scores
+            # Update cumulative sums and counts
+            cumulative_acceptor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += acceptor_scores
+            cumulative_donor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += donor_scores
+
+            count_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += 1
 
             # release memory if possible
             if model_type == 'keras':
-                K.clear_session() # clear the session after each prediction
+                K.clear_session()  # clear the session after each prediction
+
+    # Calculate the rolling average across all sequences
+    acceptor_avg_df = cumulative_acceptor_df / count_df
+    donor_avg_df = cumulative_donor_df / count_df
 
     ### GENERATE PLOTS ###
-    
+
     # Generate DNA logos for acceptor and donor score changes
-    acceptor_score_change_df = acceptor_df.apply(
+    acceptor_score_change_df = acceptor_avg_df.apply(
             lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
             axis=1
         )
-    donor_score_change_df = donor_df.apply(
+    donor_score_change_df = donor_avg_df.apply(
             lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
             axis=1
         )
+
     if site == 'acceptor':
         generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
     else:
         generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
-    
-    
+
     # Calculate average score change for each base and plot
-    acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
-    donor_score_change = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+    acceptor_score_change = acceptor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+    donor_score_change = donor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+
     if site == 'acceptor':
         plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
     else:
         plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
-    
+
     ### WRITE SCORES TO FILE ###
-    
+
     # Add prefixes to differentiate between acceptor and donor columns
-    acceptor_combined_df = pd.concat([acceptor_df, acceptor_score_change_df.add_suffix('_change')], axis=1)
+    acceptor_combined_df = pd.concat([acceptor_avg_df, acceptor_score_change_df.add_suffix('_change')], axis=1)
     acceptor_combined_df = acceptor_combined_df.add_prefix('acceptor_')
 
-    donor_combined_df = pd.concat([donor_df, donor_score_change_df.add_suffix('_change')], axis=1)
+    donor_combined_df = pd.concat([donor_avg_df, donor_score_change_df.add_suffix('_change')], axis=1)
     donor_combined_df = donor_combined_df.add_prefix('donor_')
 
-    # Concatenate acceptor and donor DataFrames column-wise or row-wise depending on your structure
-    # Here, we concatenate row-wise to keep all data in one single file
+    # Concatenate acceptor and donor DataFrames
     combined_df = pd.concat([acceptor_combined_df, donor_combined_df], axis=1)
 
     # Save everything to a single CSV file
@@ -460,8 +467,8 @@ def mutagenesis(args):
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
     flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 4
-    sample_number = 2
+    exp_number = 5
+    sample_number = 3
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
