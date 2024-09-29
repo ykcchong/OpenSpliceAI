@@ -6,7 +6,7 @@ import logging
 import platform
 import os, glob
 import re
-from openspliceai.train.spliceai import SpliceAI
+from openspliceai.train_base.spliceai import SpliceAI
 from openspliceai.constants import *
 
 from openspliceai.predict.predict import *

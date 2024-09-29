@@ -14,7 +14,6 @@ from openspliceai.constants import *
 import h5py
 import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
-import wandb
 
 
 def initialize_model_and_optim(device, flanking_size, pretrained_model, unfreeze, unfreeze_all):
@@ -113,10 +112,7 @@ def fine_tune(args):
     # pretrained_model = args.pretrained_model
     # unfreeze = args.unfreeze
     # assert int(flanking_size) in [80, 400, 2000, 10000]
-    # if not args.enable_wandb:
-    #     os.environ['WANDB_MODE'] = 'disabled'
-    
-    # wandb.init(project=f'{project_name}', reinit=True)
+
     # device = setup_device()
     # print("device: ", device, file=sys.stderr)
     # model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(output_dir, project_name, flanking_size, exp_num, sequence_length, args.loss, args.random_seed)
@@ -229,9 +225,6 @@ def fine_tune(args):
     #     print("\n============================================================")
     #     current_lr = optimizer.param_groups[0]['lr']
     #     print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
-    #     wandb.log({
-    #         f'fine-tune/learning_rate': current_lr,
-    #     })
     #     start_time = time.time()
     #     train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, flanking_size, run_mode="train")
     #     val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, params, valid_metric_files, flanking_size, run_mode="validation")

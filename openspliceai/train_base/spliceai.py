@@ -1,3 +1,56 @@
+# import torch
+# import torch.nn as nn
+# import torch.nn.functional as F
+# import numpy as np
+
+# class ResidualUnit(nn.Module):
+#     def __init__(self, channels, kernel_size, dilation):
+#         super(ResidualUnit, self).__init__()
+#         self.bn1 = nn.BatchNorm1d(channels)
+#         self.conv1 = nn.Conv1d(channels, channels, kernel_size, padding='same', dilation=dilation)
+#         self.bn2 = nn.BatchNorm1d(channels)
+#         self.conv2 = nn.Conv1d(channels, channels, kernel_size, padding='same', dilation=dilation)
+
+#     def forward(self, x):
+#         residual = x
+#         x = F.relu(self.bn1(x))
+#         x = self.conv1(x)
+#         x = F.relu(self.bn2(x))
+#         x = self.conv2(x)
+#         return x + residual
+
+# class SpliceAI(nn.Module):
+#     def __init__(self, L, W, AR):
+#         super(SpliceAI, self).__init__()
+#         assert len(W) == len(AR)
+#         self.CL = 2 * np.sum(np.array(AR) * (np.array(W) - 1))
+#         self.initial_conv = nn.Conv1d(4, L, 1)
+#         self.skip_conv = nn.Conv1d(L, L, 1)
+        
+#         self.residual_units = nn.ModuleList([
+#             ResidualUnit(L, W[i], AR[i]) for i in range(len(W))
+#         ])
+        
+#         self.skip_connections = nn.ModuleList([
+#             nn.Conv1d(L, L, 1) for _ in range(len(W) // 4 + 1)
+#         ])
+        
+#         self.final_conv = nn.Conv1d(L, 3, 1)
+
+#     def forward(self, x):
+#         x = self.initial_conv(x)
+#         skip = self.skip_conv(x)
+        
+#         for i, unit in enumerate(self.residual_units):
+#             x = unit(x)
+#             if (i + 1) % 4 == 0 or (i + 1) == len(self.residual_units):
+#                 dense = self.skip_connections[i // 4](x)
+#                 skip = skip + dense
+        
+#         skip = skip[:, :, self.CL//2:-self.CL//2]
+#         output = self.final_conv(skip)
+#         return F.softmax(output, dim=1)
+
 import torch
 import numpy as np
 
