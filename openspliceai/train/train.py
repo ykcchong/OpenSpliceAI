@@ -1,33 +1,3 @@
-"""
-train.py
-
-Implements the training, validation, and testing procedures for the SpliceAI model. 
-- Setup of computational device based on system capabilities (CUDA, MPS, CPU).
-- Initialization of model architecture, loss function, optimizer, and learning rate scheduler.
-- Data loading and preprocessing to format genomic sequences and their labels for model consumption.
-- Implementation of training and validation loops with metrics calculation and logging.
-- Capability to save model checkpoints after each epoch for later analysis or inference.
-- Integration with Weights & Biases for online tracking and visualization of training metrics.
-
-Usage:
-    For detailed usage and available options, run the script with the `-h` or `--help` flag.
-
-Example:
-    python train.py --output_dir=./outputs --project_name="SpliceAI" --flanking_size=200 --exp_num=1
-                    --model="SpliceAI" --loss="cross_entropy" --train_dataset="./data/train.h5"
-                    --test_dataset="./data/test.h5" --enable_wandb=False
-
-Functions:
-- `setup_device()`: Determines the best computational device (CUDA, MPS, CPU) available for training.
-- `initialize_paths()`: Sets up directories for saving outputs, including model checkpoints and logs.
-- `initialize_model_and_optim()`: Initializes the SpliceAI model, along with its optimizer and learning rate scheduler.
-- `load_data_from_shard()`: Loads and preprocesses data from a specified shard of the dataset, preparing it for the model.
-- `train_epoch()`: Conducts a single epoch of training, including forward passes, backpropagation, and parameter updates.
-- `valid_epoch()`: Evaluates the model on a validation or test dataset without updating model parameters.
-- `model_evaluation()`: Calculates and logs various performance metrics during the training and validation phases.
-- `train()`: Orchestrates the entire training process, leveraging the above functions to train and evaluate the model.
-"""
-
 import sys
 import numpy as np
 import torch
@@ -40,7 +10,6 @@ from openspliceai.train_base.spliceai import *
 from openspliceai.train_base.utils import *
 from openspliceai.constants import *
 import time
-import wandb # weights and biases: need to connect to this one
 
 def initialize_model_and_optim(device, flanking_size):
     """
@@ -101,27 +70,7 @@ def initialize_model_and_optim(device, flanking_size):
 
 
 def train(args):
-    """
-    Main function to train, validate, and test the SpliceAI model according to specified arguments.
-
-    This function orchestrates the entire process of training the SpliceAI model, including loading the dataset,
-    initializing the model and its components (optimizer, scheduler, etc.), and executing the training, validation,
-    and testing loops. It handles logging of metrics and saves model checkpoints at each epoch.
-
-    Parameters:
-    - args (argparse.Namespace): Command-line arguments required for training
-        - output_dir (str): The directory where output files and model checkpoints will be saved.
-        - project_name (str): Name of the project, used for organizing outputs.
-        - flanking_size (int): Size of the flanking sequences around splice sites.
-        - exp_num (int): Experiment number to differentiate between different runs.
-        - model (str): Model architecture to use.
-        - loss (str): Loss function for training the model.
-        - train_dataset (str): Path to the training dataset file.
-        - test_dataset (str): Path to the testing dataset file.
-        - enable_wandb (bool): Flag to disable logging to Weights & Biases.
-    """
     print("Running OpenSpliceAI with 'train' mode")
-    # assert training_target in ["RefSeq", "MANE", "SpliceAI", "SpliceAI27"]
     device = setup_environment(args)
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(args)
     train_h5f, test_h5f, batch_num = load_datasets(args)
@@ -131,7 +80,7 @@ def train(args):
     train_metric_files = create_metric_files(log_output_train_base)
     valid_metric_files = create_metric_files(log_output_val_base)
     test_metric_files = create_metric_files(log_output_test_base)
-    train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, val_idxs, test_idxs, 
-                model_output_base, args, device, params, train_metric_files, valid_metric_files, test_metric_files)
+    train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs,
+                val_idxs, test_idxs, model_output_base, args, device, params, train_metric_files, valid_metric_files, test_metric_files)
     train_h5f.close()
     test_h5f.close()

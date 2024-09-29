@@ -12,18 +12,228 @@ from tqdm import tqdm
 from math import ceil
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, accuracy_score
 from openspliceai.constants import *
-import wandb # weights and biases: need to connect to this one
 
 def setup_environment(args):
     assert int(args.flanking_size) in [80, 400, 2000, 10000]
-    if not args.enable_wandb:
-        os.environ['WANDB_MODE'] = 'disabled'
-    wandb.init(project=f'{args.project_name}', reinit=True)
     device = setup_device()
     print("device: ", device, file=sys.stderr)
     return device
 
+###########################
+# Model testing
+###########################
+def initialize_test_paths(args):
+    log_output_test_base = initialize_test_paths_inner(
+        args.output_dir, args.project_name, args.flanking_size, args.exp_num, 
+        args.random_seed, args.test_target, args.log_dir
+    )
+    return log_output_test_base
 
+
+def initialize_test_paths_inner(output_dir, project_name, flanking_size, exp_num, random_seed, test_target, log_dir):
+    MODEL_VERSION = f"SpliceAI_{project_name}_{flanking_size}_{exp_num}_rs{random_seed}"
+    model_train_outdir = f"{output_dir}/{MODEL_VERSION}/{exp_num}/"
+    log_output_base = f"{model_train_outdir}{log_dir}/"
+    log_output_test_base = f"{log_output_base}TEST/"
+    # TEST_LOG_SpliceAI-Keras
+    for path in [log_output_base, log_output_test_base]:
+        os.makedirs(path, exist_ok=True)
+    return log_output_test_base
+
+
+def load_test_datasets(args):
+    test_h5f = h5py.File(args.test_dataset, 'r')
+    return test_h5f
+
+
+def generate_test_indices(random_seed, test_h5f):
+    np.random.seed(random_seed)
+    test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    np.random.shuffle(test_idxs)
+    return test_idxs
+
+
+def clip_datapoints_spliceai27(X, Y, CL, N_GPUS):
+    rem = X.shape[0]%N_GPUS
+    clip = (CL_max-CL)//2
+    if rem != 0 and clip != 0:
+        return X[:-rem, clip:-clip], [Y[t][:-rem] for t in range(1)]
+    elif rem == 0 and clip != 0:
+        return X[:, clip:-clip], [Y[t] for t in range(1)]
+    elif rem != 0 and clip == 0:
+        return X[:-rem], [Y[t][:-rem] for t in range(1)]
+    else:
+        return X, [Y[t] for t in range(1)]
+
+
+class MetricsAccumulator:
+    def __init__(self, num_classes):
+        self.true_classes = []
+        self.predicted_classes = []
+        self.num_classes = num_classes
+
+    def update(self, y_true, y_pred):
+        self.true_classes.extend(y_true)
+        self.predicted_classes.extend(y_pred)
+
+    def calculate_overall_metrics(self):
+        true_classes = np.array(self.true_classes)
+        predicted_classes = np.array(self.predicted_classes)
+        true_classes = true_classes.flatten()
+        predicted_classes = predicted_classes.flatten()
+        print(f"true_classes: {true_classes.shape}, predicted_classes: {predicted_classes.shape}")
+        
+
+        class_accuracies = classwise_accuracy(true_classes, predicted_classes, self.num_classes)
+        overall_accuracy = np.mean(class_accuracies)
+        
+        precision, recall, f1, _ = precision_recall_fscore_support(true_classes, predicted_classes, average=None)
+
+        return overall_accuracy, precision, recall, f1, class_accuracies
+
+
+def calculate_batch_metrics(y_true, y_pred, metric_files, accumulator):
+    accumulator.update(y_true, y_pred)
+    batch_accuracies = classwise_accuracy(y_true, y_pred, accumulator.num_classes)
+    batch_overall_accuracy = np.mean(batch_accuracies)
+    print(f"Batch Overall Accuracy: {batch_overall_accuracy}")
+    
+
+def process_batch(model, X, Y, params):
+    Xc, Yc = clip_datapoints_spliceai27(X, Y, params['CL'], 2)
+    Yp = model.predict(Xc, batch_size=params['BATCH_SIZE'])
+    return Yc[0], Yp
+
+
+def test_SpliceAI_Keras_model(model, test_h5f, test_idxs, args, params, test_metric_files):
+    print("test_idxs: ", test_idxs)
+    print(f"\n{'='*60}")
+    start_time = time.time()    
+    print("--------------------------------------------------------------")
+    print("\n\033[1mValidation set metrics:\033[0m")
+    
+    np.random.seed(params["RANDOM_SEED"])
+    shuffled_idxs = np.random.choice(test_idxs, size=len(test_idxs), replace=False)    
+    print("shuffled_idxs: ", shuffled_idxs)
+    
+    shuffled_idxs = shuffled_idxs  # For testing purposes
+    batch_size = 5  # Adjust this based on your memory constraints
+    num_classes = 3  # Assuming 3 classes: Non-splice, acceptor, donor
+    metrics_accumulator = MetricsAccumulator(num_classes)
+    
+    # Initialize lists to collect true labels and predicted probabilities
+    y_true_acceptor_all = []
+    y_pred_acceptor_all = []
+    y_true_donor_all = []
+    y_pred_donor_all = []
+
+    for i in range(0, len(shuffled_idxs), batch_size):
+        batch_idxs = shuffled_idxs[i:i+batch_size]
+        batch_ylabel = []
+        batch_ypred = []
+        
+        for idx in batch_idxs:
+            X = test_h5f['X' + str(idx)][()]  # Assuming HDF5 dataset; read data
+            Y = test_h5f['Y' + str(idx)][()]
+            print(f"\nProcessing index {idx}:")
+            print(f"\tX.shape: {X.shape}, Y.shape: {Y.shape}")
+            Xc, Yc = clip_datapoints_spliceai27(X, Y, params['CL'], 2)
+            Yp = model.predict(Xc, batch_size=params['BATCH_SIZE'])
+            batch_ylabel.append(Yc[0])  # Yc is a list; take the first element
+            batch_ypred.append(Yp)
+        batch_ylabel = np.concatenate(batch_ylabel, axis=0)
+        batch_ypred = np.concatenate(batch_ypred, axis=0)
+        print(f"\nBatch shapes - ylabel: {batch_ylabel.shape}, ypred: {batch_ypred.shape}")
+        
+        # Reshape to 2D arrays if necessary
+        batch_ylabel = batch_ylabel.reshape(-1, num_classes)
+        batch_ypred = batch_ypred.reshape(-1, num_classes)
+        
+        # Extract true labels and predictions for acceptor and donor
+        y_true_acceptor = batch_ylabel[:, 1]  # Acceptor class index is 1
+        y_pred_acceptor = batch_ypred[:, 1]
+        y_true_donor = batch_ylabel[:, 2]     # Donor class index is 2
+        y_pred_donor = batch_ypred[:, 2]
+
+        # Accumulate the labels and predictions
+        y_true_acceptor_all.append(y_true_acceptor)
+        y_pred_acceptor_all.append(y_pred_acceptor)
+        y_true_donor_all.append(y_true_donor)
+        y_pred_donor_all.append(y_pred_donor)
+        
+        # Convert probabilities to class predictions
+        batch_ypred_classes = np.argmax(batch_ypred, axis=-1)
+        batch_ylabel_classes = np.argmax(batch_ylabel, axis=-1)
+        calculate_batch_metrics(batch_ylabel_classes, batch_ypred_classes, test_metric_files, metrics_accumulator)
+        # Clear variables to free up memory
+        del batch_ylabel_classes, batch_ypred_classes
+
+    # Concatenate all batches
+    y_true_acceptor_all = np.concatenate(y_true_acceptor_all)
+    y_pred_acceptor_all = np.concatenate(y_pred_acceptor_all)
+    y_true_donor_all = np.concatenate(y_true_donor_all)
+    y_pred_donor_all = np.concatenate(y_pred_donor_all)
+
+    # Specify file paths for output
+    acceptor_topl_file = test_metric_files.get('acceptor_topl', 'acceptor_topl.txt')
+    donor_topl_file = test_metric_files.get('donor_topl', 'donor_topl.txt')
+
+    acceptor_topk_accuracy, acceptor_auprc = print_topl_statistics(y_true_donor_all, y_pred_donor_all, test_metric_files["acceptor_topk_all"], ss_type='acceptor', print_top_k=True)
+    donor_topk_accuracy, donor_auprc = print_topl_statistics(y_true_donor_all, y_pred_donor_all, test_metric_files["donor_topk_all"], ss_type='donor', print_top_k=True)
+
+    # Calculate and write overall metrics
+    overall_accuracy, precision, recall, f1, class_accuracies = metrics_accumulator.calculate_overall_metrics()
+    print(f"Overall Accuracy: {overall_accuracy:.4f}")
+    for k, v in test_metric_files.items():
+        with open(v, 'a') as f:
+            if k == "accuracy":
+                f.write(f"{overall_accuracy}\n")
+            elif k == "donor_topk":
+                f.write(f"{donor_topk_accuracy}\n")
+            elif k == "donor_auprc":
+                f.write(f"{donor_auprc}\n")
+            elif k == "acceptor_topk":
+                f.write(f"{acceptor_topk_accuracy}\n")
+            elif k == "acceptor_auprc":
+                f.write(f"{acceptor_auprc}\n")
+
+    ss_types = ["Non-splice", "acceptor", "donor"]
+    for i, (acc, prec, rec, f1_score) in enumerate(zip(class_accuracies, precision, recall, f1)):
+        print(f"Class {ss_types[i]}:\tAccuracy={acc:.4f}, Precision={prec:.4f}, Recall={rec:.4f}, F1={f1_score:.4f}")
+        if ss_types[i] == "Non-splice":
+            continue  # Skip writing metrics for Non-splice class
+        for k, v in test_metric_files.items():
+            with open(v, 'a') as f:
+                if k == f"{ss_types[i]}_precision":
+                    f.write(f"{prec}\n")
+                elif k == f"{ss_types[i]}_recall":
+                    f.write(f"{rec}\n")
+                elif k == f"{ss_types[i]}_f1":
+                    f.write(f"{f1_score}\n")
+                elif k == f"{ss_types[i]}_accuracy":
+                    f.write(f"{acc}\n")
+    print("--------------------------------------------------------------")
+    print(f"--- {time.time() - start_time:.2f} seconds ---")
+    print("="*60)
+
+
+
+
+
+def test_model(model, optimizer, test_h5f, test_idxs, args, device, params, test_metric_files):
+    print("test_idxs: ", test_idxs)
+    print(f"\n{'='*60}")
+    start_time = time.time()
+    test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, 
+                            params, test_metric_files, args.flanking_size, "test")
+    print(f"Testing Loss: {test_loss}")
+    print(f"--- {time.time() - start_time:.2f} seconds ---")
+    print("="*60)
+
+
+###########################
+# Model training
+###########################
 def initialize_paths(args):
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths_inner(
         args.output_dir, args.project_name, args.flanking_size, args.exp_num, SL, args.loss, args.random_seed
@@ -41,20 +251,20 @@ def load_datasets(args):
 
 def generate_indices(batch_num, random_seed, test_h5f):
     np.random.seed(random_seed)
-    # idxs = np.random.permutation(batch_num)
-    # train_idxs = idxs[:int(0.9 * batch_num)]
-    # val_idxs = idxs[int(0.9 * batch_num):]
-    # test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    # Generate and shuffle indices for training set
-    train_idxs = np.arange(batch_num)
-    np.random.shuffle(train_idxs)    
-    # Generate indices for test set
+    idxs = np.random.permutation(batch_num)
+    train_idxs = idxs[:int(0.9 * batch_num)]
+    val_idxs = idxs[int(0.9 * batch_num):]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
-    np.random.shuffle(test_idxs)
-    # Split test set into test and validation
-    val_size = int(0.5 * len(test_idxs))  # 10% for validation
-    val_idxs = test_idxs[:val_size]
-    test_idxs = test_idxs[val_size:]
+    # # Generate and shuffle indices for training set
+    # train_idxs = np.arange(batch_num)
+    # np.random.shuffle(train_idxs)    
+    # # Generate indices for test set
+    # test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    # np.random.shuffle(test_idxs)
+    # # Split test set into test and validation
+    # val_size = int(0.5 * len(test_idxs))  # 10% for validation
+    # val_idxs = test_idxs[:val_size]
+    # test_idxs = test_idxs[val_size:]
     return train_idxs, val_idxs, test_idxs
 
 
@@ -137,12 +347,6 @@ def metrics(batch_ypred, batch_ylabel, metric_files, run_mode):
                     f.write(f"{f1_score}\n")
                 elif k == f"{ss_types[i]}_accuracy":
                     f.write(f"{acc}\n")
-        wandb.log({
-            f'{run_mode}/{ss_types[i]} precision': prec,
-            f'{run_mode}/{ss_types[i]} recall': rec,
-            f'{run_mode}/{ss_types[i]} F1': f1_score,
-            f'{run_mode}/{ss_types[i]} accuracy': acc
-        })
 
 
 def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
@@ -160,9 +364,9 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
         Y_pred_1 = batch_ypred[:, 1, :].flatten().cpu().detach().numpy()
         Y_pred_2 = batch_ypred[:, 2, :].flatten().cpu().detach().numpy()
         acceptor_topk_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-                            np.asarray(Y_pred_1), metric_files["acceptor_topk_all"], type='acceptor', print_top_k=True)
+                            np.asarray(Y_pred_1), metric_files["acceptor_topk_all"], ss_type='acceptor', print_top_k=True)
         donor_topk_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-                            np.asarray(Y_pred_2), metric_files["donor_topk_all"], type='donor', print_top_k=True)
+                            np.asarray(Y_pred_2), metric_files["donor_topk_all"], ss_type='donor', print_top_k=True)
         if criterion == "cross_entropy_loss":
             loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
         elif criterion == "focal_loss":
@@ -179,13 +383,6 @@ def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterio
                     f.write(f"{acceptor_topk_accuracy}\n")
                 elif k == "acceptor_auprc":
                     f.write(f"{acceptor_auprc}\n")
-        wandb.log({
-            f'{run_mode}/Loss batch': loss.item(),
-            f'{run_mode}/acceptor TopK': acceptor_topk_accuracy,
-            f'{run_mode}/donor TopK': donor_topk_accuracy,
-            f'{run_mode}/acceptor AUPRC': acceptor_auprc,
-            f'{run_mode}/donor AUPRC': donor_auprc,
-        })
         print("***************************************\n")
         metrics(batch_ypred, batch_ylabel, metric_files, run_mode)
     batch_ylabel = []
@@ -306,7 +503,7 @@ def clip_datapoints(X, Y, CL, CL_max, N_GPUS):
         return X, Y
 
 
-def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=False):
+def print_topl_statistics(y_true, y_pred, file, ss_type='acceptor', print_top_k=False):
     # Prints the following information: top-kL statistics for k=0.5,1,2,4,
     # auprc, thresholds for k=0.5,1,2,4, number of true splice sites.
     idx_true = np.nonzero(y_true == 1)[0]
@@ -325,7 +522,7 @@ def print_topl_statistics(y_true, y_pred, file, type='acceptor', print_top_k=Fal
         threshold += [sorted_y_pred[-num_elements]]
     auprc = average_precision_score(y_true, y_pred)
     if print_top_k:
-        print(f"\n\033[1m{type}:\033[0m")
+        print(f"\n\033[1m{ss_type}:\033[0m")
         print((("%.4f\t\033[91m%.4f\t\033[0m%.4f\t%.4f\t\033[94m%.4f\t\033[0m"
             + "%.4f\t%.4f\t%.4f\t%.4f\t%d") % (topkl_accuracy[0], topkl_accuracy[1], topkl_accuracy[2],
             topkl_accuracy[3], auprc, threshold[0], threshold[1],
@@ -384,6 +581,7 @@ def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
                         + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 1, :]), gamma)
                         + y_true[:, 2, :]*torch.log(y_pred[:, 2, :]+epsilon) * torch.pow(torch.sub(1, y_pred[:, 2, :]), gamma))
 
+
 def train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, val_idxs, test_idxs,
                 model_output_base, args, device, params, 
                 train_metric_files, valid_metric_files, test_metric_files):
@@ -397,7 +595,6 @@ def train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, va
         print(f"\n{'='*60}")
         current_lr = optimizer.param_groups[0]['lr']
         print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
-        wandb.log({'train/learning_rate': current_lr})
         start_time = time.time()
         train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, 
                                  scheduler, device, params, train_metric_files, args.flanking_size, run_mode="train")
