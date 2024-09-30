@@ -139,9 +139,6 @@ def print_motif_counts():
 
 def main():
     # To-do: 
-    # 1. add argument, and remove hard-coded paths
-    # 2. let user provide their genome fasta path
-    # 3. let user provide their genome gff path
     # 4. let user provide the chromosome group for training and testing
     parser = argparse.ArgumentParser()
     parser.add_argument('--genome-fasta', '-g', type=str)
@@ -170,7 +167,6 @@ def main():
     get_sequences_and_labels(db, fasta_file, output_dir, type="test", chrom_dict=TEST_CHROM_GROUP)
     print_motif_counts()
     print(("--- %s seconds ---" % (time.time() - start_time)))
-
 
 if __name__ == "__main__":
     main()

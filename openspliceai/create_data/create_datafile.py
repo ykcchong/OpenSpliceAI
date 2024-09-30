@@ -1,5 +1,6 @@
-import os 
-from Bio import SeqIO
+import os
+from Bio.Seq import Seq  # Import the Seq class
+from Bio import SeqIO, SeqRecord
 import numpy as np
 import h5py
 import time
@@ -9,12 +10,14 @@ import openspliceai.create_data.paralogs as paralogs
 donor_motif_counts = {}  # Initialize counts
 acceptor_motif_counts = {}  # Initialize counts
 
-def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, parse_type="canonical", biotype="protein-coding", canonical_only=True):
+def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test, parse_type="canonical", biotype="protein-coding", canonical_only=True, write_fasta=False):
     """
     Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
     and label donor and acceptor sites correctly based on strand orientation.
     """
-    fw_stats = open(f"{output_dir}stats.txt", "w")
+    fw_stats = open(f"{output_dir}{train_or_test}_stats.txt", "w")
+    if write_fasta:
+        fasta_handle = open(f"{output_dir}{train_or_test}.fa", "w")  # Open a file to write FASTA format sequences
     NAME = []      # Gene Name
     CHROM = []     # Chromosome
     STRAND = []    # Strand in which the gene lies (+ or -)
@@ -102,10 +105,22 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, parse_type="c
             TX_END.append(str(gene.end))
             SEQ.append(gene_seq)
             LABEL.append(labels_str)
+
+            # Write to the FASTA file if the path is provided
+            if write_fasta:
+                record = SeqRecord.SeqRecord(
+                    Seq(gene_seq),
+                    id=gene_id,
+                    description=f"{gene.seqid}:{gene.start}-{gene.end}({gene.strand})"
+                )
+                SeqIO.write(record, fasta_handle, "fasta")
+
             fw_stats.write(f"{gene.seqid}\t{gene.start}\t{gene.end}\t{gene.id}\t{1}\t{gene.strand}\n")
             utils.check_and_count_motifs(gene_seq, labels, donor_motif_counts, acceptor_motif_counts)
     print(f"Total SEQ: {len(SEQ)}")
     fw_stats.close()
+    if write_fasta:
+        fasta_handle.close()  # Close the FASTA file handle
     return [NAME, CHROM, STRAND, TX_START, TX_END, SEQ, LABEL]
 
 
@@ -126,16 +141,17 @@ def create_datafile(args):
     # Collect sequences and labels for testing and/or training groups
     if args.chr_split == 'test':
         print("Creating test datafile...")
-        test_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only)
+        test_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TEST_CHROM_GROUP, 'test', parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only, write_fasta=args.write_fasta)
         paralogs.write_h5_file(args.output_dir, "test", test_data)
     elif args.chr_split == 'train-test':
         print("Creating train datafile...")
-        train_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TRAIN_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only)
+        train_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TRAIN_CHROM_GROUP, 'train', parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only, write_fasta=args.write_fasta)
         print("Creating test datafile...")
-        test_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TEST_CHROM_GROUP, parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only)
-        # Remove homologous sequences
-        print("Removing homologous sequences...")
-        train_data, test_data = paralogs.remove_paralogous_sequences(train_data, test_data, args.min_identity, args.min_coverage, args.output_dir)        
+        test_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TEST_CHROM_GROUP, 'test', parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only, write_fasta=args.write_fasta)
+        if args.remove_paralogs:
+            # Remove homologous sequences
+            print("Removing homologous sequences...")
+            train_data, test_data = paralogs.remove_paralogous_sequences(train_data, test_data, args.min_identity, args.min_coverage, args.output_dir)        
         # Write the filtered data to h5 files
         paralogs.write_h5_file(args.output_dir, "train", train_data)
         paralogs.write_h5_file(args.output_dir, "test", test_data)
