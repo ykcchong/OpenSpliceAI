@@ -1,32 +1,54 @@
 import argparse
 from pyfaidx import Fasta
-import pandas as pd
-import gffutils 
+import gffutils
 
 donor_motifs = {}
 acceptor_motifs = {}    
 
-def extract_sequences(fasta_file, gff_file, output_donor, output_acceptor, seq_length=400):
-    # Load the FASTA and GFF files
-    fasta = Fasta(fasta_file, sequence_always_upper=True)
-    gff = pd.read_csv(gff_file, sep="\t", header=None, comment="#", 
-                      names=["seqid", "source", "feature", "start", "end", "score", "strand", "phase", "attributes"])
+def get_sequence(seqid, center_pos, half_len, fasta):
+    start = center_pos - half_len + 1
+    end = center_pos + half_len
+    if start < 1:
+        start = 1
+    if end > len(fasta[seqid]):
+        end = len(fasta[seqid])
+    seq = fasta[seqid][start:end]
+    return seq
 
+def extract_sequences(fasta_file, gff_file, output_donor, output_acceptor, seq_length=400):
+    # Load the FASTA file
+    fasta = Fasta(fasta_file, sequence_always_upper=True)
+    
+    # Create a gffutils database from the GFF file
+    db = gffutils.create_db(gff_file, dbfn=':memory:', force=True, keep_order=True,
+                            merge_strategy='create_unique', sort_attribute_values=True, verbose=True)
     donor_seqs = []
     acceptor_seqs = []
 
     half_len = seq_length // 2
 
-    # Process each entry in the GFF file
-    for _, row in gff.iterrows():
-        if row["feature"] == "exon":
-            seqid = row["seqid"]
-            start, end = row["start"], row["end"]
-            strand = row["strand"]
+    # Function to get the biotype of a feature
+    def get_biotype(feature):
+        for key in ['gene_biotype', 'gene_type', 'biotype']:
+            if key in feature.attributes:
+                return feature.attributes[key][0]
+        return None
 
-            # Get donor sequence (exon end is the donor site)
-            if end + half_len < len(fasta[seqid]):
-                donor_seq = fasta[seqid][end - half_len + 1:end + half_len + 1]
+    # Iterate over genes in the GFF database
+    for gene in db.features_of_type('gene'):
+        biotype = get_biotype(gene)
+        if biotype == 'protein_coding':
+            # Process exons of protein-coding genes
+            for exon in db.children(gene, featuretype='exon', order_by='start'):
+                seqid = exon.seqid
+                start = exon.start
+                end = exon.end
+                strand = exon.strand
+
+                # Get donor sequence (exon end is the donor site)
+                donor_seq = get_sequence(seqid, end, half_len, fasta)
+                if len(donor_seq) < 2:  # Ensure there's at least enough sequence to extract the motif
+                    continue
                 if strand == "-":
                     donor_seq = donor_seq.reverse.complement
                 donor_seq = str(donor_seq)
@@ -34,28 +56,20 @@ def extract_sequences(fasta_file, gff_file, output_donor, output_acceptor, seq_l
                 if strand == "-":
                     # Count motifs
                     mid_acceptor_seq = donor_seq[half_len-1:half_len+1]
-                    if mid_acceptor_seq in acceptor_motifs:
-                        acceptor_motifs[mid_acceptor_seq] += 1
-                    else:
-                        acceptor_motifs[mid_acceptor_seq] = 1
-                    
-                    if mid_acceptor_seq == "AG":
-                        acceptor_seqs.append(f">{seqid}_acceptor_{start}\n{donor_seq}")
+                    acceptor_motifs[mid_acceptor_seq] = acceptor_motifs.get(mid_acceptor_seq, 0) + 1
+                    # Write all acceptor sequences
+                    acceptor_seqs.append(f">{seqid}_acceptor_{start}\n{donor_seq}")
                 else:
                     # Count motifs
                     mid_donor_seq = donor_seq[half_len-1:half_len+1]
-                    if mid_donor_seq in donor_motifs:
-                        donor_motifs[mid_donor_seq] += 1
-                    else:
-                        donor_motifs[mid_donor_seq] = 1
-                    
-                    if mid_donor_seq == "GT":
-                        donor_seqs.append(f">{seqid}_donor_{end}\n{donor_seq}")   
+                    donor_motifs[mid_donor_seq] = donor_motifs.get(mid_donor_seq, 0) + 1
+                    # Write all donor sequences
+                    donor_seqs.append(f">{seqid}_donor_{end}\n{donor_seq}") 
 
-
-            # Get acceptor sequence (exon start is the acceptor site)
-            if start - half_len > 0:
-                acceptor_seq = fasta[seqid][start - half_len:start + half_len]
+                # Get acceptor sequence (exon start is the acceptor site)
+                acceptor_seq = get_sequence(seqid, start, half_len, fasta)
+                if len(acceptor_seq) < 2:  # Ensure there's at least enough sequence to extract the motif
+                    continue
                 if strand == "-":
                     acceptor_seq = acceptor_seq.reverse.complement
                 acceptor_seq = str(acceptor_seq)
@@ -63,49 +77,36 @@ def extract_sequences(fasta_file, gff_file, output_donor, output_acceptor, seq_l
                 if strand == "-":
                     # Count motifs
                     mid_donor_seq = acceptor_seq[half_len-1:half_len+1]
-                    if mid_donor_seq in donor_motifs:
-                        donor_motifs[mid_donor_seq] += 1
-                    else:
-                        donor_motifs[mid_donor_seq] = 1
-                        
-                    if mid_donor_seq == "GT":
-                        donor_seqs.append(f">{seqid}_donor_{end}\n{acceptor_seq}")     
+                    donor_motifs[mid_donor_seq] = donor_motifs.get(mid_donor_seq, 0) + 1
+                    # Write all donor sequences
+                    donor_seqs.append(f">{seqid}_donor_{end}\n{acceptor_seq}")     
                 else:  
                     # Count motifs
                     mid_acceptor_seq = acceptor_seq[half_len-1:half_len+1]
-                    if mid_acceptor_seq in acceptor_motifs:
-                        acceptor_motifs[mid_acceptor_seq] += 1
-                    else:
-                        acceptor_motifs[mid_acceptor_seq] = 1
-                    
-                    if mid_acceptor_seq == "AG":
-                        acceptor_seqs.append(f">{seqid}_acceptor_{start}\n{acceptor_seq}")
-    
+                    acceptor_motifs[mid_acceptor_seq] = acceptor_motifs.get(mid_acceptor_seq, 0) + 1
+                    # Write all acceptor sequences
+                    acceptor_seqs.append(f">{seqid}_acceptor_{start}\n{acceptor_seq}")
+        
     print("Donor motifs:")
     print(sorted(donor_motifs.items(), key=lambda x: x[1], reverse=True))
     print("Acceptor motifs:")
     print(sorted(acceptor_motifs.items(), key=lambda x: x[1], reverse=True))
-            
-    # Write to output files
+                
+    # Write sequences to output files
     with open(output_donor, "w") as donor_file:
         donor_file.write("\n".join(donor_seqs))
     
     with open(output_acceptor, "w") as acceptor_file:
         acceptor_file.write("\n".join(acceptor_seqs))
 
-def reverse_complement(seq):
-    complement = {'A': 'T', 'T': 'A', 'G': 'C', 'C': 'G'}
-    return ''.join(complement[base] for base in reversed(seq))
-
 if __name__ == '__main__':
+    # Uncomment below to use command-line arguments
     # parser = argparse.ArgumentParser(description="Extract donor and acceptor sequences from FASTA and GFF files")
     # parser.add_argument('-fasta', required=True, help='Path to the input FASTA file')
     # parser.add_argument('-gff', required=True, help='Path to the input GFF file')
     # parser.add_argument('-donor', required=True, help='Path to the output donor sequences file')
     # parser.add_argument('-acceptor', required=True, help='Path to the output acceptor sequences file')
-    
     # args = parser.parse_args()
-    
     # extract_sequences(args.fasta, args.gff, args.donor, args.acceptor)
     
     fasta = '/ccb/cybertron/smao10/openspliceai/data/toy/human/chr1.fa'

@@ -1,7 +1,5 @@
-import argparse
 import logging
 from tqdm import tqdm
-#from pkg_resources import resource_filename
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
@@ -353,7 +351,7 @@ def plot_average_score_change(average_score_change, output_file, start=0, end=40
 # Main function for mutagenesis experiment
 def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400):
     '''
-    mutate a single base -> measure PWM change over all bases
+    Mutate a single base -> measure PWM change over all bases.
     '''
     # Load fasta file
     sequences = Fasta(fasta_file)
@@ -463,9 +461,9 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
 
 
-def mutagenesis(args):
+def mutagenesis():
         
-    model_types = ['pytorch']
+    model_types = ['pytorch', 'keras']
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
     flanking_sizes = [80, 400, 2000, 10000]
@@ -501,18 +499,4 @@ def mutagenesis(args):
 
 
 if __name__ == '__main__':
-    # parser_mutagenesis = argparse.ArgumentParser(description='Label genetic variations with their predicted effects on splicing.')
-
-    # parser_mutagenesis.add_argument('-G', metavar='genome', required=True, help='path to the reference genome fasta file')
-    # parser_mutagenesis.add_argument('-O', metavar='output', nargs='?', default=sys.stdout, help='path to the output directory, defaults to standard out')
-    # parser_mutagenesis.add_argument('-W', metavar='window_distance', nargs='?', default=200, type=int, choices=range(0, 5000), help='maximum window distance between the location of variant and splice site, defaults to 200')
-    
-    # parser_mutagenesis.add_argument('--model', '-m', default="SpliceAI", type=str, help='Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model')
-    # parser_mutagenesis.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
-    # parser_mutagenesis.add_argument('--model-type', '-t', type=str, choices=['keras', 'pytorch'], default='pytorch', help='Type of model file (keras or pytorch)')
-    
-    # parser_mutagenesis.add_argument('--precision', '-p', type=int, default=2, help='Number of decimal places to round the output scores')
-
-    # args = parser_mutagenesis.parse_args()
-    args = None
-    mutagenesis(args)
+    mutagenesis()
