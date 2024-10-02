@@ -359,8 +359,7 @@ def reformat_data(X0, debug=False):
 
 def one_hot_encode(Xd):
     """
-    Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
-    predefined mappings (IN_MAP for inputs and OUT_MAP for outputs).
+    Perform one-hot encoding on the input sequence data (Xd).
 
     Parameters:
     - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide

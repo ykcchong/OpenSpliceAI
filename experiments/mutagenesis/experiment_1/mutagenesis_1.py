@@ -200,7 +200,7 @@ def load_models(model_path, model_type, CL):
         exit()
 
 ##############################################
-## UTILS: ONE-HOT ENCODING, MUTATION, LOGOS
+## PREDICT FUNCTIONS
 ##############################################
 
 def one_hot_encode(seq):
@@ -215,65 +215,19 @@ def one_hot_encode(seq):
     """
 
     # Define a mapping matrix for nucleotide to one-hot encoding
-    map = np.asarray([[0, 0, 0, 0],  # N or any invalid character
+    IN_MAP = np.asarray([[0, 0, 0, 0],  # N or any invalid character
                       [1, 0, 0, 0],  # A
                       [0, 1, 0, 0],  # C
                       [0, 0, 1, 0],  # G
                       [0, 0, 0, 1]]) # T
 
     # Replace nucleotides with corresponding indices
-    seq = seq.upper().replace('A', '\x01').replace('C', '\x02')
-    seq = seq.replace('G', '\x03').replace('T', '\x04').replace('N', '\x00')
+    seq = seq.upper().replace('A', '1').replace('C', '2')
+    seq = seq.replace('G', '3').replace('T', '4').replace('N', '0')
+    X0 = np.asarray(list(map(int, list(seq)))).astype('int8')
 
     # Convert the sequence to one-hot encoded numpy array
-    return map[np.fromstring(seq, np.int8) % 5]
-
-# Function to mutate a base to the three other bases
-def mutate_base(base):
-    bases = ['A', 'C', 'G', 'T']
-    return [b for b in bases if b != base]
-
-# Function to calculate average score change
-def calculate_average_score_change(ref_scores, mut_scores):
-    return ref_scores - np.mean(mut_scores, axis=0)
-
-# Function to generate DNA logo
-def generate_dna_logo(score_changes, output_file, start=140, end=260):
-    
-    data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
-    # Ensure valid start and end range
-    if start < 0 or end > len(data_df):
-        raise ValueError("Invalid start or end range for the given data.")
-    # Fill any missing values with 0, just in case
-    data_df = data_df.fillna(0)
-    # Slice the DataFrame to include only rows from start to end
-    data_df = data_df.iloc[start:end]
-    print(data_df)
-    logo = logomaker.Logo(data_df)
-    logo.ax.set_title('DNA Logo - Score Change by Base')
-    plt.savefig(output_file)
-
-# Function to generate line plot for average score change
-def plot_average_score_change(average_score_change, output_file, start=0, end=400):
-    # Ensure valid start and end range
-    if start < 0 or end > len(average_score_change):
-        raise ValueError("Invalid start or end range for the given data.")
-    
-    # Slice the series/dataframe to include only rows from start to end
-    sliced_average_change = average_score_change.iloc[start:end]
-    
-    plt.figure()
-    plt.plot(sliced_average_change, label="Average Score Change")
-    plt.title("Average Score Change by Position")
-    plt.xlabel("Position")
-    plt.ylabel("Score Change")
-    plt.legend()
-    plt.savefig(output_file)
-    
-    
-##############################################
-## PREDICT FUNCTIONS
-##############################################
+    return IN_MAP[X0 % 5]
 
 def predict_keras(models, flanking_size, seq, strand='+'):
     # Prepare the sequence with padding
@@ -345,20 +299,68 @@ def predict(models, model_type, flanking_size, seq, strand='+', device='cuda'):
     else:
         logging.error("Invalid model type")
         exit()
+        
+##############################################
+## UTILS: ONE-HOT ENCODING, MUTATION, LOGOS
+##############################################
+
+# Function to mutate a base to the three other bases
+def mutate_base(base):
+    bases = ['A', 'C', 'G', 'T']
+    return [b for b in bases if b != base]
+
+# Function to calculate average score change
+def calculate_average_score_change(ref_scores, mut_scores):
+    return ref_scores - np.mean(mut_scores, axis=0)
+
+# Function to generate DNA logo
+def generate_dna_logo(score_changes, output_file, start=140, end=260):
+    
+    data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
+    # Ensure valid start and end range
+    if start < 0 or end > len(data_df):
+        raise ValueError("Invalid start or end range for the given data.")
+    # Fill any missing values with 0, just in case
+    data_df = data_df.fillna(0)
+    # Slice the DataFrame to include only rows from start to end
+    data_df = data_df.iloc[start:end]
+    print(data_df)
+    logo = logomaker.Logo(data_df)
+    logo.ax.set_title('DNA Logo - Score Change by Base')
+    plt.savefig(output_file)
+
+# Function to generate line plot for average score change
+def plot_average_score_change(average_score_change, output_file, start=0, end=400):
+    # Ensure valid start and end range
+    if start < 0 or end > len(average_score_change):
+        raise ValueError("Invalid start or end range for the given data.")
+    
+    # Slice the series/dataframe to include only rows from start to end
+    sliced_average_change = average_score_change.iloc[start:end]
+    
+    plt.figure()
+    plt.plot(sliced_average_change, label="Average Score Change")
+    plt.title("Average Score Change by Position")
+    plt.xlabel("Position")
+    plt.ylabel("Score Change")
+    plt.legend()
+    plt.savefig(output_file)
     
 ##############################################
 ## MUTAGENESIS EXPERIMENT
 ##############################################
 
 # Main function for mutagenesis experiment
-def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400):
-    '''Mutate all bases, score donor/acceptor site.'''
+def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400):
+    '''
+    mutate a single base -> measure PWM change over all bases
+    '''
     # Load fasta file
     sequences = Fasta(fasta_file)
     
     # Initialize DataFrames to store cumulative sums and counts
-    cumulative_acceptor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])
-    cumulative_donor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])
+    cumulative_acceptor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
+    cumulative_donor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
 
     count_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])  # Store counts for averaging
 
@@ -463,12 +465,12 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
 
 def mutagenesis(args):
         
-    model_types = ['pytorch', 'keras']
+    model_types = ['pytorch']
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
     flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 5
-    sample_number = 3
+    exp_number = 1
+    sample_number = 1
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
@@ -481,10 +483,10 @@ def mutagenesis(args):
         
         scoring_position = scoring_positions[site]
             
-        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/data/{site}_{sample_number}.fa'
+        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_1/data/{site}_{sample_number}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/results_2/exp_{exp_number}/{model_type}_{flanking_size}_{site}_samp{sample_number}"
+        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_1/results/exp_{exp_number}/{model_type}_{flanking_size}_{site}_samp{sample_number}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
@@ -494,7 +496,7 @@ def mutagenesis(args):
         models, device = load_models(model_path, model_type, flanking_size)
 
         # Run the mutagenesis experiment
-        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site)
+        exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site)
 
 
 
