@@ -110,6 +110,6 @@ if __name__ == '__main__':
     
     fasta = '/ccb/cybertron/smao10/openspliceai/data/toy/human/chr1.fa'
     gff = '/ccb/cybertron/smao10/openspliceai/data/toy/human/chr1.gff'
-    donor = '/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/data/donor.fa'
-    acceptor = '/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/data/acceptor.fa'
+    donor = '/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/data/donor.fa'
+    acceptor = '/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/data/acceptor.fa'
     extract_sequences(fasta, gff, donor, acceptor)
