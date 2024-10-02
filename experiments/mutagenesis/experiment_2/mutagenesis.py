@@ -481,10 +481,10 @@ def mutagenesis(args):
         
         scoring_position = scoring_positions[site]
             
-        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/data/{site}_{sample_number}.fa'
+        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/data/{site}_{sample_number}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/results/exp_{exp_number}/{model_type}_{flanking_size}_{site}_samp{sample_number}"
+        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/results/exp_{exp_number}/{model_type}_{flanking_size}_{site}_samp{sample_number}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging

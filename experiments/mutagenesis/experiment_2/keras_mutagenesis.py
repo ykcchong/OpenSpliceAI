@@ -253,10 +253,10 @@ def mutagenesis(batch_num, flanking_size):
         
         scoring_position = scoring_positions[site]
             
-        fasta_file = f'experiments/mutagenesis/data/keras_job/{site}_batch{batch_num}.fa'
+        fasta_file = f'experiments/mutagenesis/experiment_2/data/keras_job/{site}_batch{batch_num}.fa'
         
         # Initialize params
-        output_dir = f"experiments/mutagenesis/results/keras_job/{model_type}_{flanking_size}_{site}"
+        output_dir = f"experiments/mutagenesis/experiment_2/results/keras_job/{model_type}_{flanking_size}_{site}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
