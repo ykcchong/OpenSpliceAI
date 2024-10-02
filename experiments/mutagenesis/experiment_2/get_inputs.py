@@ -10,9 +10,9 @@ def get_sequence(seqid, center_pos, half_len, fasta):
     start = center_pos - half_len
     end = center_pos + half_len
     if start < 1:
-        start = 1
+        return None
     if end > len(fasta[seqid]):
-        end = len(fasta[seqid])
+        return None
     seq = fasta[seqid][start:end]
     return seq
 
@@ -39,8 +39,6 @@ def extract_sequences(fasta_file, gff_file, output_donor, output_acceptor, seq_l
     donor_seqs = []
     acceptor_seqs = []
 
-    half_len = seq_length // 2
-
     # Function to get the biotype of a feature
     def get_biotype(feature):
         for key in ['gene_biotype', 'gene_type', 'biotype']:
@@ -51,55 +49,44 @@ def extract_sequences(fasta_file, gff_file, output_donor, output_acceptor, seq_l
     # Iterate over genes in the GFF database
     for gene in db.features_of_type('gene'):
         biotype = get_biotype(gene)
+        strand = gene.strand
+        gene_seq = fasta[gene.seqid][gene.start-1:gene.end]
+        if strand == '-':
+            continue
+            gene_seq = gene_seq.reverse.complement
+        gene_seq = str(gene_seq).upper()
+        gene_len = len(gene_seq)
         if biotype == 'protein_coding':
             # Process exons of protein-coding genes
-            for exon in db.children(gene, featuretype='exon', order_by='start'):
-                seqid = exon.seqid
-                start = exon.start
-                end = exon.end
-                strand = exon.strand
-
-                # Get donor sequence (exon end is the donor site, GT motif)
-                donor_seq = get_sequence(seqid, end, half_len, fasta)
-                if len(donor_seq) < 2:
-                    continue
-                if strand == "-":
-                    donor_seq = donor_seq.reverse.complement
-                donor_seq = str(donor_seq)
+            exons = list(db.children(gene, featuretype='exon', order_by='start'))
+            for exon_1, exon_2 in zip(exons[:-1], exons[1:]):
+                seqid = exon_1.seqid
                 
-                if strand == "-":
-                    # Check for AG motif (acceptor)
-                    mid_acceptor_seq = donor_seq[-2:]  # Get the last two bases for acceptor
-                    if mid_acceptor_seq == "AG":
-                        acceptor_motifs[mid_acceptor_seq] = acceptor_motifs.get(mid_acceptor_seq, 0) + 1
-                        acceptor_seqs.append(f">{seqid}_acceptor_{start}\n{donor_seq}")
-                else:
-                    # Check for GT motif (donor)
-                    mid_donor_seq = donor_seq[-2:]  # Get the last two bases for donor
-                    if mid_donor_seq == "GT":
-                        donor_motifs[mid_donor_seq] = donor_motifs.get(mid_donor_seq, 0) + 1
-                        donor_seqs.append(f">{seqid}_donor_{end}\n{donor_seq}") 
-
-                # Get acceptor sequence (exon start is the acceptor site, AG motif)
-                acceptor_seq = get_sequence(seqid, start, half_len, fasta)
-                if len(acceptor_seq) < 2:
-                    continue
-                if strand == "-":
-                    acceptor_seq = acceptor_seq.reverse.complement
-                acceptor_seq = str(acceptor_seq)
-
-                if strand == "-":
-                    # Check for GT motif (donor)
-                    mid_donor_seq = acceptor_seq[:2]  # Get the first two bases for donor
-                    if mid_donor_seq == "GT":
-                        donor_motifs[mid_donor_seq] = donor_motifs.get(mid_donor_seq, 0) + 1
-                        donor_seqs.append(f">{seqid}_donor_{end}\n{acceptor_seq}")
-                else:
-                    # Check for AG motif (acceptor)
-                    mid_acceptor_seq = acceptor_seq[:2]  # Get the first two bases for acceptor
-                    if mid_acceptor_seq == "AG":
-                        acceptor_motifs[mid_acceptor_seq] = acceptor_motifs.get(mid_acceptor_seq, 0) + 1
-                        acceptor_seqs.append(f">{seqid}_acceptor_{start}\n{acceptor_seq}")
+                first = exon_1.end - gene.start
+                second = exon_2.start - gene.start
+            
+                if strand == '+':
+                    donor = first
+                    acceptor = second
+                elif strand == '-':
+                    donor = gene_len - second - 1
+                    acceptor = gene_len - first - 1
+                
+                # Get motifs
+                d_motif = str(gene_seq[donor+1:donor+3])
+                a_motif = str(gene_seq[acceptor-2:acceptor])  
+                if not (d_motif and a_motif):
+                    continue   
+                donor_motifs[d_motif] = donor_motifs.get(d_motif, 0) + 1
+                acceptor_motifs[a_motif] = acceptor_motifs.get(a_motif, 0) + 1
+                    
+                # Get donor sequence (exon end is the donor site, GT motif)
+                donor_seq = get_sequence(seqid, donor + 1, seq_length // 2, fasta)
+                acceptor_seq = get_sequence(seqid, acceptor - 1, seq_length // 2, fasta)
+                if donor_seq:
+                    donor_seqs.append(f">{seqid}_donor_{donor}\n{donor_seq}")
+                if acceptor_seq:
+                    acceptor_seqs.append(f">{seqid}_acceptor_{acceptor}\n{acceptor_seq}")     
         
     print("Donor motifs:")
     print(sorted(donor_motifs.items(), key=lambda x: x[1], reverse=True))
