@@ -228,8 +228,6 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
                     'acceptor_score': acceptor_scores[i],
                     'donor_score': donor_scores[i]
                 })
-
-            print(results)
     
             # Release memory if possible
             if model_type == 'keras':
