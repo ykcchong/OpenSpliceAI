@@ -11,22 +11,8 @@ from openspliceai.train_base.utils import *
 from openspliceai.constants import *
 import time
 
-def initialize_model_and_optim(device, flanking_size):
-    """
-    Initializes the SpliceAI model, criterion (loss function), optimizer, and learning rate scheduler, 
-    based on the provided flanking size and model architecture. 
 
-    Parameters:
-    - device (torch.device): The computational device to use (CUDA, MPS, or CPU).
-    - flanking_size (int): The size of the flanking sequences, influencing the model architecture.
-
-    Returns:
-    - model (torch.nn.Module): The initialized SpliceAI model.
-    - criterion (torch.nn.Module): The loss function to be used during training.
-    - optimizer (torch.optim.Optimizer): The optimizer for training the model.
-    - scheduler (torch.optim.lr_scheduler): The learning rate scheduler.
-    - params (dict): Dictionary containing model and training parameters.
-    """
+def initialize_model_and_optim(device, flanking_size, epochs, scheduler):
     # Hyper-parameters:
     # L: Number of convolution kernels
     # W: Convolution window size in each residual unit
@@ -61,12 +47,16 @@ def initialize_model_and_optim(device, flanking_size):
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     model = SpliceAI(L, W, AR).to(device)
     print(model, file=sys.stderr)
+    # optimizer = optim.Adam(model.parameters(), lr=1e-3)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
-    # optimizer = optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[6, 7, 8, 9], gamma=0.5)
+    if scheduler == "MultiStepLR":
+        scheduler_obj = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[epochs-4, epochs-3, epochs-2, epochs-1], gamma=0.5)
+    elif scheduler == "CosineAnnealingWarmRestarts":
+        scheduler_obj = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
+            optimizer, T_0=5, T_mult=1, eta_min=1e-5, last_epoch=-1)    
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
-    return model, optimizer, scheduler, params
+    return model, optimizer, scheduler_obj, params
 
 
 def train(args):
@@ -75,12 +65,12 @@ def train(args):
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(args)
     train_h5f, test_h5f, batch_num = load_datasets(args)
     train_idxs, val_idxs, test_idxs = generate_indices(batch_num, args.random_seed, test_h5f)
-    model, optimizer, scheduler, params = initialize_model_and_optim(device, args.flanking_size)
+    model, optimizer, scheduler, params = initialize_model_and_optim(device, args.flanking_size, args.epochs, args.scheduler)
     params["RANDOM_SEED"] = args.random_seed
     train_metric_files = create_metric_files(log_output_train_base)
     valid_metric_files = create_metric_files(log_output_val_base)
     test_metric_files = create_metric_files(log_output_test_base)
-    train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs,
-                val_idxs, test_idxs, model_output_base, args, device, params, train_metric_files, valid_metric_files, test_metric_files)
+    train_model(model, optimizer, scheduler, train_h5f, test_h5f, 
+                train_idxs, val_idxs, test_idxs, model_output_base, args, device, params, train_metric_files, valid_metric_files, test_metric_files)
     train_h5f.close()
     test_h5f.close()
