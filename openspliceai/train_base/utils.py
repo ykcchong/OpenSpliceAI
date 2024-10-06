@@ -217,9 +217,6 @@ def test_SpliceAI_Keras_model(model, test_h5f, test_idxs, args, params, test_met
     print("="*60)
 
 
-
-
-
 def test_model(model, optimizer, test_h5f, test_idxs, args, device, params, test_metric_files):
     print("test_idxs: ", test_idxs)
     print(f"\n{'='*60}")
@@ -272,7 +269,7 @@ def create_metric_files(log_output_base):
     metric_types = ['donor_topk_all', 'donor_topk', 'donor_auprc', 'donor_accuracy', 'donor_precision', 
                     'donor_recall', 'donor_f1', 'acceptor_topk_all', 'acceptor_topk', 'acceptor_auprc', 
                     'acceptor_accuracy', 'acceptor_precision', 'acceptor_recall', 'acceptor_f1', 
-                    'accuracy', 'loss_batch', 'loss_every_update']
+                    'accuracy', 'loss_batch', 'loss_every_update', 'learning_rate_every_epoch', 'learning_rate_every_batch']
     return {metric: f'{log_output_base}/{metric}.txt' for metric in metric_types}
 
 
@@ -428,7 +425,7 @@ def valid_epoch(model, h5f, idxs, batch_size, criterion, device, params, metric_
     return eval_loss
 
 
-def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, flanking_size, run_mode):
+def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, device, params, metric_files, flanking_size, run_mode, global_batch_idx):
     print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
     model.train()
     running_loss = 0.0
@@ -438,7 +435,14 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
     batch_ylabel = []
     batch_ypred = []
     print_dict = {}
-    batch_idx = 0
+
+    # Calculate total number of batches in the epoch
+    total_batches_in_epoch = 0
+    for shard_idx in idxs:
+        # Load the loader to get its length
+        loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False)
+        total_batches_in_epoch += len(loader)
+
     for i, shard_idx in enumerate(shuffled_idxs, 1):
         print(f"Shard {i}/{len(shuffled_idxs)}")
         loader = load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=True)
@@ -463,10 +467,19 @@ def train_epoch(model, h5f, idxs, batch_size, criterion, optimizer, scheduler, d
             print_dict["loss"] = loss.item()
             pbar.set_postfix(print_dict)
             pbar.update(1)
-            batch_idx += 1
+
+            # Update the scheduler
+            epoch_fraction = global_batch_idx / total_batches_in_epoch
+            scheduler.step(epoch_fraction)
+            # Log current learning rate
+            current_lr = scheduler.get_last_lr()[0]
+            print_dict["lr"] = f"{current_lr:.6e}"        
+            global_batch_idx += 1  # Increment global batch index
+            with open(metric_files['learning_rate_every_batch'], 'a') as f:
+                f.write(f"{current_lr}\n")
         pbar.close()
     eval_loss = model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion)
-    return eval_loss
+    return eval_loss, global_batch_idx
 
 
 def calculate_metrics(y_true, y_pred):
@@ -588,16 +601,16 @@ def train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, va
     print("train_idxs: ", train_idxs)
     print("val_idxs: ", val_idxs)
     print("test_idxs: ", test_idxs)
-
     best_val_loss = float('inf')
     epochs_no_improve = 0
+    global_batch_idx = 0  # Initialize before the training loop
     for epoch in range(args.epochs):
         print(f"\n{'='*60}")
-        current_lr = optimizer.param_groups[0]['lr']
-        print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
+        # current_lr = optimizer.param_groups[0]['lr']
+        # print(f">> Epoch {epoch + 1}; Current Learning Rate: {current_lr}")
         start_time = time.time()
-        train_loss = train_epoch(model, train_h5f, train_idxs, params["BATCH_SIZE"], args.loss, optimizer, 
-                                 scheduler, device, params, train_metric_files, args.flanking_size, run_mode="train")
+        train_loss, global_batch_idx= train_epoch(model, train_h5f,
+                        train_idxs, params["BATCH_SIZE"], args.loss, optimizer, scheduler, device, params, train_metric_files, args.flanking_size, run_mode="train", global_batch_idx=global_batch_idx)
         val_loss = valid_epoch(model, train_h5f, val_idxs, params["BATCH_SIZE"], args.loss, device, 
                                params, valid_metric_files, args.flanking_size, "validation")
         test_loss = valid_epoch(model, test_h5f, test_idxs, params["BATCH_SIZE"], args.loss, device, 
@@ -607,7 +620,6 @@ def train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, va
         print(f"Testing Loss: {test_loss}")
         torch.save(model.state_dict(), f"{model_output_base}/model_{epoch}.pt")
         if args.early_stopping:
-            scheduler.step(val_loss)
             if val_loss.item() < best_val_loss:
                 best_val_loss = val_loss.item()
                 torch.save(model.state_dict(), f"{model_output_base}/model_best.pt")
@@ -624,5 +636,9 @@ def train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, va
                 best_val_loss = val_loss.item()
                 torch.save(model.state_dict(), f"{model_output_base}/model_best.pt")
                 print("New best model saved.")
+        current_lr = scheduler.get_last_lr()[0]
+        with open(train_metric_files['learning_rate_every_epoch'], 'a') as f:
+            f.write(f"{current_lr}\n")
+        print(f">> Epoch {epoch + 1}; Final Learning Rate: {current_lr}")
         print(f"--- {time.time() - start_time:.2f} seconds ---")
         print("="*60)

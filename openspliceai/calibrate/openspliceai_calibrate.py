@@ -60,4 +60,4 @@ class SpliceAI(nn.Module):
             x, skip = m(x, skip)
         final_x = self.crop(skip)
         out = self.final_conv(final_x)
-        return F.softmax(out, dim=1)
+        return out
