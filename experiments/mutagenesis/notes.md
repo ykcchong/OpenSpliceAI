@@ -10,9 +10,21 @@
 1. **Gene mutation at single position**
    - Take score change at every position, only 3 will have nonzero delta score
 2. **Window around acceptor (or donor) site and mutate every base**
+   - Figure 1.D
+   - chr3:142740137-142740263 (127 nt) acceptor site -> sample 4acc
 3. **Branch point insertion** (focus on acceptor site) -> Replace the sequence
+   - Figure S2.C
+   - window around 100nt
+   - 14289 test set of splice acceptors
 
 ---
+
+# Final Mutagenesis Figure
+
+A. DNA logo - The averaged results from all 100 samples (exp 2) -> comparison of keras vs pytorch to show similarity
+B. DNA logo - reproduce 1.D (exp 2)
+C. full gene before vs. after (maybe bam coverage) - Show capturing new cryptic splice site (exp 1)
+D. bar plot - reproduce S2.C (exp 3)
 
 <!-- ## mutagenesis.py
 
