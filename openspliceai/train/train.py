@@ -51,7 +51,7 @@ def initialize_model_and_optim(device, flanking_size, epochs, scheduler):
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3)
     # scheduler = get_cosine_schedule_with_warmup(optimizer, 1000, train_size * EPOCH_NUM)
     if scheduler == "MultiStepLR":
-        scheduler_obj = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[epochs-4, epochs-3, epochs-2, epochs-1], gamma=0.5)
+        scheduler_obj = optim.lr_scheduler.MultiStepLR(optimizer, milestones=[epochs-5, epochs-4, epochs-3, epochs-2, epochs-1], gamma=0.5)
     elif scheduler == "CosineAnnealingWarmRestarts":
         scheduler_obj = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(
             optimizer, T_0=5, T_mult=1, eta_min=1e-5, last_epoch=-1)    

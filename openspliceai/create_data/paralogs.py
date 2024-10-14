@@ -46,8 +46,9 @@ def remove_paralogous_sequences(train_data, test_data, min_identity, min_coverag
         for hit in aligner.map(test_seq):
             identity = hit.mlen / hit.blen
             coverage = hit.blen / len(test_seq)
+            fw.write(f"{test_data[0][i]}\t{identity}\t{coverage}\n")
             if identity >= min_identity and coverage >= min_coverage:
-                fw.write(f"{test_data[0][i]}\t{identity}\t{coverage}\n")
+                # fw.write(f"{test_data[0][i]}\t{identity}\t{coverage}\n")
                 print(f"\tParalogs detected: Identity: {identity}, Coverage: {coverage}")
                 is_paralogous = True
                 paralogous_count += 1
