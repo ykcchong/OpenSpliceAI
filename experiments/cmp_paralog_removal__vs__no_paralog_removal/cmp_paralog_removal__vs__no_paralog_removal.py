@@ -25,7 +25,7 @@ def process_directory(dir_path):
     return data
 
 
-def plot_comparison(data_dict, metrics, specie):
+def plot_comparison(data_dict, metrics, specie, target, split):
     n_metrics = len(metrics)
     n_cols = 5
     n_rows = (n_metrics + n_cols - 1) // n_cols
@@ -64,12 +64,14 @@ def plot_comparison(data_dict, metrics, specie):
         fig.delaxes(axes[row, col] if n_rows > 1 else axes[col])
 
     plt.tight_layout()
-    plt.savefig(f'viz/{specie}_all_conditions_comparison.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'{target}/{split}/{specie}_all_conditions_comparison.png', dpi=300, bbox_inches='tight')
     plt.close()
 
 
 def main():
-    os.makedirs('viz', exist_ok=True)
+    target="viz_my_split"
+    # target="viz_spliceai_default"
+    os.makedirs(target, exist_ok=True)
     base_path = '/home/kchao10/data_ssalzbe1/khchao/OpenSpliceAI/results'
     conditions = ['80', '400', '2000', '10000']
     # species = ['arabidopsis', 'mouse', 'bee', 'zebrafish']
@@ -82,31 +84,35 @@ def main():
         data_dict = {}
         combined_df = pd.DataFrame()
 
-        for condition in conditions:
-            no_paralog_removed = f'{base_path}/train_no_paralog_removal_outdir/{specie}/flanking_{condition}/SpliceAI_{specie}_train_{condition}_0_rs22/0/LOG/TEST'
+        for split in ['TRAIN', 'TEST']:
+            os.makedirs(f'{target}/{split}', exist_ok=True)
+            for condition in conditions:
+                no_paralog_removed = f'{base_path}/train_my_split_no_paralog_removal_outdir/{specie}/flanking_{condition}/SpliceAI_{specie}_train_{condition}_0_rs22/0/LOG/{split}/'
+                paralog_removed = f'{base_path}/train_my_split_paralog_removal_outdir/{specie}/flanking_{condition}/SpliceAI_{specie}_train_{condition}_0_rs22/0/LOG/{split}/'
+                
+                # no_paralog_removed = f'{base_path}/train_spliceai_default_no_paralog_removal_outdir/{specie}/flanking_{condition}/SpliceAI_{specie}_train_{condition}_0_rs22/0/LOG/{split}'
+                # paralog_removed = f'{base_path}/train_spliceai_default_paralog_removed_outdir/{specie}/flanking_{condition}/SpliceAI_{specie}_train_{condition}_0_rs22/0/LOG/{split}'
 
-            paralog_removed = f'{base_path}/train_outdir/{specie}/flanking_{condition}/SpliceAI_{specie}_train_{condition}_0_rs22/0/LOG/TEST'
-            
-            no_paralog_removed_data = process_directory(no_paralog_removed)
-            print("=========")
-            paralog_removed_data = process_directory(paralog_removed)
+                no_paralog_removed_data = process_directory(no_paralog_removed)
+                print("=========")
+                paralog_removed_data = process_directory(paralog_removed)
 
-            data_dict[condition] = (no_paralog_removed_data, paralog_removed_data)
-            print(no_paralog_removed_data.keys())
-            print(paralog_removed_data.keys())
+                data_dict[condition] = (no_paralog_removed_data, paralog_removed_data)
+                print(no_paralog_removed_data.keys())
+                print(paralog_removed_data.keys())
 
-            # Add data to combined DataFrame
-            for metric in metrics:
-                print(f'{no_paralog_removed_data[metric]}')
-                print(f'{paralog_removed_data[metric]}')
-                combined_df[f'{metric}_scratch_{condition}'] = no_paralog_removed_data[metric]
-                combined_df[f'{metric}_finetune_{condition}'] = paralog_removed_data[metric]
+                # Add data to combined DataFrame
+                for metric in metrics:
+                    print(f'{no_paralog_removed_data[metric]}')
+                    print(f'{paralog_removed_data[metric]}')
+                    # combined_df[f'{metric}_scratch_{condition}'] = no_paralog_removed_data[metric]
+                    # combined_df[f'{metric}_finetune_{condition}'] = paralog_removed_data[metric]
 
-        # Plot comparison for all conditions
-        plot_comparison(data_dict, metrics, specie)
+            # Plot comparison for all conditions
+            plot_comparison(data_dict, metrics, specie, target, split)
 
-        # Save combined DataFrame
-        combined_df.to_csv(f'viz/{specie}_all_conditions_comparison.csv', index=False)
+        # # Save combined DataFrame
+        # combined_df.to_csv(f'viz/{specie}_all_conditions_comparison.csv', index=False)
 
     print("Comparison complete. Results saved in CSV files and PNG files for each species.")
 
