@@ -74,6 +74,7 @@ def parse_args_calibrate(subparsers):
     parser_calibrate.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
     parser_calibrate.add_argument("--flanking-size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
     parser_calibrate.add_argument("--random-seed", '-r', type=int, default=42, help="Random seed for reproducibility")
+    parser_calibrate.add_argument("--temperature-file", '-T', type=str, default=None, required=False, help="Path to the temperature file")
     parser_calibrate.add_argument("--pretrained-model", '-m', type=str, required=True, help="Path to the pre-trained model")
     parser_calibrate.add_argument("--train-dataset", '-train', type=str, required=True, help="Path to the training dataset")
     parser_calibrate.add_argument("--test-dataset", '-test', type=str, required=True, help="Path to the testing dataset")
