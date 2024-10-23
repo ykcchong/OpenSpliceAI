@@ -315,7 +315,6 @@ def calculate_average_score_change(ref_scores, mut_scores):
 def generate_dna_logo(score_changes, output_file):
     
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
-
     # Fill any missing values with 0, just in case
     data_df = data_df.fillna(0)
     print(data_df)
@@ -360,128 +359,100 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     Sample: 4    
     '''
     
+    # Load fasta file and sequence
     fasta = Fasta(fasta_file)
-    sequence = str(fasta[list(fasta.keys())[0]][:])  # Get the full sequence
+    sequence = str(fasta[0])
     seq_length = len(sequence)
+    
+    # Initialize DataFrames to store cumulative sums and counts
+    acceptor_df = pd.DataFrame(0, index=range(seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
+    donor_df = pd.DataFrame(0, index=range(seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
 
-    # Initialize DataFrames to store cumulative delta scores and counts
-    cumulative_acceptor_delta_df = pd.DataFrame(0, index=range(seq_length), columns=['A', 'C', 'G', 'T'], dtype='float64')
-    cumulative_donor_delta_df = pd.DataFrame(0, index=range(seq_length), columns=['A', 'C', 'G', 'T'], dtype='float64')
-    count_df = pd.DataFrame(0, index=range(seq_length), columns=['A', 'C', 'G', 'T'])  # Store counts for averaging
-
-    # Parameters
-    flanking_size = 5000  # Adjust as needed
-    dist_var = 50  # As in get_delta_scores
-    cov = 2 * dist_var + 1
-    window_size = 2 * flanking_size + cov
-    device = setup_device()
-    model_type = 'pytorch'  # or 'keras', depending on your models
-    models = [...]  # Load your models here
-
-    # Iterate over each base in the sequence
+    # Iterate over each base in the transcript
     for pos in tqdm(range(seq_length)):
         ref_base = sequence[pos]
         mutations = mutate_base(ref_base)
+
+        # Get reference sequence scores
+        ref_sequence = sequence[:pos] + ref_base + sequence[pos + 1:]
+        assert(sequence == ref_sequence)
         
-        # Generate reference sequence with padding
-        start = max(0, pos - window_size // 2)
-        end = min(seq_length, pos + window_size // 2 + 1)
-        seq_window = sequence[start:end]
+        ref_acceptor_scores, ref_donor_scores = predict(models, model_type, flanking_size, ref_sequence, device=device)
+        assert(len(ref_acceptor_scores) == len(ref_donor_scores) == seq_length)
         
-        # Pad sequence to match window size
-        pad_left = window_size // 2 - (pos - start)
-        pad_right = window_size // 2 - (end - pos - 1)
-        x_ref_seq = 'N' * pad_left + seq_window + 'N' * pad_right
-        
-        # One-hot encode reference sequence
-        x_ref = one_hot_encode(x_ref_seq)[None, :]
-        
-        # Predict scores for reference sequence
-        y_ref = predict(models, model_type, x_ref, device=device)
-        
-        # Extract acceptor and donor scores for reference sequence
-        y_ref_acceptor = y_ref[0, :, 1]
-        y_ref_donor = y_ref[0, :, 2]
-        
-        # Mutate the base and get delta scores for each mutation
+        # Extract the reference scores
+        ref_acceptor_score = ref_acceptor_scores[scoring_position]
+        ref_donor_score = ref_donor_scores[scoring_position]
+        assert(np.argmax(ref_acceptor_scores) == scoring_position)
+
+        # Update cumulative sums and counts for 'ref'
+        acceptor_df.loc[pos, 'ref'] = ref_acceptor_score
+        donor_df.loc[pos, 'ref'] = ref_donor_score
+
+        # Store the reference score in the corresponding base column and update counts
+        acceptor_df.loc[pos, ref_base] = ref_acceptor_score
+        donor_df.loc[pos, ref_base] = ref_donor_score
+
+        # Mutate the base and get scores for each mutation
         for mut_base in mutations:
-            # Generate mutated sequence
             mut_sequence = sequence[:pos] + mut_base + sequence[pos + 1:]
-            
-            # Generate mutated sequence window with padding
-            seq_window_mut = mut_sequence[start:end]
-            x_mut_seq = 'N' * pad_left + seq_window_mut + 'N' * pad_right
-            
-            # One-hot encode mutated sequence
-            x_mut = one_hot_encode(x_mut_seq)[None, :]
-            
-            # Predict scores for mutated sequence
-            y_mut = predict(models, model_type, x_mut, device=device)
-            
-            # Extract acceptor and donor scores for mutated sequence
-            y_mut_acceptor = y_mut[0, :, 1]
-            y_mut_donor = y_mut[0, :, 2]
-            
-            # Calculate delta scores (mutated - reference)
-            delta_acceptor = y_mut_acceptor - y_ref_acceptor
-            delta_donor = y_mut_donor - y_ref_donor
-            
-            # Find maximum delta scores and their positions within the window
-            max_delta_acceptor = np.max(delta_acceptor)
-            max_delta_donor = np.max(delta_donor)
-            
-            # Alternatively, store delta at the current position (center of the window)
-            center_idx = window_size // 2
-            delta_acceptor_pos = delta_acceptor[center_idx]
-            delta_donor_pos = delta_donor[center_idx]
-            
-            # Accumulate delta scores at the position for the mutated base
-            cumulative_acceptor_delta_df.loc[pos, mut_base] += delta_acceptor_pos  # or max_delta_acceptor
-            cumulative_donor_delta_df.loc[pos, mut_base] += delta_donor_pos  # or max_delta_donor
-            
-            # Update count
-            count_df.loc[pos, mut_base] += 1
-        
-        # Update counts for reference base (if needed)
-        # count_df.loc[pos, ref_base] += 1
+            assert(sequence != mut_sequence)
 
-    # Calculate average delta scores
-    acceptor_avg_delta_df = cumulative_acceptor_delta_df.div(count_df.replace(0, np.nan))
-    donor_avg_delta_df = cumulative_donor_delta_df.div(count_df.replace(0, np.nan))
+            # Predict the scores for the mutated sequence
+            mut_acceptor_scores, mut_donor_scores = predict(models, model_type, flanking_size, mut_sequence, device=device)
+            assert(len(mut_acceptor_scores) == len(mut_donor_scores) == seq_length)
+            
+            mut_acceptor_score = mut_acceptor_scores[scoring_position]
+            mut_donor_score = mut_donor_scores[scoring_position]
 
-    ### GENERATE PLOTS ###
+            # Update cumulative sums and counts for the mutated base
+            acceptor_df.loc[pos, mut_base] = mut_acceptor_score
+            donor_df.loc[pos, mut_base] = mut_donor_score
 
-    # Generate DNA logos for acceptor and donor delta scores
-    acceptor_score_change_df = acceptor_avg_delta_df.fillna(0)
-    donor_score_change_df = donor_avg_delta_df.fillna(0)
+        # release memory if possible
+        if model_type == 'keras':
+            K.clear_session()  # clear the session after each prediction
 
-    # Plot acceptor DNA logo
+    print(acceptor_df)
+
+    # Generate DNA logos for acceptor and donor score changes
+    acceptor_score_change_df = acceptor_df.apply(
+            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+            axis=1
+        )
+    donor_score_change_df = donor_df.apply(
+            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
+            axis=1
+        )
+
     generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
 
-    # Calculate average score change for each position
-    acceptor_average_score_change = acceptor_avg_delta_df.mean(axis=1).fillna(0)
+    # Calculate average score change for each base and plot
+    acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
 
-    # Plot average acceptor score change
-    plot_average_dna_logo(acceptor_average_score_change, sequence, f'{output_dir}/acceptor_average_score_change.png')
+    plot_average_dna_logo(acceptor_score_change, sequence, f'{output_dir}/acceptor_average_score_change.png')
 
-    ### WRITE DELTA SCORES TO FILE ###
+    ### WRITE SCORES TO FILE ###
 
     # Add prefixes to differentiate between acceptor and donor columns
-    acceptor_combined_df = acceptor_avg_delta_df.add_prefix('acceptor_')
-    donor_combined_df = donor_avg_delta_df.add_prefix('donor_')
+    acceptor_combined_df = pd.concat([acceptor_df, acceptor_score_change_df.add_suffix('_change')], axis=1)
+    acceptor_combined_df = acceptor_combined_df.add_prefix('acceptor_')
+
+    donor_combined_df = pd.concat([donor_df, donor_score_change_df.add_suffix('_change')], axis=1)
+    donor_combined_df = donor_combined_df.add_prefix('donor_')
 
     # Concatenate acceptor and donor DataFrames
     combined_df = pd.concat([acceptor_combined_df, donor_combined_df], axis=1)
 
-    # Save to CSV
-    combined_df.to_csv(f'{output_dir}/delta_scores.csv', index=False)
+    # Save everything to a single CSV file
+    combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
 
 def mutagenesis():
     # acceptor site at chr3:142,740,192 (pos 55 in sequence)
      
     model_types = ['pytorch', 'keras']
     sites = ['acceptor']
-    scoring_position = 57
+    scoring_position = 55
     flanking_sizes = [80, 400, 2000, 10000]
     exp_number = 6
     sample_number = 4
