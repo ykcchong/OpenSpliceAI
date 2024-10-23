@@ -11,7 +11,8 @@
    - Take score change at every position, only 3 will have nonzero delta score
 2. **Window around acceptor (or donor) site and mutate every base**
    - Figure 1.D
-   - chr3:142740137-142740263 (127 nt) acceptor site -> sample 4acc
+   - chr3:142740137-142740263 (127 nt) acceptor site -> sample 4acc 
+      - THIS IS GRCh37!!! exon 9 from U2SURP gene (location changed in GRCh38)
 3. **Branch point insertion** (focus on acceptor site) -> Replace the sequence
    - Figure S2.C
    - window around 100nt
