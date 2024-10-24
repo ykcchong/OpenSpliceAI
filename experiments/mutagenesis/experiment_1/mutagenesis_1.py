@@ -349,19 +349,15 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     sequence = str(fasta[header])
     
     # Extract the site position from the header
-    # Example header: '>chr1:10000-10800(+)_donor_site_10400'
+    # i.e.: '>chr1:10000-10800(+)_donor_site_10400'
     header_parts = header.split('_')
-    site_info = header_parts[-1]  # '10400'
-    selected_site_position = int(site_info)
+    site_position = int(header_parts[-1])    
+    site_type = header_parts[-3]
     
     # Calculate the relative position of the site in the sequence
     sequence_length = len(sequence)
-    window_size = sequence_length
-    half_window = window_size // 2
-    scoring_position = half_window  # Center of the sequence
-    
-    # Now adjust mutation_position based on the scoring_position
-    mutation_position = scoring_position
+    scoring_position = site_position - 2 if site_type == 'donor' else site_position + 2
+    mutation_position = site_position
     
     bases_to_mutate = sequence[mutation_position:mutation_position+mutation_length]
     bases_to_mutate = tuple(bases_to_mutate)

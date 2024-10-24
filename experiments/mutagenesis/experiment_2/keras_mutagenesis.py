@@ -72,7 +72,7 @@ def load_models(model_path, model_type, CL):
     if model_type == "keras":
     
         if model_path == None:
-            paths = (f'/home/kchao10/data_ssalzbe1/khchao/OpenSpliceAI/models/spliceai/SpliceAI_models/SpliceNet{CL}_c{x}.h5' for x in range(1, 6))
+            paths = (f'models/SpliceAI/SpliceNet{CL}_c{x}.h5' for x in range(1, 6))
             models = [load_keras_models(x) for x in paths]
             return models, None
         return load_keras_models(model_path)
@@ -241,7 +241,7 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     results_df.to_csv(output_file, index=False)
     
 
-def mutagenesis(output_dir, batch_num, flanking_size):
+def mutagenesis(batch_num, flanking_size):
         
     model_type = 'keras'
     sites = ['donor', 'acceptor']
@@ -251,10 +251,10 @@ def mutagenesis(output_dir, batch_num, flanking_size):
         
         scoring_position = scoring_positions[site]
             
-        fasta_file = f'{output_dir}/data/keras_job/{site}_batch{batch_num}.fa'
+        fasta_file = f'experiments/mutagenesis/experiment_2/data/keras_job/{site}_batch{batch_num}.fa'
         
         # Initialize params
-        output_dir = f"{output_dir}/results/keras_job/{model_type}_{flanking_size}_{site}"
+        output_dir = f"experiments/mutagenesis/experiment_2/results/keras_job/{model_type}_{flanking_size}_{site}_{batch_num}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
@@ -268,11 +268,8 @@ def mutagenesis(output_dir, batch_num, flanking_size):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument("output_dir", type=str, help="Output directory")
     parser.add_argument("batch_num", type=int, help="Batch number")
     parser.add_argument("model_size", type=int, help="Model size")
     args = parser.parse_args()
-
-    print(args.output_dir, args.batch_num, args.model_size)
-
-    mutagenesis(args.output_dir, args.batch_num, args.model_size)
+    
+    mutagenesis(args.batch_num, args.model_size)

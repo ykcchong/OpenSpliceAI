@@ -359,8 +359,7 @@ def reformat_data(X0, debug=False):
 
 def one_hot_encode(Xd):
     """
-    Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
-    predefined mappings (IN_MAP for inputs and OUT_MAP for outputs).
+    Perform one-hot encoding on the input sequence data (Xd).
 
     Parameters:
     - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
@@ -682,7 +681,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
                 if debug:
                     print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
 
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
+                # DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                 DNAs = DNAs.to(torch.float32).to(device)
                 with torch.no_grad():
                     y_pred = model(DNAs)
