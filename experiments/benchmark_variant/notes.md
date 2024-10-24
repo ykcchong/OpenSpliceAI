@@ -20,6 +20,6 @@ variant calling on Mills+1000G gold standard vcf file
 8 runs
 
 # test run
- python ./experiments/benchmark_variant/variant_test.py -R /ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A /ccb/cybertron/smao10/openspliceai/data/vcf/grch38.txt -f 80 -m /ccb/cybertron/smao10/openspliceai/models/spliceai-mane/80nt/model_80nt_rs42.pt -I /ccb/cybertron/smao10/openspliceai/data/vcf/hg38_mills1000g_subset10.vcf -O ./experiments/benchmark_variant/test/result.vcf
+python ./experiments/benchmark_variant/variant_test.py -R /ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A /ccb/cybertron/smao10/openspliceai/data/vcf/grch38.txt -f 80 -m /ccb/cybertron/smao10/openspliceai/models/spliceai-mane/80nt/model_80nt_rs42.pt -I /ccb/cybertron/smao10/openspliceai/data/vcf/hg38_mills1000g_subset10.vcf -O ./experiments/benchmark_variant/test/result.vcf
 
-  python ./experiments/benchmark_variant/spliceai_orig.py -R /ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A /ccb/cybertron/smao10/openspliceai/data/vcf/grch38.txt -f 80 -I /ccb/cybertron/smao10/openspliceai/data/vcf/hg38_mills1000g_subset10.vcf -O ./experiments/benchmark_variant/test/result.vcf
+python ./experiments/benchmark_variant/spliceai_orig.py -R /ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna -A /ccb/cybertron/smao10/openspliceai/data/vcf/grch38.txt -f 80 -I /ccb/cybertron/smao10/openspliceai/data/vcf/hg38_mills1000g_subset10.vcf -O ./experiments/benchmark_variant/test/result.vcf

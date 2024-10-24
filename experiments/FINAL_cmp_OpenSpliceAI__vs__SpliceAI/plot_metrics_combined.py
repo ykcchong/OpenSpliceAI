@@ -5,6 +5,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 
+def calculate_improvement(metrics, flanking_sizes):
+    """Calculate the percentage improvement as flanking size increases."""
+    improvements = {}
+    for metric, values in metrics.items():
+        improvements[metric] = []
+        for i in range(1, len(flanking_sizes)):
+            # Get values for the two flanking sizes being compared
+            prev_values = [value for idx, value, fs in values if fs == flanking_sizes[i-1]]
+            curr_values = [value for idx, value, fs in values if fs == flanking_sizes[i]]
+            
+            if prev_values and curr_values:
+                prev_mean = np.mean(prev_values)
+                curr_mean = np.mean(curr_values)
+                # Calculate percentage improvement
+                improvement = ((curr_mean - prev_mean) / prev_mean) * 100 if prev_mean != 0 else np.nan
+                improvements[metric].append((flanking_sizes[i-1], flanking_sizes[i], improvement))
+            else:
+                improvements[metric].append((flanking_sizes[i-1], flanking_sizes[i], np.nan))
+    
+    return improvements
+
 def initialize_paths(flanking_size, rs, rs_idx, species, experiment, target):
     """Construct and return the test output path based on input parameters."""   
     # Construct the base result directory
@@ -232,10 +253,23 @@ def main():
     print("Metrics across SpliceAI-Keras:", metrics_keras)
     print("Metrics across OpenSpliceAI:", metrics_pytorch)
 
-    plot_metrics_with_error_bars(
-        args.output_dir, metrics_keras, metrics_pytorch, flanking_sizes, 
-        args.species, args.experiment
-    )
+    # Calculate performance improvement for both Keras and PyTorch models
+    improvement_keras = calculate_improvement(metrics_keras, flanking_sizes)
+    improvement_pytorch = calculate_improvement(metrics_pytorch, flanking_sizes)
+
+    # Log the improvements
+    print("** Performance improvement for SpliceAI-Keras:")
+    for metric, improvements in improvement_keras.items():
+        print(f"\t {metric} improvements:", improvements)
+
+    print("** Performance improvement for OpenSpliceAI:")
+    for metric, improvements in improvement_pytorch.items():
+        print(f"\t {metric} improvements:", improvements)
+
+    # plot_metrics_with_error_bars(
+    #     args.output_dir, metrics_keras, metrics_pytorch, flanking_sizes, 
+    #     args.species, args.experiment
+    # )
 
 if __name__ == "__main__":
     main()

@@ -11,7 +11,7 @@ from spliceaitoolkit.predict.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 import logomaker
 import matplotlib.pyplot as plt
-
+import sys
 import itertools
 from keras import backend as K
     
@@ -350,7 +350,7 @@ def plot_average_score_change(average_score_change, output_file, start=0, end=40
 ##############################################
 
 # Main function for mutagenesis experiment
-def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400):
+def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400, debug=False):
     '''
     Mutate every base in 400nt window around donor/acceptor site and measure the score change at the donor/acceptor site.
     '''
@@ -364,7 +364,11 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     count_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])  # Store counts for averaging
 
     # Iterate over each transcript
-    for seq_id in sequences.keys():
+    all_sequences = list(sequences.keys())
+    for i in range(len(all_sequences)):
+        seq_id = all_sequences[i]
+        if debug:
+            print(f"***** Processing sequence {i}/{len(all_sequences)}: {seq_id} *****", file=sys.stderr)
         sequence = str(sequences[seq_id])
         seq_length = len(sequence)
 
@@ -382,8 +386,15 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             ref_acceptor_scores, ref_donor_scores = predict(models, model_type, flanking_size, ref_sequence, device=device)
             
             # Extract the reference scores
-            ref_acceptor_score = ref_acceptor_scores[scoring_position]
-            ref_donor_score = ref_donor_scores[scoring_position]
+            # ref_acceptor_score = ref_acceptor_scores[scoring_position]
+            # ref_donor_score = ref_donor_scores[scoring_position]
+            ref_acceptor_score = max(ref_acceptor_scores)
+            ref_donor_score = max(ref_donor_scores)
+            
+            if debug:
+                acceptor_max_position = np.argmax(acceptor_scores)
+                donor_max_position = np.argmax(donor_scores)
+                print(f'acceptor_max_position: {acceptor_max_position}, donor_max_position: {donor_max_position}', file=sys.stderr)
             
             acceptor_scores[0] = ref_acceptor_score
             donor_scores[0] = ref_donor_score
@@ -405,7 +416,13 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
                     
                 acceptor_scores[base_order.index(mut_base) + 1] = mut_acceptor_score
                 donor_scores[base_order.index(mut_base) + 1] = mut_donor_score
-
+                
+            if debug:
+                if site == 'acceptor':
+                    print(f"Position: {pos}, Acceptor Scores: {' '.join(map(str, acceptor_scores))}", file=sys.stderr)
+                else:
+                    print(f"Position: {pos}, Donor Scores: {' '.join(map(str, donor_scores))}", file=sys.stderr)
+            
             # Update cumulative sums and counts
             cumulative_acceptor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += acceptor_scores
             cumulative_donor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += donor_scores
@@ -415,7 +432,12 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             # release memory if possible
             if model_type == 'keras':
                 K.clear_session()  # clear the session after each prediction
-
+    
+    if debug:          
+        print("***** Finished processing all sequences *****", file=sys.stderr)
+        print(cumulative_acceptor_df, file=sys.stderr)
+        print(count_df, file=sys.stderr)
+    
     # Calculate the rolling average across all sequences
     acceptor_avg_df = cumulative_acceptor_df / count_df
     donor_avg_df = cumulative_donor_df / count_df
@@ -462,14 +484,16 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
 
 
-def mutagenesis(args):
+def mutagenesis():
         
     model_types = ['pytorch', 'keras']
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
-    flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 5
+    # flanking_sizes = [80, 400, 2000, 10000]
+    flanking_sizes = [400]
+    exp_number = 7
     sample_number = 3
+    debug = True
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
@@ -495,7 +519,7 @@ def mutagenesis(args):
         models, device = load_models(model_path, model_type, flanking_size)
 
         # Run the mutagenesis experiment
-        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site)
+        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, debug=debug)
 
 if __name__ == '__main__':
     
