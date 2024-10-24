@@ -37,7 +37,7 @@
 |
 
 
-.. _same_species_liftover_bee:
+.. _bee_insect_spliceai:
 
 Honey bee (*Apis mellifera*)
 =========================================================================
@@ -51,10 +51,10 @@ We trained SpliceAI-PyTorch using four different flanking sequence lengths: 80 n
 .. raw:: html
 
     <ul>
-        <li><b>SpliceAI-honey_bee-10000nt</b><a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-honey_bee/SpliceAI-honey_bee-10000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a> </li>
-        <li>SpliceAI-honey_bee-2000nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-honey_bee/SpliceAI-honey_bee-2000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
-        <li>SpliceAI-honey_bee-400nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-honey_bee/SpliceAI-honey_bee-400nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
-        <li>SpliceAI-honey_bee-80nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/spliceai-honey_bee/SpliceAI-honey_bee-80nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li><b>SpliceAI-honey_bee-10000nt</b><a href="ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-honey_bee/SpliceAI-honey_bee-10000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg></a> </li>
+        <li>SpliceAI-honey_bee-2000nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-honey_bee/SpliceAI-honey_bee-2000nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li>SpliceAI-honey_bee-400nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-honey_bee/SpliceAI-honey_bee-400nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
+        <li>SpliceAI-honey_bee-80nt <a href="ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/spliceai-honey_bee/SpliceAI-honey_bee-80nt.pt" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </li>
     </ul>
 
 |
@@ -62,14 +62,14 @@ We trained SpliceAI-PyTorch using four different flanking sequence lengths: 80 n
 Train SpliceAI-honey_bee yourself
 +++++++++++++++++++++++++++++++++++
 
-This section provides detailed insights into the training process of models using the SpliceAI-toolkit. To train your own version of SpliceAI-honey_bee, you will need a Genome FASTA file and an Annotation GFF file. Below are the links to download these files:
+This section provides detailed insights into the training process of models using the OpenSpliceAI. To train your own version of SpliceAI-honey_bee, you will need a Genome FASTA file and an Annotation GFF file. Below are the links to download these files:
 
 
 Files for training
 -----------------------------------------
-* **Genome** file in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-honey_bee/GCF_000001405.40_GRCh38.p14_genomic.fna>`_ 
+* **Genome** file in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-honey_bee/GCF_000001405.40_GRCh38.p14_genomic.fna>`_ 
 
-* **Annotation** file in GFF : `honey_bee.GRCh38.v1.2.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-honey_bee/honey_bee.GRCh38.v1.2.refseq_genomic.gff>`_ 
+* **Annotation** file in GFF : `honey_bee.GRCh38.v1.2.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-honey_bee/honey_bee.GRCh38.v1.2.refseq_genomic.gff>`_ 
 
 
 Creating Training & Testing Datasets
@@ -79,7 +79,7 @@ To create datasets for training and testing, use the following command:
 
 .. code-block:: bash
 
-    spliceai-toolkit create-data \
+    openspliceai create-data \
     --genome-fasta  GCF_000001405.40_GRCh38.p14_genomic.fna \
     --annotation-gff honey_bee.GRCh38.v1.2.refseq_genomic.gff \
     --output-dir ./honey_bee/ \
@@ -92,7 +92,7 @@ To train the SpliceAI-honey_bee model, run the following command:
 
 .. code-block:: bash
 
-    spliceai-toolkit train --flanking-size 80 \
+    openspliceai train --flanking-size 80 \
     --exp-num full_dataset_h5py_version \
     --training-target honey_bee \
     --train-dataset ./honey_bee/dataset_train.h5 \

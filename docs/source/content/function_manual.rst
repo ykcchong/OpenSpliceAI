@@ -4,7 +4,7 @@
 User Manual 
 =======================
 
-SpliceAI-toolkit
+OpenSpliceAI
 ---------------------------------
 
 .. code-block:: text
@@ -24,7 +24,7 @@ SpliceAI-toolkit
 
       0.0.1
 
-      usage: spliceai-toolkit [-h] {create-data,train,fine-tune,predict,variant} ...
+      usage: opensplicai [-h] {create-data,train,fine-tune,predict,variant} ...
 
       SpliceAI toolkit to retrain your own splice site predictor
 
