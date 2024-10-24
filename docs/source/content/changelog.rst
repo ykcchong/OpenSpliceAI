@@ -7,8 +7,8 @@ Changelog
 v1.0.0
 -------
 
-- Initial release of SpliceAI-toolkit
-- Release via the documentation (http://ccb.jhu.edu/spliceai-toolkit)
+- Initial release of OpenSpliceAI
+- Release via the documentation (http://ccb.jhu.edu/OpenSpliceAI)
 - Released via the paper (https://doi.org/10.1101/2023.07.27.550754)
 
 

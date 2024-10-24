@@ -69,19 +69,19 @@ Input files
 
 To run this example, you will need to download the following two input files:
 
-1. reference **Genome** :math:`G` in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/GCF_000001405.40_GRCh38.p14_genomic.fna>`_
-2. reference **Annotation** :math:`A` in GFF3 : `MANE.GRCh38.v1.3.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/MANE.GRCh38.v1.3.refseq_genomic.gff>`_
+1. reference **Genome** :math:`G` in FASTA : `GCF_000001405.40_GRCh38.p14_genomic.fna <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-mane/GCF_000001405.40_GRCh38.p14_genomic.fna>`_
+2. reference **Annotation** :math:`A` in GFF3 : `MANE.GRCh38.v1.3.refseq_genomic.gff <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-mane/MANE.GRCh38.v1.3.refseq_genomic.gff>`_
 
 
 Commands
 +++++++++++++++++++++++++++++++++++
 
-The command of spliceAI-toolkit to create training and testing datasets is as follows:
+The command of OpenSpliceAI to create training and testing datasets is as follows:
 
 
 .. code-block:: bash
 
-   spliceai-toolkit create-data \
+   openspliceai create-data \
    --genome-fasta  GCF_000001405.40_GRCh38.p14_genomic.fna \
    --annotation-gff MANE.GRCh38.v1.3.refseq_genomic.gff \
    --output-dir train_test_dataset_MANE/
@@ -91,8 +91,8 @@ After successfully running the :code:`create-data` subcommand, you will get the 
 Output files
 +++++++++++++++++++++++++++++++++++
   
-1. `dataset_train.h5 <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/dataset_train.h5>`_: this is the main file for model training. 
-2. `dataset_test.h5 <ftp://ftp.ccb.jhu.edu/pub/data/spliceai-toolkit/train_data/spliceai-mane/dataset_test.h5>`_: this is the main file for model testing. 
+1. `dataset_train.h5 <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-mane/dataset_train.h5>`_: this is the main file for model training. 
+2. `dataset_test.h5 <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/train_data/spliceai-mane/dataset_test.h5>`_: this is the main file for model testing. 
 3. intermediate files:
 
    * datafile_train.h5
@@ -109,7 +109,7 @@ Usage
 
 .. code-block:: text
 
-   usage: spliceai-toolkit create-data [-h] --annotation-gff ANNOTATION_GFF --genome-fasta GENOME_FASTA --output-dir OUTPUT_DIR [--parse-type {maximum,all_isoforms}] [--biotype {protein-coding,non-coding}]
+   usage: openspliceai create-data [-h] --annotation-gff ANNOTATION_GFF --genome-fasta GENOME_FASTA --output-dir OUTPUT_DIR [--parse-type {maximum,all_isoforms}] [--biotype {protein-coding,non-coding}]
                                        [--chr-split {train-test,test}]
 
    optional arguments:
