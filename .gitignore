@@ -8,6 +8,9 @@
 *.bed
 *.fa
 
+models/prev/
+experiments/alan/
+
 scripts/JOB_train*
 openspliceai/*create_dataset/
 openspliceai/*create_dataset_spliceAI/
