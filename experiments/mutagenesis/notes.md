@@ -10,7 +10,6 @@
 1. **Gene mutation at single position**
    - Take score change at every position, only 3 will have nonzero delta score
 2. **Window around acceptor (or donor) site and mutate every base**
-<<<<<<< HEAD
    - Figure 1.D
    - chr3:142740137-142740263 (127 nt) acceptor site -> sample 4acc 
       - THIS IS GRCh37!!! exon 9 from U2SURP gene (location changed in GRCh38)
@@ -31,12 +30,6 @@ B. DNA logo - reproduce 1.D (exp 2)
 C. full gene before vs. after (maybe bam coverage) - Show capturing new cryptic splice site (exp 1)
 D. bar plot - reproduce S2.C (exp 3)
 
-=======
-3. **Branch point insertion** (focus on acceptor site) -> Replace the sequence
-
----
-
->>>>>>> main
 <!-- ## mutagenesis.py
 
 ### Workflow
