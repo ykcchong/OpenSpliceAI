@@ -24,6 +24,8 @@ phases = ['TRAIN', 'VAL', 'TEST']
 metrics = ['accuracy', 'recall', 'f1', 'precision']#, 'topk']
 categories = ['acceptor', 'donor', 'neither']
 
+print(f"Visualizing training results from {base_dir}...")
+print(f"Saving visualizations to {viz_out_dir}...")
 # # Plotting
 # plt.figure(figsize=(20, 10))
 # for metric in metrics:
@@ -43,17 +45,17 @@ categories = ['acceptor', 'donor', 'neither']
 #             # plt.show()
 
 
-plt.clf() # Clear current figure to avoid overlap
-for phase in phases:
-    plt.clf() # Clear current figure to avoid overlap
-    file_name = f'loss.txt'
-    file_path = os.path.join(base_dir, phase, file_name)
-    data = load_data(file_path)
-    plt.plot(data, label=f'{phase}')
-    plt.title(f'{phase} Loss over Steps')
-    plt.xlabel('Step')
-    plt.ylabel('Loss')
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(f'{viz_out_dir}_Loss_{phase}.png', dpi=300)
-    # plt.show()
+# plt.clf() # Clear current figure to avoid overlap
+# for phase in phases:
+#     plt.clf() # Clear current figure to avoid overlap
+#     file_name = f'loss.txt'
+#     file_path = os.path.join(base_dir, phase, file_name)
+#     data = load_data(file_path)
+#     plt.plot(data, label=f'{phase}')
+#     plt.title(f'{phase} Loss over Steps')
+#     plt.xlabel('Step')
+#     plt.ylabel('Loss')
+#     plt.legend()
+#     plt.tight_layout()
+#     plt.savefig(f'{viz_out_dir}_Loss_{phase}.png', dpi=300)
+#     # plt.show()
