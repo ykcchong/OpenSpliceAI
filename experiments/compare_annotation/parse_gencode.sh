@@ -1,1 +1,0 @@
-awk '{print "gene-"$1}' /home/kchao10/data_ssalzbe1/khchao/spliceAI-toolkit/experiments/SpliceAI_train_code/Canonical/canonical_dataset.txt | sort 

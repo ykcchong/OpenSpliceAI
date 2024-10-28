@@ -43,8 +43,8 @@
 
     <embed>
         <div class="sidebar-logo-container" style="padding-bottom:-10px">
-            <img class="sidebar-logo only-light" src="_static/SpliceAI-toolkit_black.png" alt="Light Logo">
-            <img class="sidebar-logo only-dark" src="_static/SpliceAI-toolkit_white.png" alt="Dark Logo">
+            <img class="sidebar-logo only-light" src="_static/logo_black.png" alt="Light Logo">
+            <img class="sidebar-logo only-dark" src="_static/logo_white.png" alt="Dark Logo">
         </div>
     </embed>
 
@@ -58,10 +58,10 @@
     :target: https://pepy.tech/project/lifton
 
 .. image:: https://img.shields.io/github/downloads/Kuanhao-Chao/lifton/total.svg?style=social&logo=github&label=Download
-    :target: https://github.com/Kuanhao-Chao/lifton/releases
+    :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://img.shields.io/badge/platform-macOS_/Linux-green.svg
-    :target: https://github.com/Kuanhao-Chao/spliceAI-toolkit/releases
+    :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://colab.research.google.com/assets/colab-badge.svg
     :target: https://colab.research.google.com/github/Kuanhao-Chao/lifton/blob/main/notebook/lifton_example.ipynb
@@ -81,19 +81,19 @@
 | 
 
 
-The SpliceAI-toolkit is a flexible framework designed for easy retraining of the SpliceAI model with new datasets. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the SpliceAI-toolkit is capable of processing genetic variants in VCF format to predict their impact on splicing.
+OpenSpliceAI is a flexible framework designed for easy retraining of the SpliceAI model with new datasets. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the OpenSpliceAI is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
 |
 
-Why SpliceAI-toolkit❓
+Why OpenSpliceAI❓
 =======================
 
-1. **Easy-to-retrain framework**: Transitioning from the outdated Python 2.7, along with older versions of TensorFlow and Keras, the SpliceAI-toolkit is built on Python 3.7 and leverages the powerful PyTorch library. This simplifies the retraining process significantly. Say goodbye to compatibility issues and hello to efficiency — retrain your models with just two simple commands.
-2. **Retrained on new dataset**: SpliceAI is great, but SpliceAI-toolkit makes it even better! The newly pretrained SpliceAI-Human model is updated from GRCh37 to GRCh38 human genome and integrates the latest MANE (Matched Annotation from NCBI and EMBL-EBI) annotations, ensuring that research is supported by the most up-to-date and precise genomic data available.
-3. **Retrained on various species**:  Concerned that the SpliceAI model does not generalize to your study species because you are not studying humans? No problem! The SpliceAI-toolkit is released with models pretrained on various species, including human MANE, mouse, thale cress, honey bee, and zebrafish.
-4. **Predict the impact of genetic variants on splicing**: Similar to SpliceAI, the SpliceAI-toolkit can take genetic variants in VCF format and predict the impact of these variants on splicing with any of the pretrained models.
+1. **Easy-to-retrain framework**: Transitioning from the outdated Python 2.7, along with older versions of TensorFlow and Keras, the OpenSpliceAI is built on Python 3.7 and leverages the powerful PyTorch library. This simplifies the retraining process significantly. Say goodbye to compatibility issues and hello to efficiency — retrain your models with just two simple commands.
+2. **Retrained on new dataset**: SpliceAI is great, but OpenSpliceAI makes it even better! The newly pretrained SpliceAI-Human model is updated from GRCh37 to GRCh38 human genome and integrates the latest MANE (Matched Annotation from NCBI and EMBL-EBI) annotations, ensuring that research is supported by the most up-to-date and precise genomic data available.
+3. **Retrained on various species**:  Concerned that the SpliceAI model does not generalize to your study species because you are not studying humans? No problem! The OpenSpliceAI is released with models pretrained on various species, including human MANE, mouse, thale cress, honey bee, and zebrafish.
+4. **Predict the impact of genetic variants on splicing**: Similar to SpliceAI, the OpenSpliceAI can take genetic variants in VCF format and predict the impact of these variants on splicing with any of the pretrained models.
 
-SpliceAI-toolkit is open-source, free, and combines the ease of Python with the power of PyTorch for accurate splicing predictions.
+OpenSpliceAI is open-source, free, and combines the ease of Python with the power of PyTorch for accurate splicing predictions.
 
 |
 
@@ -101,23 +101,23 @@ Who is it for❓
 ====================================
 
 1. If you want to study splicing in humans, just use the newly pretrained human SpliceAI-MANE! Better annotation, better results!
-2. If you want to do splicing research in other species, the SpliceAI-toolkit has you covered! It comes with models pretrained on various species! And you can easily train your own SpliceAI with your own genome & annotation data.
-3. If you are interested in predicting the impact of genetic variants on splicing, SpliceAI-toolkit is the perfect tool for you!
+2. If you want to do splicing research in other species, the OpenSpliceAI has you covered! It comes with models pretrained on various species! And you can easily train your own SpliceAI with your own genome & annotation data.
+3. If you are interested in predicting the impact of genetic variants on splicing, OpenSpliceAI is the perfect tool for you!
 
 |
 
-What does SpliceAI-toolkit do❓
+What does OpenSpliceAI do❓
 ====================================
 
-* The spliceai-toolkit :code:`create-data` command takes a genome and annotation file as input and generates a dataset for training and testing your SpliceAI model.
+* The OpenSpliceAI :code:`create-data` command takes a genome and annotation file as input and generates a dataset for training and testing your SpliceAI model.
 
-* The spliceai-toolkit :code:`train` command uses the created dataset to train your own SpliceAI model.
+* The OpenSpliceAI :code:`train` command uses the created dataset to train your own SpliceAI model.
 
-* To avoid retraining your SpliceAI model from the ground up, the spliceai-toolkit :code:`fine-tune` command allows for the fine-tuning of the pretrained human model using your own created dataset. It tailors the model to better generalize to your specific species.
+* To avoid retraining your SpliceAI model from the ground up, the OpenSpliceAI :code:`fine-tune` command allows for the fine-tuning of the pretrained human model using your own created dataset. It tailors the model to better generalize to your specific species.
 
-* The spliceai-toolkit :code:`predict` command takes a random gene sequence and predicts the score of each position, determining whether it is a donor, acceptor, or neither.
+* The OpenSpliceAI :code:`predict` command takes a random gene sequence and predicts the score of each position, determining whether it is a donor, acceptor, or neither.
 
-* The spliceai-toolkit :code:`variant` command takes a VCF file and predicts the impact of genetic variants on splicing.
+* The OpenSpliceAI :code:`variant` command takes a VCF file and predicts the impact of genetic variants on splicing.
 
 
 |
@@ -129,8 +129,8 @@ Cite us
 
 .. raw:: html
     
-    <p>Kuan-Hao Chao, Alan Mao, Anqi Liu, Mihaela Pertea, and Steven L. Salzberg. <i>"SpliceAI-toolkit"</i> <b>bioRxiv</b>.
-    <a href="https://doi.org/10.1093/bioinformatics/btaa1016" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
+    <p>Kuan-Hao Chao, Alan Mao, Anqi Liu, Mihaela Pertea, and Steven L. Salzberg. <i>"OpenSpliceAI"</i> <b>bioRxiv coming soon!</b>.
+    <a href="https://khchao.com/" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
 
     <p>Kishore Jaganathan, Sofia Kyriazopoulou Panagiotopoulou, Jeremy F. McRae, Siavash Fazel Darbandi, David Knowles, Yang I. Li, Jack A. Kosmicki, Juan Arbelaez, Wenwu Cui, Grace B. Schwartz, Eric D. Chow, Efstathios Kanterakis, Hong Gao, Amirali Kia, Serafim Batzoglou, Stephan J. Sanders, and Kyle Kai-How Farh. <i>"Predicting splicing from primary sequence with deep learning"</i> <b>Cell</b>.
     <a href="https://doi.org/10.1016/j.cell.2018.12.015" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
@@ -142,14 +142,14 @@ User support
 ============
 Please go through the :ref:`documentation <table-of-contents>` below first. If you have questions about using the package, a bug report, or a feature request, please use the GitHub issue tracker here:
 
-https://github.com/Kuanhao-Chao/spliceAI-toolkit/issues
+https://github.com/Kuanhao-Chao/openspliceai/issues
 
 |
 
 Key contributors
 ================
 
-SpliceAI-toolkit was designed and developed by `Kuan-Hao Chao <https://khchao.com/>`_.  This documentation was written by `Kuan-Hao Chao <https://khchao.com/>`_. The LiftOn logo was designed by `Kuan-Hao Chao <https://khchao.com/>`_.
+OpenSpliceAI was designed and developed by `Kuan-Hao Chao <https://khchao.com/>`_ and `Alan Mao <https://scholar.google.com/citations?user=4c8UQUUAAAAJ&hl=en>`_.  This documentation was written by `Kuan-Hao Chao <https://khchao.com/>`_ and `Alan Mao <https://scholar.google.com/citations?user=4c8UQUUAAAAJ&hl=en>`_. The LiftOn logo was designed by `Kuan-Hao Chao <https://khchao.com/>`_.
 
 |
 
