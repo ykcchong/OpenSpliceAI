@@ -18,6 +18,9 @@
    - window around 100nt
    - 14289 test set of splice acceptors
 
+NEW 3. Replicating results from figure 1D (similar to Exp 2)
+- branch point prediction is scrapped
+
 ---
 
 # Final Mutagenesis Figure

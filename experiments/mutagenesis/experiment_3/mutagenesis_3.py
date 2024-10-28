@@ -1,3 +1,5 @@
+'''Replicating results from SpliceAI figure 1D'''
+
 import logging
 from tqdm import tqdm
 import pandas as pd
