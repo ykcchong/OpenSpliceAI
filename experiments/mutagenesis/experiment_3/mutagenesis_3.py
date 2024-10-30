@@ -9,7 +9,7 @@ import logging
 import platform
 import os, glob
 import torch
-from spliceaitoolkit.predict.spliceai import SpliceAI
+from openspliceai.train_base.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 import logomaker
 import matplotlib.pyplot as plt
@@ -231,8 +231,9 @@ def one_hot_encode(seq):
 
 def predict_keras(models, flanking_size, seq, strand='+'):
     # Prepare the sequence with padding
-    pad_size = [flanking_size // 2, flanking_size // 2]
-    x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    # pad_size = [flanking_size // 2, flanking_size // 2]
+    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    x = seq
 
     # One-hot encode the sequence
     x = one_hot_encode(x)[None, :]
@@ -256,9 +257,10 @@ def predict_keras(models, flanking_size, seq, strand='+'):
 
 def predict_pytorch(models, flanking_size, seq, strand='+', device='cuda'):
     # Prepare the sequence with padding
-    pad_size = [flanking_size // 2, flanking_size // 2]
-    x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
-
+    # pad_size = [flanking_size // 2, flanking_size // 2]
+    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    x = seq
+        
     # One-hot encode the sequence
     x = one_hot_encode(x)[None, :]
 
@@ -319,13 +321,14 @@ def generate_dna_logo(score_changes, output_file):
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
     # Fill any missing values with 0, just in case
     data_df = data_df.fillna(0)
-    print(data_df)
+    # data_df = logomaker.transform_matrix(pd.DataFrame(data_df), from_type='probability', to_type='weight')
     logo = logomaker.Logo(data_df)
     logo.ax.set_title('DNA Logo - Score Change by Base')
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
+    plt.show()
 
 # Function to generate line plot for average score change
-def plot_average_dna_logo(average_score_change, sequence, output_file):
+def plot_average_dna_logo(average_score_change, sequence, output_file, orig_style=True):
     # Create a DataFrame where the index is the position, and columns are the nucleotides
     data = []
     for i, base in enumerate(sequence):
@@ -335,43 +338,127 @@ def plot_average_dna_logo(average_score_change, sequence, output_file):
     
     # Convert to a DataFrame
     df = pd.DataFrame(data)
+    # df = logomaker.transform_matrix(pd.DataFrame(df), from_type='probability', to_type='weight')
     
     # Create a DNA logo plot using Logomaker
-    logo = logomaker.Logo(df)
+    nn_logo = logomaker.Logo(df, figsize=(30, 3))
     
-    # Customize the plot
-    logo.style_spines(visible=False)
-    logo.style_spines(spines=['left', 'bottom'], visible=True)
-    logo.ax.set_ylabel("Average Score Change")
-    logo.ax.set_xlabel("Position")
+    ### Customize the plot
+    if not orig_style:
+        if 'samp4' in output_file:
+            # style using Logo methods
+            nn_logo.style_spines(visible=False)
+            nn_logo.style_spines(spines=['left'], visible=True, bounds=[0, .75])
+
+            # style using Axes methods
+            # nn_logo.ax.set_xlim([20, 115])
+            nn_logo.ax.set_xlim([0, df.shape[0]])
+            nn_logo.ax.set_xticks([])
+            nn_logo.ax.set_ylim([-.6, .75])
+            nn_logo.ax.set_yticks([0, .75])
+            nn_logo.ax.set_yticklabels(['0', '0.75'], fontsize=14) # font increased
+            nn_logo.ax.set_ylabel('             Score', labelpad=-1, fontsize=18) # font increased
+
+            # set parameters for drawing gene
+            exon_start = 55-.5
+            exon_stop = 90+.5
+            y = -.2
+            xs = np.arange(-3, len(df),10)
+            ys = y*np.ones(len(xs))
+
+            # draw gene
+            nn_logo.ax.axhline(y, color='k', linewidth=1)
+            nn_logo.ax.plot(xs, ys, marker='4', linewidth=0, markersize=7, color='k')
+            nn_logo.ax.plot([exon_start, exon_stop],
+                            [y, y], color='k', linewidth=10, solid_capstyle='butt')
+
+            # annotate gene
+            nn_logo.ax.plot(exon_start, 1.8*y, '^k', markersize=12) # marker decreased
+            nn_logo.ax.text(2,2*y,'$U2SURP$',fontsize=16) # font increased
+            nn_logo.ax.text(exon_start, 2.5*y,'chr3:142,740,192', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
+        elif 'samp5' in output_file:
+            data = []
+            complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
+            complement_sequence = ''.join([complement[base] for base in sequence])
+            for i, base in enumerate(complement_sequence):
+                row = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
+                row[base] = average_score_change[i]  # Assign the score to the correct base
+                data.append(row)
+            # reverse data for reverse strand
+            data = data[::-1]
+            df = pd.DataFrame(data)
+            nn_logo = logomaker.Logo(df, figsize=(30, 3))
+            
+            # style using Logo methods
+            nn_logo.style_spines(visible=False)
+            nn_logo.style_spines(spines=['left'], visible=True, bounds=[0, .75])
+
+            # style using Axes methods
+            # nn_logo.ax.set_xlim([20, 115])
+            nn_logo.ax.set_xlim([0, df.shape[0]])
+            nn_logo.ax.set_xticks([])
+            nn_logo.ax.set_ylim([-.6, .75])
+            nn_logo.ax.set_yticks([0, .75])
+            nn_logo.ax.set_yticklabels(['0', '0.75'], fontsize=14) # font increased
+            nn_logo.ax.set_ylabel('             Score', labelpad=-1, fontsize=18) # font increased
+
+            # set parameters for drawing gene
+            exon_start = 36-.5
+            exon_stop = 97+.5
+            y = -.2
+            xs = np.arange(-3, len(df),10)
+            ys = y*np.ones(len(xs))
+
+            # draw gene
+            nn_logo.ax.axhline(y, color='k', linewidth=1)
+            nn_logo.ax.plot(xs, ys, marker='3', linewidth=0, markersize=7, color='k')
+            nn_logo.ax.plot([exon_start, exon_stop],
+                            [y, y], color='k', linewidth=10, solid_capstyle='butt')
+
+            # annotate gene
+            nn_logo.ax.plot(exon_stop, 1.8*y, '^k', markersize=12) # marker decreased
+            nn_logo.ax.text(2,2*y,'$DST$',fontsize=16) # font increased
+            nn_logo.ax.text(exon_stop, 2.5*y,'chr6:56,735,289', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
+    else:
+        nn_logo.style_spines(visible=False)
+        nn_logo.style_spines(spines=['left', 'bottom'], visible=True)
+        nn_logo.ax.set_ylabel("Average Score Change")
+        nn_logo.ax.set_xlabel("Position")
+        output_file = output_file.replace('.png', '_orig.png')
     
     # Save the plot to the output file
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
+    plt.show()
 
 ##############################################
 ## MUTAGENESIS EXPERIMENT
 ##############################################
 
 # Main function for mutagenesis experiment
-def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site):
-    '''
-    Reproduce the Figure 1D experiment
-    Location: chr3:142,740,137-142,740,263 (127 nt)
-    Acceptor Site: chr3:142,740,192 (pos 55 in sequence)
-    Sample: 4    
-    '''
+def exp_3(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site):
     
     # Load fasta file and sequence
     fasta = Fasta(fasta_file)
     sequence = str(fasta[0])
-    seq_length = len(sequence)
+    offset = flanking_size // 2
+    seq_length = len(sequence) - flanking_size
+    
+    # Crop sequence 
+    if flanking_size != 10000:
+        difference = 5000 - offset
+        sequence = sequence[difference:-difference]    
     
     # Initialize DataFrames to store cumulative sums and counts
     acceptor_df = pd.DataFrame(0, index=range(seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
     donor_df = pd.DataFrame(0, index=range(seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
+    print(acceptor_df)
 
     # Iterate over each base in the transcript
-    for pos in tqdm(range(seq_length)):
+    for raw_pos in tqdm(range(seq_length)):
+        
+        # Move positioning
+        pos = raw_pos + offset
+        
         ref_base = sequence[pos]
         mutations = mutate_base(ref_base)
 
@@ -388,12 +475,12 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
         assert(np.argmax(ref_acceptor_scores) == scoring_position)
 
         # Update cumulative sums and counts for 'ref'
-        acceptor_df.loc[pos, 'ref'] = ref_acceptor_score
-        donor_df.loc[pos, 'ref'] = ref_donor_score
+        acceptor_df.loc[raw_pos, 'ref'] = ref_acceptor_score
+        donor_df.loc[raw_pos, 'ref'] = ref_donor_score
 
         # Store the reference score in the corresponding base column and update counts
-        acceptor_df.loc[pos, ref_base] = ref_acceptor_score
-        donor_df.loc[pos, ref_base] = ref_donor_score
+        acceptor_df.loc[raw_pos, ref_base] = ref_acceptor_score
+        donor_df.loc[raw_pos, ref_base] = ref_donor_score
 
         # Mutate the base and get scores for each mutation
         for mut_base in mutations:
@@ -408,8 +495,8 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             mut_donor_score = mut_donor_scores[scoring_position]
 
             # Update cumulative sums and counts for the mutated base
-            acceptor_df.loc[pos, mut_base] = mut_acceptor_score
-            donor_df.loc[pos, mut_base] = mut_donor_score
+            acceptor_df.loc[raw_pos, mut_base] = mut_acceptor_score
+            donor_df.loc[raw_pos, mut_base] = mut_donor_score
 
         # release memory if possible
         if model_type == 'keras':
@@ -427,12 +514,21 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             axis=1
         )
 
+    acceptor_score_change_df.to_csv(f'{output_dir}/acceptor_score_change.csv', index=False)
     generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
+    
+    donor_score_change_df.to_csv(f'{output_dir}/donor_score_change.csv', index=False)
+    generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
 
     # Calculate average score change for each base and plot
-    acceptor_score_change = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+    acceptor_average_score_change_df = acceptor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
+    donor_average_score_change_df = donor_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
 
-    plot_average_dna_logo(acceptor_score_change, sequence, f'{output_dir}/acceptor_average_score_change.png')
+    acceptor_average_score_change_df.to_csv(f'{output_dir}/acceptor_average_score_change.csv', index=False)
+    plot_average_dna_logo(acceptor_average_score_change_df, sequence[offset:-offset], f'{output_dir}/acceptor_average_score_change.png')
+    
+    donor_average_score_change_df.to_csv(f'{output_dir}/donor_average_score_change.csv', index=False)
+    plot_average_dna_logo(donor_average_score_change_df, sequence[offset:-offset], f'{output_dir}/donor_average_score_change.png')
 
     ### WRITE SCORES TO FILE ###
 
@@ -450,38 +546,81 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
 
 def mutagenesis():
-    # acceptor site at chr3:142,740,192 (pos 55 in sequence)
-     
+    '''
+    Reproduce the Figure 1D experiment
+    
+    Sample: 4 (U2SURP exon 9 +, GRCh37)
+    Location: chr3:142,740,137-142,740,263 (127 nt)
+    Acceptor Site: chr3:142,740,192 (pos 55 in sequence)
+    End of Exon: chr3:142,740,227 (pos 90 in sequence)
+    
+    Sample: 5 (DST exon 2 -, GRCh38)
+    Location: chr6:56,735,192-56,735,344 (153 nt)
+    End of Exon: chr6:56,735,228 (pos 116 in sequence)
+    Acceptor Site: chr6:56,735,289 (pos 55 in sequence)
+    
+    '''
+    
     model_types = ['pytorch', 'keras']
-    sites = ['acceptor']
-    scoring_position = 55
-    flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 6
-    sample_number = 4
+    # sites = ['acceptor']
+    scoring_position = 20
+    # flanking_sizes = [80, 400, 2000, 10000]
+    flanking_sizes = [10000]
+    sites = ['acceptor', 'donor']
+    exp_number = 3
+    sample_number = 6
+    
+    just_visualize = False
+    orig_style = False   
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs42.pt'
+            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
         else:
             print('not possible')
             exit(1)
             
-        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/data/{site}_{sample_number}.fa'
+        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_3/data/{site}_{sample_number}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/results/exp_{exp_number}/{model_type}_{flanking_size}_{site}_samp{sample_number}"
+        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_3/results/exp_{exp_number}/{model_type}_{flanking_size}_{site}_samp{sample_number}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+        if just_visualize:
+            score_change_files = [f'{output_dir}/acceptor_score_change.csv', f'{output_dir}/donor_score_change.csv']
+            average_change_files = [f'{output_dir}/acceptor_average_score_change.csv', f'{output_dir}/donor_average_score_change.csv']
+            fasta = Fasta(fasta_file)
+            sequence = str(fasta[0])
+            
+            for f in score_change_files:
+                if os.path.exists(f):
+                    df = pd.read_csv(f)
+                    print(df)
+                    output = f.replace('.csv', '.png')
+                    print(output)
+                    generate_dna_logo(df, output)
+            
+            for f in average_change_files:
+                if os.path.exists(f):
+                    df = pd.read_csv(f)
+                    values = df['0'].to_list()
+                    print(values)
+                    output = f.replace('.csv', '.png')
+                    print(output)
+                    plot_average_dna_logo(values, sequence[5000:-5000], output, orig_style)
+        
+            continue
+            
         # Load models (a list of models is passed)
         models, device = load_models(model_path, model_type, flanking_size)
 
         # Run the mutagenesis experiment
-        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site)
+        exp_3(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site)
 
 if __name__ == '__main__':
     
