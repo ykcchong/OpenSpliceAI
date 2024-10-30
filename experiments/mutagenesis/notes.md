@@ -113,5 +113,9 @@ Outputs:
 
 # Updates
 - using full sequence instead of N-padding removes the issue of low delta scores (low confidence)
-   - need to update the experiment 2
-   - find another example of short exon to try 
+   - need to update the experiment 2 with the full padding
+   - find another example of short exon to try -> chr6: DST-AS1 exon 2
+- find a cryptic splice site discovery example
+- can use TOMTOM to get a numerical score of similarity in PWMs
+- try variant experiment after
+- fix benchmark predict variant plots to increase font size
