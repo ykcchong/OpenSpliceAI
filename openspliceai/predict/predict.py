@@ -9,7 +9,7 @@ import platform
 import h5py
 import time
 from pyfaidx import Fasta
-from openspliceai.predict.spliceai import *
+from openspliceai.train_base.spliceai import SpliceAI
 from openspliceai.predict.utils import *
 from openspliceai.constants import *
 
