@@ -7,7 +7,8 @@ import logging
 import platform
 import os, glob
 import torch
-from spliceaitoolkit.predict.spliceai import SpliceAI
+# from spliceaitoolkit.predict.spliceai import SpliceAI
+from openspliceai.train_base.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 import logomaker
 import matplotlib.pyplot as plt
@@ -486,20 +487,19 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
 
 def mutagenesis():
         
-    model_types = ['pytorch', 'keras']
+    model_types = ['pytorch']
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
-    # flanking_sizes = [80, 400, 2000, 10000]
-    flanking_sizes = [400]
-    exp_number = 7
+    flanking_sizes = [80, 400, 2000, 10000]
+    exp_number = 6
     sample_number = 3
-    debug = True
+    debug = False
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs42.pt'
+            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
         else:
             print('not possible')
             exit(1)

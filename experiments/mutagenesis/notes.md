@@ -110,3 +110,8 @@ Outputs:
    - change in score of donor/acceptor site, relative to base position and mutation
 - score csv file
    - the raw score for acceptor and donor positions, and change relative to reference
+
+# Updates
+- using full sequence instead of N-padding removes the issue of low delta scores (low confidence)
+   - need to update the experiment 2
+   - find another example of short exon to try 
