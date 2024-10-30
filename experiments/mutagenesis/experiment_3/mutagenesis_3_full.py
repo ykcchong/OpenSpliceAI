@@ -322,13 +322,13 @@ def generate_dna_logo(score_changes, output_file):
     # Fill any missing values with 0, just in case
     data_df = data_df.fillna(0)
     # data_df = logomaker.transform_matrix(pd.DataFrame(data_df), from_type='probability', to_type='weight')
-    plt.figure(figsize=(20,4))
     logo = logomaker.Logo(data_df)
     logo.ax.set_title('DNA Logo - Score Change by Base')
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
+    plt.show()
 
 # Function to generate line plot for average score change
-def plot_average_dna_logo(average_score_change, sequence, output_file):
+def plot_average_dna_logo(average_score_change, sequence, output_file, orig_style=True):
     # Create a DataFrame where the index is the position, and columns are the nucleotides
     data = []
     for i, base in enumerate(sequence):
@@ -341,17 +341,53 @@ def plot_average_dna_logo(average_score_change, sequence, output_file):
     # df = logomaker.transform_matrix(pd.DataFrame(df), from_type='probability', to_type='weight')
     
     # Create a DNA logo plot using Logomaker
-    plt.figure(figsize=(20,4))
-    logo = logomaker.Logo(df)
+    nn_logo = logomaker.Logo(df, figsize=(30, 3))
     
-    # Customize the plot
-    logo.style_spines(visible=False)
-    logo.style_spines(spines=['left', 'bottom'], visible=True)
-    logo.ax.set_ylabel("Average Score Change")
-    logo.ax.set_xlabel("Position")
+    ### Customize the plot
+    if not orig_style:
+        if 'samp5' in output_file:
+            # style using Logo methods
+            nn_logo.style_spines(visible=False)
+            nn_logo.style_spines(spines=['left'], visible=True, bounds=[0, .75])
+
+            # style using Axes methods
+            # nn_logo.ax.set_xlim([20, 115])
+            nn_logo.ax.set_xlim([0, df.shape[0]])
+            nn_logo.ax.set_xticks([])
+            nn_logo.ax.set_ylim([-.6, .75])
+            nn_logo.ax.set_yticks([0, .75])
+            nn_logo.ax.set_yticklabels(['0', '0.75'], fontsize=14) # font increased
+            nn_logo.ax.set_ylabel('             Score', labelpad=-1, fontsize=18) # font increased
+
+            # set parameters for drawing gene
+            exon_start = 55-.5
+            exon_stop = 90+.5
+            y = -.2
+            xs = np.arange(-3, len(df),10)
+            ys = y*np.ones(len(xs))
+
+            # draw gene
+            nn_logo.ax.axhline(y, color='k', linewidth=1)
+            nn_logo.ax.plot(xs, ys, marker='4', linewidth=0, markersize=7, color='k')
+            nn_logo.ax.plot([exon_start, exon_stop],
+                            [y, y], color='k', linewidth=10, solid_capstyle='butt')
+
+            # annotate gene
+            nn_logo.ax.plot(exon_start, 1.8*y, '^k', markersize=12) # marker decreased
+            nn_logo.ax.text(2,2*y,'$U2SURP$',fontsize=16) # font increased
+            nn_logo.ax.text(exon_start, 2.5*y,'chr3:142,740,192', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
+        elif 'samp6' in output_file:
+            pass
+    else:
+        nn_logo.style_spines(visible=False)
+        nn_logo.style_spines(spines=['left', 'bottom'], visible=True)
+        nn_logo.ax.set_ylabel("Average Score Change")
+        nn_logo.ax.set_xlabel("Position")
+        output_file = output_file.replace('.png', '_orig.png')
     
     # Save the plot to the output file
     plt.savefig(output_file, bbox_inches='tight', dpi=300)
+    plt.show()
 
 ##############################################
 ## MUTAGENESIS EXPERIMENT
@@ -475,7 +511,8 @@ def exp_3(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
 
 def mutagenesis():
-    # acceptor site at chr3:142,740,192 (pos 55 in sequence)
+    # sample 5: acceptor site at chr3:142,740,192 (pos 55 in sequence) - 127 nt - with full 10k
+    # sample 6: acceptor site at chr6:
     
     model_types = ['pytorch', 'keras']
     sites = ['acceptor']
@@ -484,7 +521,8 @@ def mutagenesis():
     flanking_sizes = [10000]
     exp_number = 1
     sample_number = 5
-    just_visualize = True      
+    just_visualize = True  
+    orig_style = False   
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
@@ -525,7 +563,7 @@ def mutagenesis():
                     print(values)
                     output = f.replace('.csv', '.png')
                     print(output)
-                    plot_average_dna_logo(values, sequence[5000:-5000], output)
+                    plot_average_dna_logo(values, sequence[5000:-5000], output, orig_style)
         
             continue
             
