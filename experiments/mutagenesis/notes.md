@@ -114,8 +114,16 @@ Outputs:
 # Updates
 - using full sequence instead of N-padding removes the issue of low delta scores (low confidence)
    - need to update the experiment 2 with the full padding
+      - train data (chr1, 3, 5, 7, 9) vs. test data (others)
    - find another example of short exon to try -> chr6: DST-AS1 exon 2
 - find a cryptic splice site discovery example
 - can use TOMTOM to get a numerical score of similarity in PWMs
 - try variant experiment after
 - fix benchmark predict variant plots to increase font size
+
+## Final Figure
+*10k models only, others in supp
+A. recreate fig 1d from U2SURP gene 
+B. example from DST gene (more similar)
+C. batch dna logo from test dataset + TOMTOM similarity 
+D. cryptic splice site discovery

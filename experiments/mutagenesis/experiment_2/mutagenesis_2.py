@@ -230,8 +230,9 @@ def one_hot_encode(seq):
 
 def predict_keras(models, flanking_size, seq, strand='+'):
     # Prepare the sequence with padding
-    pad_size = [flanking_size // 2, flanking_size // 2]
-    x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    # pad_size = [flanking_size // 2, flanking_size // 2]
+    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    x = seq
 
     # One-hot encode the sequence
     x = one_hot_encode(x)[None, :]
@@ -255,8 +256,9 @@ def predict_keras(models, flanking_size, seq, strand='+'):
 
 def predict_pytorch(models, flanking_size, seq, strand='+', device='cuda'):
     # Prepare the sequence with padding
-    pad_size = [flanking_size // 2, flanking_size // 2]
-    x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    # pad_size = [flanking_size // 2, flanking_size // 2]
+    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    x = seq
 
     # One-hot encode the sequence
     x = one_hot_encode(x)[None, :]
@@ -371,10 +373,13 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
         if debug:
             print(f"***** Processing sequence {i}/{len(all_sequences)}: {seq_id} *****", file=sys.stderr)
         sequence = str(sequences[seq_id])
-        seq_length = len(sequence)
+        seq_length = len(sequence) - flanking_size
 
         # Iterate over each base in the transcript
-        for pos in tqdm(range(seq_length)):
+        for raw_pos in tqdm(range(seq_length)):
+            
+            pos = raw_pos + (flanking_size // 2) 
+            
             ref_base = sequence[pos]
             mutations = mutate_base(ref_base)
 
@@ -425,10 +430,10 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
                     print(f"Position: {pos}, Donor Scores: {' '.join(map(str, donor_scores))}", file=sys.stderr)
             
             # Update cumulative sums and counts
-            cumulative_acceptor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += acceptor_scores
-            cumulative_donor_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += donor_scores
+            cumulative_acceptor_df.loc[raw_pos, ['ref', 'A', 'C', 'G', 'T']] += acceptor_scores
+            cumulative_donor_df.loc[raw_pos, ['ref', 'A', 'C', 'G', 'T']] += donor_scores
 
-            count_df.loc[pos, ['ref', 'A', 'C', 'G', 'T']] += 1
+            count_df.loc[raw_pos, ['ref', 'A', 'C', 'G', 'T']] += 1
 
             # release memory if possible
             if model_type == 'keras':
@@ -490,9 +495,10 @@ def mutagenesis():
     model_types = ['pytorch']
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
-    flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 6
-    sample_number = 3
+    # flanking_sizes = [80, 400, 2000, 10000]
+    flanking_sizes = [10000]
+    exp_number = 7
+    sample_number = 7
     debug = False
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
