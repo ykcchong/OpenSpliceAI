@@ -367,19 +367,26 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     count_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])  # Store counts for averaging
 
     # Iterate over each transcript
-    all_sequences = list(sequences.keys())
+    # all_sequences = list(sequences.keys())
+    all_sequences = list(sequences.keys())[:1] #TODO: remove this later
     for i in range(len(all_sequences)):
         seq_id = all_sequences[i]
-        if debug:
-            print(f"***** Processing sequence {i}/{len(all_sequences)}: {seq_id} *****", file=sys.stderr)
         sequence = str(sequences[seq_id])
+        
+        # Crop sequence 
+        crop = (10000 - flanking_size) // 2
+        if crop > 0:
+            sequence = sequence[crop:-crop]
         seq_length = len(sequence) - flanking_size
+        
+        if debug:
+            print(f"***** Processing sequence {i}/{len(all_sequences)}: {seq_id}, len {seq_length} *****", file=sys.stderr)
 
         # Iterate over each base in the transcript
         for raw_pos in tqdm(range(seq_length)):
             
             pos = raw_pos + (flanking_size // 2) 
-            
+                        
             ref_base = sequence[pos]
             mutations = mutate_base(ref_base)
 
@@ -400,7 +407,7 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             if debug:
                 acceptor_max_position = np.argmax(acceptor_scores)
                 donor_max_position = np.argmax(donor_scores)
-                print(f'acceptor_max_position: {acceptor_max_position}, donor_max_position: {donor_max_position}', file=sys.stderr)
+                print(f'mutating {pos} -- acceptor_max_position: {acceptor_max_position}, donor_max_position: {donor_max_position}', file=sys.stderr)
             
             acceptor_scores[0] = ref_acceptor_score
             donor_scores[0] = ref_donor_score
@@ -461,8 +468,10 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
         )
 
     if site == 'acceptor':
+        acceptor_score_change_df.to_csv(f'{output_dir}/acceptor_dna_logo.csv', index=False)
         generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
     else:
+        donor_score_change_df.to_csv(f'{output_dir}/donor_dna_logo.csv', index=False)
         generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
 
     # Calculate average score change for each base and plot
@@ -470,8 +479,10 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     donor_score_change = donor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
 
     if site == 'acceptor':
+        acceptor_score_change.to_csv(f'{output_dir}/acceptor_average_score_change.csv', index=False)
         plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
     else:
+        donor_score_change.to_csv(f'{output_dir}/donor_average_score_change.csv', index=False)
         plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
 
     ### WRITE SCORES TO FILE ###
@@ -493,6 +504,7 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
 def mutagenesis():
         
     model_types = ['pytorch']
+    # model_types = ['keras', 'pytorch']
     sites = ['donor', 'acceptor']
     scoring_positions = {'donor': 198, 'acceptor': 201}
     # flanking_sizes = [80, 400, 2000, 10000]
@@ -511,7 +523,7 @@ def mutagenesis():
             exit(1)
         
         scoring_position = scoring_positions[site]
-            
+        
         fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/data/{site}_{sample_number}.fa'
         
         # Initialize params
