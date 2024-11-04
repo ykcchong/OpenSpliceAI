@@ -175,10 +175,18 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     # Iterate over each transcript
     for seq_id in sequences.keys():
         sequence = str(sequences[seq_id])
-        seq_length = len(sequence)
+        
+        # Crop sequence 
+        crop = (10000 - flanking_size) // 2
+        if crop > 0:
+            sequence = sequence[crop:-crop]
+        seq_length = len(sequence) - flanking_size
     
         # Iterate over each base in the transcript
-        for pos in tqdm(range(seq_length), desc=f'Processing {seq_id}'):
+        for raw_pos in tqdm(range(seq_length), desc=f'Processing {seq_id}'):
+            
+            pos = raw_pos + (flanking_size // 2)
+            
             ref_base = sequence[pos]
             mutations = mutate_base(ref_base)
     
@@ -239,7 +247,6 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     # Save to a single CSV file
     output_file = os.path.join(output_dir, 'mutagenesis_results.csv')
     results_df.to_csv(output_file, index=False)
-    
 
 def mutagenesis(batch_num, flanking_size):
         
