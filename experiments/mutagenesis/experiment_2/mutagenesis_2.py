@@ -400,8 +400,6 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             # Extract the reference scores
             ref_acceptor_score = ref_acceptor_scores[scoring_position]
             ref_donor_score = ref_donor_scores[scoring_position]
-            # ref_acceptor_score = max(ref_acceptor_scores)
-            # ref_donor_score = max(ref_donor_scores)
             
             if debug:
                 acceptor_max_position = np.argmax(acceptor_scores)
