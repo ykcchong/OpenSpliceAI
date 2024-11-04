@@ -367,8 +367,7 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     count_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])  # Store counts for averaging
 
     # Iterate over each transcript
-    # all_sequences = list(sequences.keys())
-    all_sequences = list(sequences.keys())[:1] #TODO: remove this later
+    all_sequences = list(sequences.keys())[:100] # TODO: locked to 100 sequences for testing
     for i in range(len(all_sequences)):
         seq_id = all_sequences[i]
         sequence = str(sequences[seq_id])
@@ -399,10 +398,10 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             ref_acceptor_scores, ref_donor_scores = predict(models, model_type, flanking_size, ref_sequence, device=device)
             
             # Extract the reference scores
-            # ref_acceptor_score = ref_acceptor_scores[scoring_position]
-            # ref_donor_score = ref_donor_scores[scoring_position]
-            ref_acceptor_score = max(ref_acceptor_scores)
-            ref_donor_score = max(ref_donor_scores)
+            ref_acceptor_score = ref_acceptor_scores[scoring_position]
+            ref_donor_score = ref_donor_scores[scoring_position]
+            # ref_acceptor_score = max(ref_acceptor_scores)
+            # ref_donor_score = max(ref_donor_scores)
             
             if debug:
                 acceptor_max_position = np.argmax(acceptor_scores)
