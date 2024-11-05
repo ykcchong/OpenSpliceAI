@@ -61,7 +61,7 @@ def plot_subset(averages, metrics, metric_labels, outdir):
     # Get the unique model types after renaming
     model_types = sorted(averages['Model Type'].unique())
 
-    # Define dash patterns (extend this list if you have more model types)
+    # Define dash patterns 
     dash_patterns = [
         (None, None),        # Solid line
         (5, 5),              # Dashed line
@@ -73,7 +73,7 @@ def plot_subset(averages, metrics, metric_labels, outdir):
     dashes_styles = dict(zip(model_types, reversed_dash_patterns))
 
     for metric, label in zip(metrics, metric_labels):
-        plt.figure(figsize=(18, 10))
+        plt.figure(figsize=(19, 11.5))
         sns.lineplot(
             data=averages,
             x='subset_size',
@@ -82,25 +82,32 @@ def plot_subset(averages, metrics, metric_labels, outdir):
             hue_order=flanking_sizes,
             style='Model Type',
             markers=True,
+            markersize=12,  # Increase marker size
             palette=palette,
             style_order=model_types,
-            dashes=dashes_styles
+            dashes=dashes_styles,
+            linewidth=3  # Thicker line for better visibility
         )
-        plt.title(f'[Variant] {label} vs. Input Size', fontsize=20)
-        plt.xlabel('Input Size (# Variants in Mills/1000G)', fontsize=18)
-        plt.ylabel(label, fontsize=18)
+        plt.title(f'[Variant] {label} vs. Input Size', fontsize=30)
+        plt.xlabel('Input Size (# Variants in Mills/1000G)', fontsize=27)
+        plt.ylabel(label, fontsize=27)           
+        plt.xticks(fontsize=22)
+        plt.yticks(fontsize=22)
+        
         plt.grid(True)
         plt.legend(
             title='Model Size & Type',
             bbox_to_anchor=(1.05, 1),
             loc='upper left',
-            borderaxespad=0.
+            borderaxespad=0.,
+            fontsize=20,      # Larger legend text
+            title_fontsize=23 # Larger legend title text
         )
         plt.tight_layout()
         plt.savefig(
             os.path.join(outdir, f'{metric}_subset_size.png'),
             dpi=300,
-            bbox_inches='tight'
+            # bbox_inches='tight'
         )
         plt.close()
 
