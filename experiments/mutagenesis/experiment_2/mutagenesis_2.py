@@ -516,7 +516,7 @@ def mutagenesis():
         elif model_type == "pytorch":
             model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
         else:
-            print('not possible')
+            print('not possible') 
             exit(1)
         
         scoring_position = scoring_positions[site]

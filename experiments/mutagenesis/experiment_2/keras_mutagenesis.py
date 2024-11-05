@@ -125,8 +125,9 @@ def calculate_average_score_change(ref_scores, mut_scores):
 
 def predict_keras(models, flanking_size, seq, strand='+'):
     # Prepare the sequence with padding
-    pad_size = [flanking_size // 2, flanking_size // 2]
-    x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    # pad_size = [flanking_size // 2, flanking_size // 2]
+    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    x = seq
 
     # One-hot encode the sequence
     x = one_hot_encode(x)[None, :]
@@ -173,7 +174,8 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
         os.makedirs(output_dir)
     
     # Iterate over each transcript
-    for seq_id in sequences.keys():
+    seq_ids = list(sequences.keys())
+    for seq_id in seq_ids:
         sequence = str(sequences[seq_id])
         
         # Crop sequence 
@@ -184,6 +186,7 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
     
         # Iterate over each base in the transcript
         for raw_pos in tqdm(range(seq_length), desc=f'Processing {seq_id}'):
+            print(f'Position: {raw_pos}')
             
             pos = raw_pos + (flanking_size // 2)
             
@@ -218,6 +221,8 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
                 
                 # Predict the scores for the mutated sequence
                 mut_acceptor_scores, mut_donor_scores = predict(models, model_type, flanking_size, mut_sequence, device=device)
+                
+                # Extract the scores at the scoring position
                 mut_acceptor_score = mut_acceptor_scores[scoring_position]
                 mut_donor_score = mut_donor_scores[scoring_position]
                 
@@ -230,7 +235,7 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
             for i, base in enumerate(bases):
                 results.append({
                     'seq_id': seq_id,
-                    'position': pos,
+                    'position': raw_pos,
                     'ref_base': ref_base,
                     'mut_base': base,
                     'acceptor_score': acceptor_scores[i],

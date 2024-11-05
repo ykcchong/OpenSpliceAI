@@ -1,13 +1,6 @@
-import logging
-from tqdm import tqdm
+# Description: Visualize the results of the mutagenesis experiment for the splice site prediction model.
 import pandas as pd
 import numpy as np
-from pyfaidx import Fasta
-import logging
-import platform
-import os, glob
-import torch
-from spliceaitoolkit.predict.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 import logomaker
 import matplotlib.pyplot as plt
@@ -115,8 +108,9 @@ def visualize(df, site, output_base):
 def mutagenesis():
         
     sites = ['donor', 'acceptor']
-    flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 5
+    # flanking_sizes = [80, 400, 2000, 10000]
+    flanking_sizes = [10000]
+    exp_number = 7
     
     base_dir = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/results/exp_{exp_number}/keras_job'
     
