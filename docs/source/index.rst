@@ -80,8 +80,8 @@
 
 | 
 
+OpenSpliceAI is an open-source version of SpliceAI, a highly accurate splice site prediction system that provides researchers with a user-friendly framework to study transcript splicing. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the OpenSpliceAI is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
-OpenSpliceAI is a flexible framework designed for easy retraining of the SpliceAI model with new datasets. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the OpenSpliceAI is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
 |
 
@@ -168,12 +168,12 @@ Table of contents
     :caption: Subcommands usage
     :maxdepth: 2
 
-    content/spliceaitoolkit_create-data
-    content/spliceaitoolkit_train
-    content/spliceaitoolkit_transfer
-    content/spliceaitoolkit_calibrate
-    content/spliceaitoolkit_predict
-    content/spliceaitoolkit_variant
+    content/openspliceai_create-data
+    content/openspliceai_train
+    content/openspliceai_transfer
+    content/openspliceai_calibrate
+    content/openspliceai_predict
+    content/openspliceai_variant
 
 .. toctree::
     :caption: Train your own model
