@@ -19,6 +19,7 @@ scripts/zebra_fish/
 .DS_Store
 spliceai-toolkit/Step_4_spliceAI_model_train/
 experiments/SpliceAI_train_code/model_train_outdir/
+experiments/benchmark_*
 spliceaitoolkit/spliceAI_pytorch_model/JOB_spliceai_train_dataloader_version.sh
 
 
