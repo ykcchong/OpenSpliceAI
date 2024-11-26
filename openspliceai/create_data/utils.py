@@ -1,5 +1,5 @@
 ###############################################################################
-'''This code has functions to process sequences to/from .h5 datasets.'''
+'''The file includes functions to process sequences to/from .h5 datasets.'''
 ###############################################################################
 
 import os
@@ -11,10 +11,6 @@ import random
 from sklearn.metrics import average_precision_score
 from openspliceai.constants import *
 
-###################################################
-# Reporting functions
-###################################################
-
 def check_and_count_motifs(seq, labels, donor_motif_counts, acceptor_motif_counts):
     """
     Check sequences for donor and acceptor motifs and count their occurrences.
@@ -22,7 +18,6 @@ def check_and_count_motifs(seq, labels, donor_motif_counts, acceptor_motif_count
     Parameters:
     - seq: The DNA sequence (str).
     - labels: Array of labels indicating locations of interest in the sequence.
-    - strand: The strand (+ or -) indicating the direction of the gene.
     """     
     for i, label in enumerate(labels):
         if label == 2:  # Donor site
@@ -32,38 +27,59 @@ def check_and_count_motifs(seq, labels, donor_motif_counts, acceptor_motif_count
             a_motif = str(seq[i-2:i])
             acceptor_motif_counts[a_motif] = acceptor_motif_counts.get(a_motif, 0) + 1
 
+
 def print_motif_counts(donor_motif_counts, acceptor_motif_counts):
     """
     Print the counts of donor and acceptor motifs.
     """
-    print("Donor motifs:")
+    print("*******************")
+    print("Splice site motif counts:")
+    print("\tDonor motifs:")
     for motif, count in donor_motif_counts.items():
-        print(f"{motif}: {count}")
-    print("\nAcceptor motifs:")
+        print(f"\t{motif}: {count}")
+    print("\n\tAcceptor motifs:")
     for motif, count in acceptor_motif_counts.items():
-        print(f"{motif}: {count}")
+        print(f"\t{motif}: {count}")
     print("\nTotal donor motifs: ", sum(donor_motif_counts.values()))
     print("Total acceptor motifs: ", sum(acceptor_motif_counts.values()))
+    print("*******************")
     
     
 ###################################################
 # create_datafile.py functions
 ###################################################
-
-def get_all_chromosomes(db):
-    """Extract all unique chromosomes from the GFF database."""
-    chromosomes = set()
+def get_chromosome_lengths(db):
+    """Extract all unique chromosomes and their lengths from the GFF database."""
+    chromosomes = {}
     for feature in db.all_features():
-        chromosomes.add(feature.seqid)
-    return list(chromosomes)
+        if feature.seqid not in chromosomes:
+            chromosomes[feature.seqid] = feature.end
+        else:
+            chromosomes[feature.seqid] = max(chromosomes[feature.seqid], feature.end)
+    return chromosomes
 
-def split_chromosomes(chromosomes, method='random', split_ratio=0.8):
+
+def split_chromosomes(db, method='random', split_ratio=0.8):
+    chromosome_lengths = get_chromosome_lengths(db)
     """Split chromosomes into training and testing groups."""
     if method == 'random':
+        total_length = sum(chromosome_lengths.values())
+        target_train_length = total_length * split_ratio
+        target_test_length = total_length * (1-split_ratio)
+        chromosomes = list(chromosome_lengths.keys())
         random.shuffle(chromosomes)
-        split_point = int(len(chromosomes) * split_ratio)
-        train_chroms = {chrom: 0 for chrom in chromosomes[:split_point]}
-        test_chroms = {chrom: 0 for chrom in chromosomes[split_point:]}
+        train_chroms = {}
+        test_chroms = {}
+        current_train_length = 0
+        current_test_length = 0 
+        
+        for chrom in chromosomes:
+            if current_test_length < target_test_length:
+                test_chroms[chrom] = chromosome_lengths[chrom]
+                current_test_length += chromosome_lengths[chrom]
+            else:
+                train_chroms[chrom] = chromosome_lengths[chrom]
+                current_train_length += chromosome_lengths[chrom]
     elif method == 'human':
         # following SpliceAI default splitting for human chromosomes
         train_chroms = {
@@ -79,6 +95,7 @@ def split_chromosomes(chromosomes, method='random', split_ratio=0.8):
     else: 
         raise ValueError("Invalid chromosome split method. Use 'random' or 'human'.")
     return train_chroms, test_chroms
+
 
 def create_or_load_db(gff_file, db_file='gff.db'):
     """
@@ -103,7 +120,6 @@ def create_or_load_db(gff_file, db_file='gff.db'):
 ###################################################
 # create_dataset.py functions
 ###################################################
-
 # One-hot encoding of the inputs: 
 # 1: A;  2: C;  3: G;  4: T;  0: padding
 IN_MAP = np.asarray([[0, 0, 0, 0],
@@ -119,6 +135,7 @@ OUT_MAP = np.asarray([[1, 0, 0],
                       [0, 0, 1],
                       [0, 0, 0]])
 
+
 def ceil_div(x, y):
     """
     Calculate the ceiling of a division between two numbers.
@@ -131,6 +148,7 @@ def ceil_div(x, y):
     - int: The ceiling of the division result.
     """
     return int(ceil(float(x)/y))
+
 
 def one_hot_encode(Xd, Yd):
     """
@@ -149,6 +167,7 @@ def one_hot_encode(Xd, Yd):
     """
     return IN_MAP[Xd.astype('int8')], [OUT_MAP[Yd[t].astype('int8')] for t in range(1)]
 
+
 def replace_non_acgt_to_n(input_string):
     """
     Use a generator expression to go through each character in the input string.
@@ -161,12 +180,12 @@ def replace_non_acgt_to_n(input_string):
     Returns:
     - str: The modified sequence with non-ACGT nucleotides replaced by 'N'.
     """
-
     # Define the set of allowed characters
     allowed_chars = {'A', 'C', 'G', 'T'}    
     return ''.join(char if char in allowed_chars else 'N' for char in input_string)
 
-def reformat_data(X0, Y0, CL_max=80):
+
+def reformat_data(X0, Y0):
     """
     Reformat sequence and label data into fixed-size blocks for processing.
     This function converts X0, Y0 of the create_datapoints function into
@@ -193,7 +212,6 @@ def reformat_data(X0, Y0, CL_max=80):
     # Pad the sequence and labels to ensure divisibility
     X0 = np.pad(X0, (0, SL), 'constant', constant_values=0)
     Y0 = [np.pad(Y0[t], (0, SL), 'constant', constant_values=-1) for t in range(1)]
-
     # Fill the initialized arrays with data in blocks
     for i in range(num_points):
         Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
@@ -201,7 +219,8 @@ def reformat_data(X0, Y0, CL_max=80):
 
     return Xd, Yd  
 
-def create_datapoints(seq, label, CL_max=80):
+
+def create_datapoints(seq, label):
     """
     This function first converts the sequence into an integer array, where
     A, C, G, T, N are mapped to 1, 2, 3, 4, 0 respectively. If the strand is
@@ -219,7 +238,6 @@ def create_datapoints(seq, label, CL_max=80):
     Returns:
     - tuple: A tuple containing the one-hot encoded sequence and labels.
     """
-
     # No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     seq = 'N' * (CL_max // 2) + seq + 'N' * (CL_max // 2)
     seq = seq.upper().replace('A', '1').replace('C', '2')

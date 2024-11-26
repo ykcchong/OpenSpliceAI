@@ -18,7 +18,7 @@ System requirements
    * numpy >= 1.22.0
    * gffutils >= 0.10.1
 
-These dependencies will be automatically installed when you install SpliceAI-toolkit through pip or conda. The only exception is **miniprot**. Since miniprot is not on PyPi, you will need to install it manually. Please check out the `miniprot installation guide <https://github.com/lh3/miniprot?tab=readme-ov-file#install>`_ on `GitHub <https://github.com/lh3/miniprot>`_.
+These dependencies will be automatically installed when you install OpenSpliceAI through pip or conda. The only exception is **miniprot**. Since miniprot is not on PyPi, you will need to install it manually. Please check out the `miniprot installation guide <https://github.com/lh3/miniprot?tab=readme-ov-file#install>`_ on `GitHub <https://github.com/lh3/miniprot>`_.
 
 .. admonition:: Version warning
    :class: important
@@ -33,18 +33,18 @@ These dependencies will be automatically installed when you install SpliceAI-too
 |
 
 
-There are three ways that you can install SpliceAI-toolkit:
+There are three ways that you can install OpenSpliceAI:
 
 .. _install-through-pip:
 
 Install through pip
 -------------------------
 
-SpliceAI-toolkit is on `PyPi 3.12 <https://pypi.org/project/spliceai-toolkit/>`_ now. Check out all the releases `here <https://pypi.org/manage/project/spliceai-toolkit/releases/>`_. Pip automatically resolves and installs any dependencies required by SpliceAI-toolkit.
+OpenSpliceAI is on `PyPi 3.12 <https://pypi.org/project/OpenSpliceAI/>`_ now. Check out all the releases `here <https://pypi.org/manage/project/OpenSpliceAI/releases/>`_. Pip automatically resolves and installs any dependencies required by OpenSpliceAI.
 
 .. code-block:: bash
    
-   $ pip install spliceai-toolkit
+   $ pip install openspliceai
 
 |
 
@@ -53,13 +53,13 @@ SpliceAI-toolkit is on `PyPi 3.12 <https://pypi.org/project/spliceai-toolkit/>`_
 Install through conda
 -------------------------------
 
-Installing SpliceAI-toolkit through conda is the easiest way to go:
+Installing OpenSpliceAI through conda is the easiest way to go:
 
 .. code-block:: bash
    
    TBC
 
-   $ conda install -c bioconda spliceai-toolkit
+   $ conda install -c bioconda openspliceai
 
 |
 
@@ -68,27 +68,27 @@ Installing SpliceAI-toolkit through conda is the easiest way to go:
 Install from source
 -------------------------
 
-You can also install SpliceAI-toolkit from source. Check out the latest version on `GitHub <https://github.com/Kuanhao-Chao/SpliceAI-toolkit>`_
+You can also install OpenSpliceAI from source. Check out the latest version on `GitHub <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_
 !
 
 .. code-block:: bash
 
-   $ git clone https://github.com/Kuanhao-Chao/SpliceAI-toolkit
+   $ git clone https://github.com/Kuanhao-Chao/OpenSpliceAI
 
    $ python setup.py install
 
 |
 
-.. _check-SpliceAI-toolkit-installation:
+.. _check-OpenSpliceAI-installation:
 
-Check SpliceAI-toolkit installation
+Check OpenSpliceAI installation
 -------------------------------------
 
-Run the following command to make sure SpliceAI-toolkit is properly installed:
+Run the following command to make sure OpenSpliceAI is properly installed:
 
 .. code-block:: bash
    
-   $ spliceai-toolkit -h
+   $ openspliceai -h
 
 
 .. dropdown:: Terminal output
@@ -113,8 +113,8 @@ Run the following command to make sure SpliceAI-toolkit is properly installed:
 
       0.0.1
 
-      usage: spliceai-toolkit [-h] {create-data,train,predict,variant} ...
-      spliceai-toolkit: error: the following arguments are required: command
+      usage: openspliceai [-h] {create-data,train,predict,variant} ...
+      openspliceai: error: the following arguments are required: command
 
 |
 

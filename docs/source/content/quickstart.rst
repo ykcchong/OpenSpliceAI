@@ -6,6 +6,10 @@
 Quick Start Guide
 =================
 
+This page provides a straightforward quick-start guide to using OpenSpliceAI to (1) predict splice sites from DNA sequences, 
+
+to map RefSeq v110 annotations on :code:`chr22:1-50755568` from GRCh38 version 40 patch 14 to T2T-CHM13 v2.0. If you haven't already, please follow the steps outlined on the :ref:`Installation` page to install and load LiftOn.
+
 This page offers straightforward quick-start information on using LiftOn to map RefSeq v110 annotations on :code:`chr22:1-50755568` from GRCh38 version 40 patch 14 to T2T-CHM13 v2.0. If you haven't already, please follow the steps outlined on the :ref:`Installation` page to install and load LiftOn.
 
 

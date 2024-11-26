@@ -9,7 +9,7 @@ import platform
 import h5py
 import time
 from pyfaidx import Fasta
-from openspliceai.predict.spliceai import *
+from openspliceai.train_base.spliceai import SpliceAI
 from openspliceai.predict.utils import *
 from openspliceai.constants import *
 
@@ -19,14 +19,25 @@ def log_memory_usage():
     process = psutil.Process(os.getpid())
     print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
 
-HDF_THRESHOLD_LEN = 0 # maximum size before reading sequence into an HDF file for storage
-FLUSH_PREDICT_THRESHOLD = 500 # maximum number of predictions before flushing to file
-CHUNK_SIZE = 100 # chunk size for loading hdf5 dataset
-SPLIT_FASTA_THRESHOLD = 1500000 # maximum length of fasta entry before splitting
-
 #####################
 ##      SETUP      ##
 #####################
+
+def initialize_globals(flanking_size, hdf_threshold_len=0, flush_predict_threshold=500, chunk_size=100, split_fasta_threshold=1500000):
+    
+    assert int(flanking_size) in [80, 400, 2000, 10000]
+    
+    global CL_max                  # context length for sequence prediction (flanking size sum)
+    global HDF_THRESHOLD_LEN       # maximum size before reading sequence into an HDF file for storage
+    global FLUSH_PREDICT_THRESHOLD # maximum number of predictions before flushing to file
+    global CHUNK_SIZE              # chunk size for loading hdf5 dataset
+    global SPLIT_FASTA_THRESHOLD   # maximum length of fasta entry before splitting
+    
+    CL_max = flanking_size
+    HDF_THRESHOLD_LEN = hdf_threshold_len
+    FLUSH_PREDICT_THRESHOLD = flush_predict_threshold
+    CHUNK_SIZE = chunk_size
+    SPLIT_FASTA_THRESHOLD = split_fasta_threshold
 
 def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='SpliceAI'):
     """Initialize project directories and create them if they don't exist."""
@@ -115,27 +126,47 @@ def split_fasta(genes, split_fasta_file):
     - genes (Fasta): A pyfaidx dictionary-like object containing gene records.
     - split_fasta_file (str): The path to the output FASTA file.
     '''
-    name_pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+])\):([+])')
+    name_pattern = re.compile(r'(.*)(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+])\)')
     chrom_pattern = re.compile(r'(chr[a-zA-Z0-9_]+)')
     
-    def create_name(record, start_pos, segment_seq):
+    def create_name(record, start_pos, end_pos):
+        '''
+        Write a line of the split FASTA file.
+        
+        Params:
+        - record: Gene record
+        - start_pos: Relative start position of the segment (1-indexed)
+        - end_pos: Relative end position of the segment (1-indexed)
+        '''
+        
         # default extended name
         segment_name = record.long_name
         
         # search for the pattern in the name
         match = name_pattern.search(segment_name)
-        if not match:
+        if match:
+            prefix = match.group(1)
+            chromosome = match.group(2)
+            strand = match.group(5)
+            abs_start = int(match.group(3))
+            
+            # compute true absolute start and end positions
+            start = abs_start - 1 + start_pos
+            end = abs_start - 1 + end_pos
+                        
+            segment_name = f"{prefix}{chromosome}:{start}-{end}({strand})"
+            
+        else:
             chrom_match = chrom_pattern.search(segment_name)
             if chrom_match:
                 seqid = chrom_match.group(1) # use chromosome to denote sequence ID
             else:
-                seqid = record.name # use original name to denote sequence ID         
-            start = start_pos + 1
-            end = start_pos + len(segment_seq)
+                seqid = record.name # use original name to denote sequence ID (NOTE: must be unique for each sequence in the FASTA file)        
+            
             strand = '.' # NOTE: unknown strands will be treated as a forward strand further downstream (supply neg_strands argument to get_sequences() to override)
             
             # construct the fixed string with the split denoted
-            segment_name = f"{seqid}:{start}-{end}({strand})"
+            segment_name = f"{seqid}:{start_pos}-{end_pos}({strand})"
         
         return segment_name
                     
@@ -152,7 +183,7 @@ def split_fasta(genes, split_fasta_file):
                     segment_seq = genes[record.name][start_slice:end_slice].seq # added flanking sequences to preserve predictions 
                     
                     # formulate the sequence name using pattern matching
-                    segment_name = create_name(record, start_slice, segment_seq)
+                    segment_name = create_name(record, start_slice+1, end_slice)
                     
                     output_file.write(f">{segment_name}\n")
                     output_file.write(f"{segment_seq}\n")
@@ -160,7 +191,7 @@ def split_fasta(genes, split_fasta_file):
             else:
                 # write sequence as is (still ensuring name in format)
                 segment_seq = genes[record.name][:]
-                segment_name = create_name(record, 0, segment_seq)
+                segment_name = create_name(record, 1, len(segment_seq))
             
                 output_file.write(f">{segment_name}\n")
                 output_file.write(f"{segment_seq}\n")
@@ -180,7 +211,6 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
     Returns:
     - Path to datafile.
     """
-    global CL_max 
 
     # detect sequence length, determine file saving method to use
     total_length = 0
@@ -209,7 +239,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
         split_fasta(genes, split_fasta_file)
 
         # re-loads the pyfaidx Fasta object with split genes
-        genes = Fasta(split_fasta_file, one_based_attributes=True, read_long_names=False, sequence_always_upper=True) 
+        genes = Fasta(split_fasta_file, one_based_attributes=True, read_long_names=True, sequence_always_upper=True) # need long name to handle duplicate seqids after splits
         print(f"\t[INFO] Saved and loaded {split_fasta_file}.")
 
     NAME = [] # Gene Header
@@ -263,7 +293,6 @@ def create_datapoints(input_string, debug=False):
     Returns:
     - X (np.ndarray): The one-hot encoded input nucleotide sequence.
     """
-    global CL_max 
 
     # NOTE: No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     
@@ -302,7 +331,6 @@ def reformat_data(X0, debug=False):
     Returns:
     - numpy.ndarray: Reformatted sequence data.
     """
-    global CL_max 
     
     if debug:
         print('\n\t[DEBUG] reformat_data', file=sys.stderr)
@@ -331,8 +359,7 @@ def reformat_data(X0, debug=False):
 
 def one_hot_encode(Xd):
     """
-    Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
-    predefined mappings (IN_MAP for inputs and OUT_MAP for outputs).
+    Perform one-hot encoding on the input sequence data (Xd).
 
     Parameters:
     - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
@@ -543,7 +570,6 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
     Additionally, Y is also converted to a list (the .h5 files store 
     them as an array).
     """
-    global CL_max 
 
     rem = X.shape[0] % N_GPUS
     clip = (CL_max-CL)//2
@@ -655,9 +681,10 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
                 if debug:
                     print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
 
-                DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
+                # DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                 DNAs = DNAs.to(torch.float32).to(device)
-                y_pred = model(DNAs)
+                with torch.no_grad():
+                    y_pred = model(DNAs)
                 y_pred = y_pred.detach().cpu()
 
                 if debug:
@@ -692,7 +719,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
         predict_path = f'{output_dir}predict.pt'
 
         # load all data
-        X = torch.load(dataset_path)
+        X = torch.load(dataset_path).transpose(0, 2, 1)
         X = torch.tensor(X, dtype=torch.float32)
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
@@ -705,7 +732,8 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
             DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
 
-            y_pred = model(DNAs)
+            with torch.no_grad():
+                y_pred = model(DNAs)
 
             batch_ypred.append(y_pred.detach().cpu())
             count += 1
@@ -755,58 +783,64 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         print('\tacceptor\tdonor (assuming + strand):', file=sys.stderr)
         print('\t',acceptor_scores.shape, donor_scores.shape, file=sys.stderr)
         print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
-
-    # iterate over the positions and write to the respective BED files
-    for pos in range(len(acceptor_scores)): # donor and acceptor should have same num of scores 
-
-        # parse out key information from name
-        pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
-        match = pattern.match(seq_name)
         
-        if match:
-            start = int(match.group(2))
-            end = int(match.group(3))
-            strand = match.group(4)
-            name = seq_name[:-2] # remove endings
-            
-            if strand == '.': # in case of unknown/unspecified strand, gets the manually specified strand and use full name
-                strand = match.group(5)
-                name = seq_name
-            
+    # parse out key information from name
+    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
+    match = pattern.match(seq_name)
 
-            # obtain scores
-            acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
-            donor_score = donor_scores[pos] if strand=='+' else acceptor_scores[pos]
+    if match:
+        start = int(match.group(2))
+        end = int(match.group(3))
+        strand = match.group(4)
+        name = seq_name[:-2] # remove endings
+        
+        if strand == '.': # in case of unknown/unspecified strand, gets the manually specified strand and use full name
+            strand = match.group(5)
+            name = seq_name
 
-            # handle file writing based on strand
-            if strand == '+':
+        # handle file writing based on strand
+        if strand == '+':
+            for pos in range(len(acceptor_scores)): # NOTE: donor and acceptor should have same num of scores 
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
                     acceptor_bed.write(f"{name}\t{start+pos-2}\t{start+pos}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
                     donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
-            elif strand == '-':
+        elif strand == '-':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = donor_scores[pos]
+                donor_score = acceptor_scores[pos]
                 if acceptor_score > threshold:
                     acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
                     donor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tDonor\t{donor_score:.6f}\n")
-            else:
-                print(f'\t[ERR] Undefined strand {strand}. Skipping...')
-                continue
+        else:
+            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
-        else: # does not match pattern, could be due to not having gff file, keep writing it
-            # print(f'\t[ERR] Sequence name does not match expected pattern: {seq_name}. Writing without position info...')
+    else: # does not match pattern, could be due to not having gff file, keep writing it
 
-            strand = seq_name[-1] # use the ending as the strand (when lack other information)
-            
-            # obtain scores
-            acceptor_score = acceptor_scores[pos] if strand=='+' else donor_scores[pos]
-            donor_score = donor_scores[pos] if strand=='+' else acceptor_scores[pos]
-
-            # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
-            if acceptor_score > threshold:
-                acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
-            if donor_score > threshold:
-                donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        strand = seq_name[-1] # use the ending as the strand (when lack other information)
+        
+        # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
+        if strand == '+':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        elif strand == '-':
+            for pos in range(len(acceptor_scores)):
+                acceptor_score = donor_scores[pos]
+                donor_score = acceptor_scores[pos]
+                if acceptor_score > threshold:
+                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
+                if donor_score > threshold:
+                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
+        else:
+            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
 
 # NOTE: need to handle naming when gff file not provided.
@@ -922,7 +956,8 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
 
                     DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
                     DNAs = DNAs.to(torch.float32).to(device)
-                    y_pred = model(DNAs)
+                    with torch.no_grad():
+                        y_pred = model(DNAs)
                     y_pred = y_pred.detach().cpu()
                     count += len(y_pred)  # update the count for the current batch
 
@@ -964,7 +999,7 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
     else: # read from the PyTorch file
 
         # load all data
-        X = torch.load(dataset_path)
+        X = torch.load(dataset_path).transpose(0, 2, 1)
         X = torch.tensor(X, dtype=torch.float32)
         ds = TensorDataset(X)
         loader = DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
@@ -976,7 +1011,8 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
             DNAs = batch[0].to(device)
             DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
-            y_pred = model(DNAs)
+            with torch.no_grad():
+                y_pred = model(DNAs)
             y_pred = y_pred.detach().cpu()
             count += 1
 
@@ -1019,26 +1055,32 @@ def predict(args):
     # get all input args
     output_dir = args.output_dir
     sequence_length = SL
-    flanking_size = int(args.flanking_size)
+    flanking_size = args.flanking_size
     model_path = args.model
     input_sequence = args.input_sequence
     gff_file = args.annotation_file
-    threshold = float(args.threshold) if args.threshold else 1e-6
-    # threads = int(args.threads) if args.threads else 1
+    threshold = np.float32(args.threshold)
     debug = args.debug
     predict_all = args.predict_all
+    hdf_threshold_len = args.hdf_threshold
+    flush_predict_threshold = args.flush_threshold
+    split_fasta_threshold = args.split_threshold
+    chunk_size = args.chunk_size
     
-    global CL_max 
-    CL_max = flanking_size
+    # initialize global variables
+    initialize_globals(flanking_size, hdf_threshold_len, flush_predict_threshold, chunk_size, split_fasta_threshold)
 
-    assert int(flanking_size) in [80, 400, 2000, 10000]
-
-    print(f'Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, model: {model_path}, input_sequence: {input_sequence}, gff_file: {gff_file}')
+    print(f'''Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, threshold: {threshold}, in {'debug, ' if debug else ''}{'turbo' if not predict_all else 'all'} mode.
+          model: {model_path}, 
+          input_sequence: {input_sequence}, 
+          gff_file: {gff_file},
+          output_dir: {output_dir},
+          hdf_threshold_len: {hdf_threshold_len}, flush_predict_threshold: {flush_predict_threshold}, split_fasta_threshold: {split_fasta_threshold}, chunk_size: {chunk_size}''')
 
     # create output directory
     os.makedirs(output_dir, exist_ok=True)
     output_base = initialize_paths(output_dir, flanking_size, sequence_length)
-    print("* output_base: ", output_base, file=sys.stderr)
+    print("Output path: ", output_base, file=sys.stderr)
     print("Model path: ", model_path, file=sys.stderr)
     print("Flanking sequence size: ", flanking_size, file=sys.stderr)
     print("Sequence length: ", sequence_length, file=sys.stderr)
@@ -1078,7 +1120,7 @@ def predict(args):
 
     # load model from current state
     model, params = load_model(device, flanking_size)
-    model.load_state_dict(torch.load(model_path))
+    model.load_state_dict(torch.load(model_path, map_location=device))
     model = model.to(device)
     print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
 

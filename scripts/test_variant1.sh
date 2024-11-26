@@ -6,7 +6,7 @@
 # NOTE: calls predict method, so will need the same arguments generally
 
 SETUP="/ccb/cybertron/smao10/openspliceai/setup.py"
-RESULT_DIR="./results/variant/SpliceAI_5000_400"
+RESULT_DIR="./results/variant/default"
 
 # Run the setup script
 python "$SETUP" install
@@ -15,13 +15,13 @@ if [ -d "$RESULT_DIR" ]; then
 fi
 mkdir -p $RESULT_DIR
 
-MODEL_PATH="./models/spliceai-mane/400nt/model_400nt_rs40.pt"
+REF_GENOME_PATH="/ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh37/hg19.fa"
+ANNOTATION_PATH="grch37" # NOTE: this is a custom annotation file
+MODEL_PATH="SpliceAI"
 INPUT_PATH="./data/vcf/input.vcf"
 OUTPUT_PATH="$RESULT_DIR/output.vcf"
-REF_GENOME_PATH="./data/ref_genome/homo_sapiens/GRCh38/GCF_000001405.40_GRCh38.p14_genomic.fna"
-ANNOTATION_PATH="./data/vcf/grch38.txt"
-FLANKING_SIZE=400
-THRESHOLD=0.9
+FLANKING_SIZE=5000
+MODEL_TYPE="keras"
 
 OUTPUT_FILE="$RESULT_DIR/output.log"
 ERROR_FILE="$RESULT_DIR/error.log"
