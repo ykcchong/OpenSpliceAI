@@ -1,11 +1,20 @@
-import os
-import sys
-import argparse
+'''
+variant.py
+This command annotates variants in a VCF file using SpliceAI-toolkit. It reads the input VCF file, annotates 
+each variant with delta scores and delta positions, and writes the annotated variants to an output VCF file. 
+It uses the Annotator class to annotate variants based on the reference genome and annotation provided. The 
+annotated variants are written to the output VCF file with the 'SpliceAI' INFO field containing the delta 
+scores and delta positions for acceptor gain (AG), acceptor loss (AL), donor gain (DG), and donor loss (DL). 
+'''
+
 import logging
 import pysam
 import numpy as np
 from openspliceai.variant.utils import *
 from tqdm import tqdm
+import os
+
+# NOTE: if running with gpu, note that cudnn version should be 8.9.6 or higher, numpy <2.0.0
 
 def variant(args):
     print("Running SpliceAI-toolkit with 'variant' mode")
@@ -30,6 +39,12 @@ def variant(args):
     model = args.model
     flanking_size = args.flanking_size
     model_type = args.model_type
+    precision = args.precision
+    
+    print(f'''Running with genome: {ref_genome}, annotation: {annotation}, 
+          model(s): {model}, model_type: {model_type}, 
+          input: {input_vcf}, output: {output_vcf}, 
+          distance: {distance}, mask: {mask}, flanking_size: {flanking_size}, precision: {precision}''')
 
     # Reading input VCF file
     print('\t[INFO] Reading input VCF file')
@@ -48,7 +63,7 @@ def variant(args):
 
     # Generating output VCF file
     print('\t[INFO] Generating output VCF file')
-    output_dir = os.path.dirname(output_vcf)
+    os.makedirs(os.path.dirname(output_vcf), exist_ok=True)
     try:
         output = pysam.VariantFile(output_vcf, mode='w', header=header)
     except (IOError, ValueError) as e:
@@ -61,7 +76,7 @@ def variant(args):
 
     # Obtain delta score for each variant in VCF
     for record in tqdm(vcf):
-        scores = get_delta_scores(record, ann, distance, mask, flanking_size)
+        scores = get_delta_scores(record, ann, distance, mask, flanking_size, precision)
         if scores:
             record.info['SpliceAI'] = scores
         output.write(record)

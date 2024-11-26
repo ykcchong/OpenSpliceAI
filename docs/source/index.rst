@@ -43,8 +43,8 @@
 
     <embed>
         <div class="sidebar-logo-container" style="padding-bottom:-10px">
-            <img class="sidebar-logo only-light" src="_static/SpliceAI-toolkit_black.png" alt="Light Logo">
-            <img class="sidebar-logo only-dark" src="_static/SpliceAI-toolkit_white.png" alt="Dark Logo">
+            <img class="sidebar-logo only-light" src="_static/logo_black.png" alt="Light Logo">
+            <img class="sidebar-logo only-dark" src="_static/logo_white.png" alt="Dark Logo">
         </div>
     </embed>
 
@@ -58,10 +58,10 @@
     :target: https://pepy.tech/project/lifton
 
 .. image:: https://img.shields.io/github/downloads/Kuanhao-Chao/lifton/total.svg?style=social&logo=github&label=Download
-    :target: https://github.com/Kuanhao-Chao/lifton/releases
+    :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://img.shields.io/badge/platform-macOS_/Linux-green.svg
-    :target: https://github.com/Kuanhao-Chao/spliceAI-toolkit/releases
+    :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://colab.research.google.com/assets/colab-badge.svg
     :target: https://colab.research.google.com/github/Kuanhao-Chao/lifton/blob/main/notebook/lifton_example.ipynb
@@ -80,8 +80,8 @@
 
 | 
 
+OpenSpliceAI is an open-source version of SpliceAI, a highly accurate splice site prediction system that provides researchers with a user-friendly framework to study transcript splicing. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the OpenSpliceAI is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
-OpenSpliceAI is a flexible framework designed for easy retraining of the SpliceAI model with new datasets. It comes with models pre-trained on various species, including humans (MANE database), mice, thale cress (Arabidopsis), honey bees, and zebrafish. Additionally, the OpenSpliceAI is capable of processing genetic variants in VCF format to predict their impact on splicing.
 
 |
 
@@ -129,8 +129,8 @@ Cite us
 
 .. raw:: html
     
-    <p>Kuan-Hao Chao, Alan Mao, Anqi Liu, Mihaela Pertea, and Steven L. Salzberg. <i>"OpenSpliceAI"</i> <b>bioRxiv</b>.
-    <a href="https://doi.org/10.1093/bioinformatics/btaa1016" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
+    <p>Kuan-Hao Chao, Alan Mao, Anqi Liu, Mihaela Pertea, and Steven L. Salzberg. <i>"OpenSpliceAI"</i> <b>bioRxiv coming soon!</b>.
+    <a href="https://khchao.com/" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
 
     <p>Kishore Jaganathan, Sofia Kyriazopoulou Panagiotopoulou, Jeremy F. McRae, Siavash Fazel Darbandi, David Knowles, Yang I. Li, Jack A. Kosmicki, Juan Arbelaez, Wenwu Cui, Grace B. Schwartz, Eric D. Chow, Efstathios Kanterakis, Hong Gao, Amirali Kia, Serafim Batzoglou, Stephan J. Sanders, and Kyle Kai-How Farh. <i>"Predicting splicing from primary sequence with deep learning"</i> <b>Cell</b>.
     <a href="https://doi.org/10.1016/j.cell.2018.12.015" target="_blank"> <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" x="0px" y="0px" viewBox="0 0 100 100" width="15" height="15" class="icon outbound"><path fill="currentColor" d="M18.8,85.1h56l0,0c2.2,0,4-1.8,4-4v-32h-8v28h-48v-48h28v-8h-32l0,0c-2.2,0-4,1.8-4,4v56C14.8,83.3,16.6,85.1,18.8,85.1z"></path> <polygon fill="currentColor" points="45.7,48.7 51.3,54.3 77.2,28.5 77.2,37.2 85.2,37.2 85.2,14.9 62.8,14.9 62.8,22.9 71.5,22.9"></polygon></svg> </a> </p>
@@ -149,7 +149,7 @@ https://github.com/Kuanhao-Chao/openspliceai/issues
 Key contributors
 ================
 
-OpenSpliceAI was designed and developed by `Kuan-Hao Chao <https://khchao.com/>`_.  This documentation was written by `Kuan-Hao Chao <https://khchao.com/>`_. The LiftOn logo was designed by `Kuan-Hao Chao <https://khchao.com/>`_.
+OpenSpliceAI was designed and developed by `Kuan-Hao Chao <https://khchao.com/>`_ and `Alan Mao <https://scholar.google.com/citations?user=4c8UQUUAAAAJ&hl=en>`_.  This documentation was written by `Kuan-Hao Chao <https://khchao.com/>`_ and `Alan Mao <https://scholar.google.com/citations?user=4c8UQUUAAAAJ&hl=en>`_. The LiftOn logo was designed by `Kuan-Hao Chao <https://khchao.com/>`_.
 
 |
 
@@ -168,12 +168,18 @@ Table of contents
     :caption: Subcommands usage
     :maxdepth: 2
 
-    content/spliceaitoolkit_create-data
-    content/spliceaitoolkit_train
-    content/spliceaitoolkit_fine-tune
-    content/spliceaitoolkit_predict
-    content/spliceaitoolkit_variant
+    content/openspliceai_create-data
+    content/openspliceai_train
+    content/openspliceai_transfer
+    content/openspliceai_calibrate
+    content/openspliceai_predict
+    content/openspliceai_variant
 
+.. toctree::
+    :caption: Train your own model
+    :maxdepth: 2
+
+    content/train_your_own_model/index
 
 .. toctree::
     :caption: Pretrained models
@@ -181,7 +187,7 @@ Table of contents
 
     content/pretrained_models/index
 
-    content/output_explanation
+    content/openspliceai_vs_spliceai
     content/behind_scenes
     content/how_to_page
     content/function_manual
@@ -192,6 +198,7 @@ Table of contents
 
     
 
+    .. content/output_explanation
 
 |
 |

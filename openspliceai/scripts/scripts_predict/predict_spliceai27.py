@@ -16,11 +16,7 @@ from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 from keras.models import load_model
 import wandb
 
-<<<<<<< HEAD
-RANDOM_SEED = 42
-=======
 RANDOM_SEED = 1
->>>>>>> main
 
 def setup_device():
     """Select computation device based on availability."""
@@ -30,17 +26,7 @@ def setup_device():
 
 def initialize_paths(output_dir, project_name, flanking_size, sequence_length):
     """Initialize project directories and create them if they don't exist."""
-<<<<<<< HEAD
-    ####################################
-    # Modify the model verson here!!
-    ####################################
     MODEL_VERSION = f"{project_name}_{sequence_length}_{flanking_size}"
-    ####################################
-    # Modify the model verson here!!
-    ####################################
-=======
-    MODEL_VERSION = f"{project_name}_{sequence_length}_{flanking_size}"
->>>>>>> main
     model_train_outdir = f"{output_dir}/{MODEL_VERSION}/"
     model_output_base = f"{model_train_outdir}models/"
     log_output_base = f"{model_train_outdir}LOG/"
@@ -62,72 +48,6 @@ def threshold_predictions(y_probs, threshold=0.5):
     return (y_probs > threshold).astype(int)
 
 
-<<<<<<< HEAD
-def load_data_from_shard(h5f, shard_idx, device, batch_size, params, shuffle=False):
-    X = h5f[f'X{shard_idx}'][:].transpose(0, 2, 1)
-    Y = h5f[f'Y{shard_idx}'][0, ...].transpose(0, 2, 1)
-    # print("\n\tX.shape: ", X.shape)
-    # print("\tY.shape: ", Y.shape)
-    X = torch.tensor(X, dtype=torch.float32)
-    Y = torch.tensor(Y, dtype=torch.float32)
-    ds = TensorDataset(X, Y)
-    # print("\rds: ", ds)
-    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=True, pin_memory=True)
-    # return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, drop_last=False, num_workers=8, pin_memory=True)
-
-
-# def model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode, criterion):
-#     batch_ylabel = torch.cat(batch_ylabel, dim=0)
-#     batch_ypred = torch.cat(batch_ypred, dim=0)
-#     is_expr = (batch_ylabel.sum(axis=(1,2)) >= 1).cpu().numpy()
-#     if np.any(is_expr):
-#         ############################
-#         # Topk SpliceAI assessment approach
-#         ############################
-#         subset_size = 1000
-#         indices = np.arange(batch_ylabel[is_expr].shape[0])
-#         subset_indices = np.random.choice(indices, size=min(subset_size, len(indices)), replace=False)
-#         Y_true_1 = batch_ylabel[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-#         Y_true_2 = batch_ylabel[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-#         Y_pred_1 = batch_ypred[is_expr][subset_indices, 1, :].flatten().cpu().detach().numpy()
-#         Y_pred_2 = batch_ypred[is_expr][subset_indices, 2, :].flatten().cpu().detach().numpy()
-#         acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1),
-#                             np.asarray(Y_pred_1), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-#         donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2),
-#                             np.asarray(Y_pred_2), metric_files["topk_donor"], type='donor', print_top_k=True)
-#         if criterion == "cross_entropy_loss":
-#             loss = categorical_crossentropy_2d(batch_ylabel, batch_ypred)
-#         elif criterion == "focal_loss":
-#             loss = focal_loss(batch_ylabel, batch_ypred)
-#         for k, v in metric_files.items():
-#             with open(v, 'a') as f:
-#                 if k == "loss_batch":
-#                     f.write(f"{loss.item()}\n")
-#                 elif k == "topk_acceptor":
-#                     f.write(f"{acceptor_topkl_accuracy}\n")
-#                 elif k == "topk_donor":
-#                     f.write(f"{donor_topkl_accuracy}\n")
-#                 elif k == "auprc_acceptor":
-#                     f.write(f"{acceptor_auprc}\n")
-#                 elif k == "auprc_donor":
-#                     f.write(f"{donor_auprc}\n")
-#         wandb.log({
-#             f'{run_mode}/loss_batch': loss.item(),
-#             f'{run_mode}/topk_acceptor': acceptor_topkl_accuracy,
-#             f'{run_mode}/topk_donor': donor_topkl_accuracy,
-#             f'{run_mode}/auprc_acceptor': acceptor_auprc,
-#             f'{run_mode}/auprc_donor': donor_auprc,
-#         })
-#         print("***************************************\n\n")
-#     batch_ylabel = []
-#     batch_ypred = []
-
-def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_mode, sample_freq):
-    print(f"\033[1m{run_mode.capitalize()}ing model...\033[0m")
-    print("--------------------------------------------------------------")
-    print("\n\033[1mValidation set metrics:\033[0m")
-
-=======
 def classwise_accuracy(true_classes, predicted_classes, num_classes):
     accuracies = []
     for i in range(num_classes):
@@ -184,27 +104,10 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     print("\n\033[1mValidation set metrics:\033[0m")
     batch_ylabel = []
     batch_ypred = []
->>>>>>> main
     Y_true_1 = [[] for t in range(1)]
     Y_true_2 = [[] for t in range(1)]
     Y_pred_1 = [[] for t in range(1)]
     Y_pred_2 = [[] for t in range(1)]
-<<<<<<< HEAD
-
-    for idx in idxs[:10]:
-        X = h5f['X' + str(idx)]
-        # [:100]
-        Y = h5f['Y' + str(idx)]
-        # [:,:100]
-        print("\n\tX.shape: ", X.shape)
-        print("\tY.shape: ", Y.shape)
-
-        Xc, Yc = clip_datapoints_spliceai27(X, Y, params['CL'], 2)
-        # print("\n\tXc.shape: ", Xc.shape)
-        # print("\tYc[0].shape: ", Yc[0].shape)
-        Yp = model.predict(Xc, batch_size=params['BATCH_SIZE'])
-
-=======
     np.random.seed(RANDOM_SEED)  # You can choose any number as a seed
     shuffled_idxs = np.random.choice(idxs, size=len(idxs), replace=False)    
     print("shuffled_idxs: ", shuffled_idxs)
@@ -219,33 +122,16 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
         batch_ypred.extend(Yp)
         print("\n\tYp.shape: ", Yp.shape)
         print("\tYc[0].shape: ", Yc[0].shape)
->>>>>>> main
         # loss = categorical_crossentropy_2d(Yc[0], Yp)
         # print("Loss: ", loss)
         if not isinstance(Yp, list):
             Yp = [Yp]
-<<<<<<< HEAD
-
-=======
->>>>>>> main
         for t in range(1):
             is_expr = (Yc[t].sum(axis=(1,2)) >= 1)
             Y_true_1[t].extend(Yc[t][is_expr, :, 1].flatten())
             Y_true_2[t].extend(Yc[t][is_expr, :, 2].flatten())
             Y_pred_1[t].extend(Yp[t][is_expr, :, 1].flatten())
             Y_pred_2[t].extend(Yp[t][is_expr, :, 2].flatten())
-<<<<<<< HEAD
-
-    print("\n\033[1mAcceptor:\033[0m")
-    for t in range(1):
-        acceptor_topkl_accuracy, acceptor_auprc = print_topl_statistics(np.asarray(Y_true_1[t]), np.asarray(Y_pred_1[t]), metric_files["topk_acceptor"], type='acceptor', print_top_k=True)
-
-    print("\n\033[1mDonor:\033[0m")
-    for t in range(1):
-        donor_topkl_accuracy, donor_auprc = print_topl_statistics(np.asarray(Y_true_2[t]),
-                                np.asarray(Y_pred_2[t]), metric_files["topk_donor"], type='donor', print_top_k=True)
-    print("--------------------------------------------------------------")
-=======
         # if idx == 1:
         #     break
     batch_ylabel = np.array(batch_ylabel)
@@ -282,7 +168,6 @@ def valid_epoch(model, h5f, idxs, batch_size, device, params, metric_files, run_
     metrics(batch_ypred, batch_ylabel, metric_files)
     print("--------------------------------------------------------------")
     # model_evaluation(batch_ylabel, batch_ypred, metric_files, run_mode):
->>>>>>> main
 
 
 def initialize_model_and_optim(flanking_size):
@@ -367,20 +252,6 @@ def predict():
     print("Model: ", model)
 
     test_metric_files = {
-<<<<<<< HEAD
-        'topk_donor': f'{log_output_test_base}/donor_topk.txt',
-        'auprc_donor': f'{log_output_test_base}/donor_accuracy.txt',
-        'topk_acceptor': f'{log_output_test_base}/acceptor_topk.txt',
-        'auprc_acceptor': f'{log_output_test_base}/acceptor_accuracy.txt',
-        'loss_batch': f'{log_output_test_base}/loss_batch.txt',
-        'loss_every_update': f'{log_output_test_base}/loss_every_update.txt'
-    }
-    SAMPLE_FREQ = 1000
-    print("\n--------------------------------------------------------------")
-    start_time = time.time()
-    BATCH_SIZE = 36
-    valid_epoch(model, test_h5f, test_idxs, BATCH_SIZE, device, params, test_metric_files, run_mode="test", sample_freq=SAMPLE_FREQ)
-=======
         'donor_topk_all': f'{log_output_test_base}/donor_topk_all.txt',
         'donor_topk': f'{log_output_test_base}/donor_topk.txt',
         'donor_auprc': f'{log_output_test_base}/donor_auprc.txt',
@@ -409,7 +280,6 @@ def predict():
     start_time = time.time()
     BATCH_SIZE = 36
     valid_epoch(model, test_h5f, test_idxs, BATCH_SIZE, device, params, test_metric_files, run_mode="test")
->>>>>>> main
     print("--- %s seconds ---" % (time.time() - start_time))
     print("--------------------------------------------------------------")
     test_h5f.close()

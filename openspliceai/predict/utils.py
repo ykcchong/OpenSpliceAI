@@ -3,10 +3,7 @@
 datafile_{}_{}.h5 and convert them into a format usable by Keras.'''
 ###############################################################################
 
-import numpy as np
-import torch
 from math import ceil
-from sklearn.metrics import average_precision_score, precision_recall_fscore_support, accuracy_score
 from openspliceai.constants import *
 
 def ceil_div(x, y):
