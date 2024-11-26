@@ -23,6 +23,7 @@ def calculate_average_score_change(ref_scores, mut_scores):
 
 # Function to generate DNA logo
 def generate_dna_logo(score_changes, output_file, start=140, end=260):
+    order = ['A', 'C', 'G', 'T']
     
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
     # Ensure valid start and end range
@@ -33,7 +34,7 @@ def generate_dna_logo(score_changes, output_file, start=140, end=260):
     # Slice the DataFrame to include only rows from start to end
     data_df = data_df.iloc[start:end]
     print(data_df)
-    logo = logomaker.Logo(data_df)
+    logo = logomaker.Logo(data_df, stack_order='small_on_top', color_scheme='classic')
     logo.ax.set_title('DNA Logo - Score Change by Base')
     plt.savefig(output_file)
 

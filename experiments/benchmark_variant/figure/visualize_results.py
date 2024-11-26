@@ -73,7 +73,7 @@ def plot_subset(averages, metrics, metric_labels, outdir):
     dashes_styles = dict(zip(model_types, reversed_dash_patterns))
 
     for metric, label in zip(metrics, metric_labels):
-        plt.figure(figsize=(19, 11.5))
+        plt.figure(figsize=(16, 9.7))
         sns.lineplot(
             data=averages,
             x='subset_size',
@@ -88,7 +88,7 @@ def plot_subset(averages, metrics, metric_labels, outdir):
             dashes=dashes_styles,
             linewidth=3  # Thicker line for better visibility
         )
-        plt.title(f'[Variant] {label} vs. Input Size', fontsize=30)
+        plt.title(f'[Variant] {label} vs. Input Size', fontsize=30, fontweight='bold')
         plt.xlabel('Input Size (# Variants in Mills/1000G)', fontsize=27)
         plt.ylabel(label, fontsize=27)           
         plt.xticks(fontsize=22)

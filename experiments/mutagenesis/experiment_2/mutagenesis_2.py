@@ -315,19 +315,73 @@ def calculate_average_score_change(ref_scores, mut_scores):
     return ref_scores - np.mean(mut_scores, axis=0)
 
 # Function to generate DNA logo
-def generate_dna_logo(score_changes, output_file, start=140, end=260):
+def generate_dna_logo(score_changes, site, output_file, start=0, end=400):
     
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
-    # Ensure valid start and end range
-    if start < 0 or end > len(data_df):
-        raise ValueError("Invalid start or end range for the given data.")
+    
+    # # Ensure valid start and end range
+    # if start < 0 or end > len(data_df):
+    #     raise ValueError("Invalid start or end range for the given data.")
+    
+    # midpoint = len(data_df) // 2
+    # if site == 'donor':
+    #     midpoint -= 2
+    #     exon_start, exon_stop = start, midpoint
+    # else:
+    #     midpoint += 1
+    #     exon_start, exon_stop = midpoint, end
+        
+    # # set parameters for drawing gene
+    # exon_start -= .5
+    # exon_stop += .5
+    # y = -.2
+    # xs = np.arange(start-midpoint, end+midpoint, 10)
+    # ys = y*np.ones(len(xs))
+    
     # Fill any missing values with 0, just in case
     data_df = data_df.fillna(0)
     # Slice the DataFrame to include only rows from start to end
     data_df = data_df.iloc[start:end]
+    
     print(data_df)
-    logo = logomaker.Logo(data_df)
-    logo.ax.set_title('DNA Logo - Score Change by Base')
+    logo = logomaker.Logo(data_df, stack_order='fixed', color_scheme='classic', figsize=(30,5))
+    
+    # # style using Logo methods
+    
+    # logo.style_spines(visible=False)
+    # logo.style_spines(spines=['left'], visible=True, bounds=[-0.5, 2.75])
+
+    # # style using Axes methods
+    # # Calculate the relative positions
+    # relative_positions = np.arange(start, end) - midpoint
+
+    # # Update the x-axis tick labels
+    # logo.ax.set_xticks(relative_positions)
+    # logo.ax.set_xticklabels(relative_positions)
+    # logo.ax.set_xlim([0, data_df.shape[0]])
+    # # logo.ax.set_xticks([])
+    # logo.ax.set_ylim([-.5, 2.75])
+    # # logo.ax.set_yticks([0, 2.75])
+    # logo.ax.set_yticklabels(['0', '2.75'], fontsize=14) # font increased
+    # logo.ax.set_ylabel('             Score', labelpad=-1, fontsize=18) # font increased
+    
+    
+    
+
+    
+
+    # # draw gene
+    # logo.ax.axhline(y, color='k', linewidth=1)
+    # logo.ax.plot(xs, ys, marker='4', linewidth=0, markersize=7, color='k')
+    # logo.ax.plot([exon_start, exon_stop],
+    #                 [y, y], color='k', linewidth=10, solid_capstyle='butt')
+
+    # # annotate gene
+    # logo.ax.plot(exon_start, 1.8*y, '^k', markersize=12) # marker decreased
+    # # logo.ax.text(2,2*y,f'${site.capitalize()}$',fontsize=16) # font increased
+    # logo.ax.text(exon_start, 2.5*y,f'{site.capitalize()}', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
+    
+    logo.ax.set_title(f'OpenSpliceAI - {site.capitalize()} Site Score Change by Base')
     plt.savefig(output_file)
 
 # Function to generate line plot for average score change
@@ -466,10 +520,10 @@ def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, sco
 
     if site == 'acceptor':
         acceptor_score_change_df.to_csv(f'{output_dir}/acceptor_dna_logo.csv', index=False)
-        generate_dna_logo(acceptor_score_change_df, f'{output_dir}/acceptor_dna_logo.png')
+        generate_dna_logo(acceptor_score_change_df, site, f'{output_dir}/acceptor_dna_logo.png')
     else:
         donor_score_change_df.to_csv(f'{output_dir}/donor_dna_logo.csv', index=False)
-        generate_dna_logo(donor_score_change_df, f'{output_dir}/donor_dna_logo.png')
+        generate_dna_logo(donor_score_change_df, site, f'{output_dir}/donor_dna_logo.png')
 
     # Calculate average score change for each base and plot
     acceptor_score_change = acceptor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
@@ -510,6 +564,8 @@ def mutagenesis():
     sample_number = 7
     debug = False
     
+    visualize = True
+    
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
             model_path = None
@@ -529,10 +585,15 @@ def mutagenesis():
         
         # Initialize logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+        
+        if visualize:
+            df = pd.read_csv(f'{output_dir}/{site}_dna_logo.csv')
+            generate_dna_logo(df, site, f'{output_dir}/{site}_dna_logo.png', start=100, end=300)
+            continue
 
         # Load models (a list of models is passed)
         models, device = load_models(model_path, model_type, flanking_size)
-
+        
         # Run the mutagenesis experiment
         exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, debug=debug)
 
