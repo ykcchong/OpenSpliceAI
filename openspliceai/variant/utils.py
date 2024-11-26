@@ -5,10 +5,8 @@ from pyfaidx import Fasta
 from tensorflow import keras
 import torch
 import logging
-import onnx
 import platform
 import os, glob
-import re
 from openspliceai.train.spliceai import SpliceAI
 from openspliceai.constants import *
 
