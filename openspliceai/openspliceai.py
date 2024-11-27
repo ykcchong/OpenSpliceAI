@@ -6,7 +6,7 @@ import numpy as np
 from openspliceai import header
 from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
 from openspliceai.train import train
-from openspliceai.test import test
+# from openspliceai.test import test
 from openspliceai.calibrate import calibrate
 from openspliceai.transfer import transfer
 from openspliceai.predict import predict
@@ -181,8 +181,8 @@ Deep learning framework to train your own SpliceAI model
             verify_h5_file.verify_h5(args)
     elif args.command == 'train':
         train.train(args)
-    elif args.command == 'test':
-        test.test(args)
+    # elif args.command == 'test':
+    #     test.test(args)
     elif args.command == 'calibrate':
         calibrate.calibrate(args)
     elif args.command == 'transfer':
