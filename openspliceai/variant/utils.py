@@ -1,4 +1,4 @@
-from pkg_resources import resource_filename
+from importlib.resources import files
 import pandas as pd
 import numpy as np
 from pyfaidx import Fasta
@@ -7,7 +7,6 @@ import platform
 import os, glob
 from openspliceai.train_base.spliceai import SpliceAI
 from openspliceai.constants import *
-
 from openspliceai.predict.predict import *
 from openspliceai.predict.utils import *
     
