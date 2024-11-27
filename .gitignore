@@ -33,7 +33,7 @@ experiments/benchmark_predict/results*
 experiments/benchmark_variant/results*
 
 spliceai_goals.pdf
-test/
+# test/
 train_data/
 
 
