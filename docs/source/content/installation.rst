@@ -9,30 +9,6 @@ Installation
 
 .. _sys-reqs:
 
-System requirements
--------------------
-
-.. admonition:: Software dependency
-
-   * python >= 3.8.0
-   * numpy >= 1.22.0
-   * gffutils >= 0.10.1
-
-These dependencies will be automatically installed when you install OpenSpliceAI through pip or conda. The only exception is **miniprot**. Since miniprot is not on PyPi, you will need to install it manually. Please check out the `miniprot installation guide <https://github.com/lh3/miniprot?tab=readme-ov-file#install>`_ on `GitHub <https://github.com/lh3/miniprot>`_.
-
-.. admonition:: Version warning
-   :class: important
-
-   If your numpy version is >= 1.25.0, then it requires Python version >= 3.9. 
-   
-   Check out the scientific python ecosystem coordination guideline `SPEC 0 <https://scientific-python.org/specs/spec-0000/>`_ — Minimum Supported Versions to configure the package version compatibility.
-
-   
-..       $ conda create -n myenv python=3.10
-
-|
-
-
 There are three ways that you can install OpenSpliceAI:
 
 .. _install-through-pip:
