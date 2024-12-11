@@ -633,7 +633,6 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 
     Returns:
     - Path to predictions binary file
-    - Raw predictions (saved in memory)
     """
     # define batch_size and count
     batch_size = params["BATCH_SIZE"]
@@ -1037,7 +1036,8 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
 ##   DRIVER   ##
 ################
 
-def predict(args):
+# Command-line prediction
+def predict_cli(args):
     '''
     Parameters:
     - args (argparse.args): 
@@ -1154,3 +1154,58 @@ def predict(args):
         predict_file = predict_and_write(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))  
+
+
+# Simplified in-memory prediction
+def predict(model_path, flanking_size, input_sequence):
+    '''
+    Parameters:
+    - model_path (str): Path to SpliceAI model
+    - flanking_size (int): Size of flanking sequences
+    - input_sequence (str): Path to input FASTA file
+
+    Outputs:
+    - Raw predicted tensors
+    '''
+
+    # Initialize global variables
+    initialize_globals(flanking_size)
+    sequence_length = len(input_sequence)
+
+    # One-hot encode input
+    X = create_datapoints(input_sequence)
+    print(X)
+
+    # If GFF file is provided, extract gene regions
+    
+
+    # PART 2: Getting one-hot encoding of inputs
+    print("--- Step 2: Creating one-hot encoding ... ---", flush=True)
+    start_time = time.time()
+
+    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+    # PART 3: Loading model
+    print("--- Step 3: Load model ... ---", flush=True)
+    start_time = time.time()
+
+    # Setup device
+    device = setup_device()
+
+    # Load model
+    model, params = load_model(device, flanking_size)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model = model.to(device)
+    print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
+
+    print("--- %s seconds ---" % (time.time() - start_time))
+
+    # PART 4: Get predictions
+    print("--- Step 4: Get predictions ... ---", flush=True)
+    start_time = time.time()
+
+    predict_file = get_prediction(model, dataset_path, device, params, output_base, debug=debug)
+
+    print("--- %s seconds ---" % (time.time() - start_time))

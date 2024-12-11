@@ -188,7 +188,7 @@ Deep learning framework to train your own SpliceAI model
     elif args.command == 'fine-tune':
         fine_tune.fine_tune(args)
     elif args.command == 'predict':
-        predict.predict(args)
+        predict.predict_cli(args)
     elif args.command == 'variant':
         variant.variant(args)
 
