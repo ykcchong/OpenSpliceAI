@@ -56,8 +56,8 @@ def main():
     subsets = [10, 50, 100, 250, 500, 1000]
     averages_file = 'aggregated_results.csv'
     averages = pd.read_csv(averages_file)
-    outdir1 = './plots_FLANKING'
-    outdir2 = './plots_SUBSET'
+    outdir1 = './figure/plots_FLANKING'
+    outdir2 = './figure/plots_SUBSET'
     
 
     plot_flanking(averages, metrics, metric_labels, subsets, outdir1)

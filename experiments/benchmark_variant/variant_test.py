@@ -2,7 +2,7 @@ import argparse
 import logging
 import pysam
 import time
-from spliceaitoolkit.variant.utils import *
+from openspliceai.variant.utils import *
 from tqdm import tqdm
 import sys, os
 

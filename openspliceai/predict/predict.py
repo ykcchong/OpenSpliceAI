@@ -532,7 +532,7 @@ def load_model(device, flanking_size):
 
     CL = 2 * np.sum(AR*(W-1))
 
-    print(f"\t[INFO] Context nucleotides {CL}")
+    print(f"\t[INFO] Context nucleotides: {CL}")
     print(f"\t[INFO] Sequence length (output): {SL}")
     
     model = SpliceAI(L, W, AR).to(device)
@@ -633,7 +633,6 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
 
     Returns:
     - Path to predictions binary file
-    - Raw predictions (saved in memory)
     """
     # define batch_size and count
     batch_size = params["BATCH_SIZE"]
@@ -1037,7 +1036,8 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
 ##   DRIVER   ##
 ################
 
-def predict(args):
+# Command-line prediction
+def predict_cli(args):
     '''
     Parameters:
     - args (argparse.args): 
@@ -1154,3 +1154,45 @@ def predict(args):
         predict_file = predict_and_write(model, dataset_path, device, params, NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))  
+
+
+# Simplified in-memory prediction
+def predict(input_sequence, model_path, flanking_size):
+    '''
+    Parameters:
+    - input_sequence (str): Raw gene sequence
+    - model_path (str): Path to SpliceAI model
+    - flanking_size (int): Size of flanking sequences
+
+    Outputs:
+    - Raw predicted tensors
+    '''
+
+    # Initialize global variables
+    initialize_globals(flanking_size)
+    sequence_length = len(input_sequence)
+    #print(sequence_length)
+
+    # One-hot encode input
+    X = create_datapoints(input_sequence)
+    X = torch.tensor(X, dtype=torch.float32)  # Convert to tensor
+    #print(X, X.shape)
+    X = X.permute(0, 2, 1)
+    #print(X.shape)
+
+    # Setup device and model
+    device = setup_device()
+    print(f'\t[INFO] Device: {device}')
+    model, params = load_model(device, flanking_size)
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model = model.to(device)
+  
+    # Get predictions
+    DNAs = X.to(device)
+    with torch.no_grad():
+        y_pred = model(DNAs)
+    y_pred = y_pred.detach().cpu()
+    y_pred = y_pred.permute(0, 2, 1).contiguous().view(-1, y_pred.shape[1])
+    y_pred = y_pred[:sequence_length, :] # crop out the extra padding
+
+    return y_pred
