@@ -79,7 +79,7 @@ def load_pytorch_models(model_path, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.pt')) # gets all PyTorch models from supplied directory
+        model_files = glob.glob(os.path.join(model_path, '*.p[th]')) # gets all PyTorch models from supplied directory
         if not model_files:
             logging.error(f"No PyTorch model files found in directory: {model_path}")
             exit()
@@ -435,7 +435,7 @@ def get_delta_scores(record, ann, dist_var, mask, flanking_size=5000, precision=
             x_ref = one_hot_encode(x_ref)[None, :]
             x_alt = one_hot_encode(x_alt)[None, :]
 
-            '''AM: added separate handling for PyTorch and Keras models (does not make use of custom predict's power)'''
+            '''separate handling of PyTorch and Keras models'''
             
             if ann.keras: # keras model handling
                 # Reverse the sequences if on the negative strand

@@ -93,7 +93,7 @@ def normalise_chrom(source, target):
     return source
 
 
-def get_delta_scores(record, ann, dist_var, mask):
+def get_delta_scores(record, ann, dist_var, mask, precision=2):
 
     cov = 2*dist_var+1
     wid = 10000+cov
@@ -189,7 +189,10 @@ def get_delta_scores(record, ann, dist_var, mask):
             mask_pd = np.logical_and((idx_pd-cov//2 == dist_ann[2]), mask)
             mask_nd = np.logical_and((idx_nd-cov//2 != dist_ann[2]), mask)
 
-            delta_scores.append("{}|{}|{:.2f}|{:.2f}|{:.2f}|{:.2f}|{}|{}|{}|{}".format(
+            format_str = "{{}}|{{}}|{{:.{}f}}|{{:.{}f}}|{{:.{}f}}|{{:.{}f}}|{{}}|{{}}|{{}}|{{}}".format(
+                precision, precision, precision, precision)
+            
+            delta_scores.append(format_str.format(
                                 record.alts[j],
                                 genes[i],
                                 (y[1, idx_pa, 1]-y[0, idx_pa, 1])*(1-mask_pa),
@@ -235,6 +238,7 @@ def get_options():
                         help='mask scores representing annotated acceptor/donor gain and '
                              'unannotated acceptor/donor loss, defaults to 0')
     parser.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser.add_argument('--precision', '-p', type=int, default=2, help='Number of decimal places to round the output scores')
     args = parser.parse_args()
 
     return args
@@ -274,7 +278,7 @@ def main():
     ann = Annotator(args.R, args.A, flanking)
 
     for record in vcf:
-        scores = get_delta_scores(record, ann, args.D, args.M)
+        scores = get_delta_scores(record, ann, args.D, args.M, args.precision)
         if len(scores) > 0:
             record.info['SpliceAI'] = scores
         output.write(record)
