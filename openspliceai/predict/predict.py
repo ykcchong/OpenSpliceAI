@@ -532,7 +532,7 @@ def load_model(device, flanking_size):
 
     CL = 2 * np.sum(AR*(W-1))
 
-    print(f"\t[INFO] Context nucleotides {CL}")
+    print(f"\t[INFO] Context nucleotides: {CL}")
     print(f"\t[INFO] Sequence length (output): {SL}")
     
     model = SpliceAI(L, W, AR).to(device)
@@ -1157,7 +1157,7 @@ def predict_cli(args):
 
 
 # Simplified in-memory prediction
-def predict(input_sequence, model_path, flanking_size,):
+def predict(input_sequence, model_path, flanking_size):
     '''
     Parameters:
     - input_sequence (str): Raw gene sequence
@@ -1171,41 +1171,28 @@ def predict(input_sequence, model_path, flanking_size,):
     # Initialize global variables
     initialize_globals(flanking_size)
     sequence_length = len(input_sequence)
+    #print(sequence_length)
 
     # One-hot encode input
     X = create_datapoints(input_sequence)
-    print(X)
+    X = torch.tensor(X, dtype=torch.float32)  # Convert to tensor
+    #print(X, X.shape)
+    X = X.permute(0, 2, 1)
+    #print(X.shape)
 
-    # If GFF file is provided, extract gene regions
-    
-
-    # PART 2: Getting one-hot encoding of inputs
-    print("--- Step 2: Creating one-hot encoding ... ---", flush=True)
-    start_time = time.time()
-
-    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
-
-    print("--- %s seconds ---" % (time.time() - start_time))
-
-    # PART 3: Loading model
-    print("--- Step 3: Load model ... ---", flush=True)
-    start_time = time.time()
-
-    # Setup device
+    # Setup device and model
     device = setup_device()
-
-    # Load model
+    print(f'\t[INFO] Device: {device}')
     model, params = load_model(device, flanking_size)
-    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
     model = model.to(device)
-    print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
+  
+    # Get predictions
+    DNAs = X.to(device)
+    with torch.no_grad():
+        y_pred = model(DNAs)
+    y_pred = y_pred.detach().cpu()
+    y_pred = y_pred.permute(0, 2, 1).contiguous().view(-1, y_pred.shape[1])
+    y_pred = y_pred[:sequence_length, :] # crop out the extra padding
 
-    print("--- %s seconds ---" % (time.time() - start_time))
-
-    # PART 4: Get predictions
-    print("--- Step 4: Get predictions ... ---", flush=True)
-    start_time = time.time()
-
-    predict_file = get_prediction(model, dataset_path, device, params, output_base, debug=debug)
-
-    print("--- %s seconds ---" % (time.time() - start_time))
+    return y_pred
