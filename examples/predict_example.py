@@ -7,7 +7,7 @@ input_sequence = open(input_sequence_file).read().strip()
 
 # Replace with your model and flanking size
 flanking_size = 10000
-model = f'./models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
+model = f'./models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pt'
 
 # Replace with the output directory
 output_dir = './test/results'
