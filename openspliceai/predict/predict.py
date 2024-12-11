@@ -1157,12 +1157,12 @@ def predict_cli(args):
 
 
 # Simplified in-memory prediction
-def predict(model_path, flanking_size, input_sequence):
+def predict(input_sequence, model_path, flanking_size,):
     '''
     Parameters:
+    - input_sequence (str): Raw gene sequence
     - model_path (str): Path to SpliceAI model
     - flanking_size (int): Size of flanking sequences
-    - input_sequence (str): Path to input FASTA file
 
     Outputs:
     - Raw predicted tensors
