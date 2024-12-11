@@ -1,13 +1,6 @@
-import logging
-from tqdm import tqdm
+# Description: Visualize the results of the mutagenesis experiment for the splice site prediction model.
 import pandas as pd
 import numpy as np
-from pyfaidx import Fasta
-import logging
-import platform
-import os, glob
-import torch
-from spliceaitoolkit.predict.spliceai import SpliceAI
 from spliceaitoolkit.constants import *
 import logomaker
 import matplotlib.pyplot as plt
@@ -30,6 +23,7 @@ def calculate_average_score_change(ref_scores, mut_scores):
 
 # Function to generate DNA logo
 def generate_dna_logo(score_changes, output_file, start=140, end=260):
+    order = ['A', 'C', 'G', 'T']
     
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
     # Ensure valid start and end range
@@ -40,7 +34,7 @@ def generate_dna_logo(score_changes, output_file, start=140, end=260):
     # Slice the DataFrame to include only rows from start to end
     data_df = data_df.iloc[start:end]
     print(data_df)
-    logo = logomaker.Logo(data_df)
+    logo = logomaker.Logo(data_df, stack_order='small_on_top', color_scheme='classic')
     logo.ax.set_title('DNA Logo - Score Change by Base')
     plt.savefig(output_file)
 
@@ -67,10 +61,9 @@ def plot_average_score_change(average_score_change, output_file, start=0, end=40
 ##############################################
 
 # Main function for mutagenesis experiment
-def visualize(results, site, output_dir):
+def visualize(df, site, output_base):
     
-    # read the results file
-    df = pd.read_csv(results)
+    # Load the results DataFrame
     df.columns = ['identifier', 'position', 'ref_base', 'base', 'score1', 'score2']
     df['position'] = df['position'].astype(int)
     
@@ -79,7 +72,7 @@ def visualize(results, site, output_dir):
     else:
         df['score'] = df['score2']
     
-    # extract reference scores
+    # Extract reference scores
     ref_df = df[df['base'] == 'ref'][['identifier', 'position', 'ref_base', 'score']]
     ref_df = ref_df.rename(columns={'score': 'ref_score'})
     
@@ -100,14 +93,11 @@ def visualize(results, site, output_dir):
     
     print(pivot_df)
 
-    if site == 'acceptor':
-        generate_dna_logo(pivot_df, f'{output_dir}/acceptor_dna_logo.png')
-        print('saved to', f'{output_dir}/acceptor_dna_logo.png')
-    else:
-        generate_dna_logo(pivot_df, f'{output_dir}/donor_dna_logo.png')
-        print('saved to', f'{output_dir}/donor_dna_logo.png')
+    # Generate DNA logo
+    generate_dna_logo(pivot_df, f'{output_base}_dna_logo.png')
+    print('saved to', f'{output_base}_dna_logo.png')
 
-    # # Calculate average score change for each base and plot
+    ### Calculate average score change for each base and plot
     # acceptor_score_change = acceptor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
     # donor_score_change = donor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
 
@@ -116,21 +106,30 @@ def visualize(results, site, output_dir):
     # else:
     #     plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
 
-
 def mutagenesis():
         
-    sites = ['donor']
-    flanking_sizes = [80, 400, 2000, 10000]
-    exp_number = 5
+    sites = ['donor', 'acceptor']
+    # flanking_sizes = [80, 400, 2000, 10000]
+    flanking_sizes = [10000]
+    exp_number = 7
     
     base_dir = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_2/results/exp_{exp_number}/keras_job'
     
     for flanking_size, site in itertools.product(flanking_sizes, sites):
         
-        results = f'{base_dir}/keras_{flanking_size}_{site}/mutagenesis_results.csv'
-        output_dir = f'{base_dir}/keras_{flanking_size}_{site}'
+        # Aggregate all the results
+        dataframes = []
+        for i in range(1, 11):
+            results_file = f'{base_dir}/keras_{flanking_size}_{site}_{i}/mutagenesis_results.csv'
+            df = pd.read_csv(results_file)
+            dataframes.append(df)
+        results_df = pd.concat(dataframes, ignore_index=True)
+        print(results_df.head())
+        results_df.to_csv(f'{base_dir}/keras_{flanking_size}_{site}_results.csv', index=False)
+    
+        output_base = f'{base_dir}/keras_{flanking_size}_{site}'
         
-        visualize(results, site, output_dir)
+        visualize(results_df, site, output_base)
 
 if __name__ == '__main__':
     

@@ -10,7 +10,6 @@
 1. **Gene mutation at single position**
    - Take score change at every position, only 3 will have nonzero delta score
 2. **Window around acceptor (or donor) site and mutate every base**
-<<<<<<< HEAD
    - Figure 1.D
    - chr3:142740137-142740263 (127 nt) acceptor site -> sample 4acc 
       - THIS IS GRCh37!!! exon 9 from U2SURP gene (location changed in GRCh38)
@@ -18,6 +17,9 @@
    - Figure S2.C
    - window around 100nt
    - 14289 test set of splice acceptors
+
+NEW 3. Replicating results from figure 1D (similar to Exp 2)
+- branch point prediction is scrapped
 
 ---
 
@@ -28,12 +30,6 @@ B. DNA logo - reproduce 1.D (exp 2)
 C. full gene before vs. after (maybe bam coverage) - Show capturing new cryptic splice site (exp 1)
 D. bar plot - reproduce S2.C (exp 3)
 
-=======
-3. **Branch point insertion** (focus on acceptor site) -> Replace the sequence
-
----
-
->>>>>>> main
 <!-- ## mutagenesis.py
 
 ### Workflow
@@ -114,3 +110,20 @@ Outputs:
    - change in score of donor/acceptor site, relative to base position and mutation
 - score csv file
    - the raw score for acceptor and donor positions, and change relative to reference
+
+# Updates
+- using full sequence instead of N-padding removes the issue of low delta scores (low confidence)
+   - need to update the experiment 2 with the full padding
+      - train data (chr1, 3, 5, 7, 9) vs. test data (others)
+   - find another example of short exon to try -> chr6: DST-AS1 exon 2
+- find a cryptic splice site discovery example
+- can use TOMTOM to get a numerical score of similarity in PWMs
+- try variant experiment after
+- fix benchmark predict variant plots to increase font size
+
+## Final Figure
+*10k models only, others in supp
+A. recreate fig 1d from U2SURP gene 
+B. example from DST gene (more similar)
+C. batch dna logo from test dataset + TOMTOM similarity 
+D. cryptic splice site discovery
