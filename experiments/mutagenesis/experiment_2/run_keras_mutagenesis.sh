@@ -8,8 +8,8 @@
 #SBATCH --mem=64G  # Request 64 GB of memory
 
 # Define the flanking sizes
-FLANKING_SIZES=(80 400 2000 10000)
-# FLANKING_SIZES=(80)
+# FLANKING_SIZES=(80 400 2000 10000)
+FLANKING_SIZES=(10000)
 
 # Calculate the total number of experiments per combination of flanking size
 NUM_EXPERIMENTS=10
