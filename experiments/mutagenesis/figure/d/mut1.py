@@ -354,8 +354,9 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, mut
     
     
     ###### SPECIAL COORDS
-    start = 10544 + 5000 - 7500
-    end = 10544 + 5000 + 7500
+    window = 2000
+    start = 10544 + 5000 - (window//2)
+    end = 10544 + 5000 + (window//2)
 
     # Get the reference base sequence scores
     acceptor_scores_ref, donor_scores_ref = predict(models, model_type, flanking_size, sequence[start:end], device=device, padding=padding)
