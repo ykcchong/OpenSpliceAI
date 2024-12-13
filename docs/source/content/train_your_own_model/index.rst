@@ -37,8 +37,8 @@
 
 
 
-Released OpenSpliceAI models
-====================================
+Steps & Commands to train OpenSpliceAI
+=========================================
 
 
 .. admonition:: LiftOn examples

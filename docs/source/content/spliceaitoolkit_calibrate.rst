@@ -2,9 +2,9 @@
 |
 
 
-.. _installation:
+.. _calibrate_subcommand:
 
-:code:`fine-tune`
+:code:`calibrate`
 ==================
 
 

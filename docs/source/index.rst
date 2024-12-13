@@ -170,10 +170,16 @@ Table of contents
 
     content/spliceaitoolkit_create-data
     content/spliceaitoolkit_train
-    content/spliceaitoolkit_fine-tune
+    content/spliceaitoolkit_transfer
+    content/spliceaitoolkit_calibrate
     content/spliceaitoolkit_predict
     content/spliceaitoolkit_variant
 
+.. toctree::
+    :caption: Train your own model
+    :maxdepth: 2
+
+    content/train_your_own_model/index
 
 .. toctree::
     :caption: Pretrained models
@@ -181,7 +187,7 @@ Table of contents
 
     content/pretrained_models/index
 
-    content/output_explanation
+    content/openspliceai_vs_spliceai
     content/behind_scenes
     content/how_to_page
     content/function_manual
@@ -192,6 +198,7 @@ Table of contents
 
     
 
+    .. content/output_explanation
 
 |
 |
