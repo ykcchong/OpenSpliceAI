@@ -2,7 +2,7 @@
 |
 
 
-.. _installation:
+.. _variant_subcommand:
 
 :code:`variant`
 ===============

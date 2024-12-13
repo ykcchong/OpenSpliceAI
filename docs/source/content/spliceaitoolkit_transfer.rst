@@ -2,11 +2,10 @@
 |
 
 
-.. _predict_subcommand:
+.. _transfer_subcommand:
 
-:code:`predict`
-===============
-
+:code:`transfer`
+==================
 
 
 |

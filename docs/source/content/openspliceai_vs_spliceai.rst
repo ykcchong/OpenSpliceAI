@@ -1,12 +1,13 @@
 
 |
 
+.. _behind-the-scenes-splam:
 
-.. _predict_subcommand:
+OpenSpliceAI vs. SpliceAI
+=================================================
 
-:code:`predict`
-===============
 
+.. bibliography::
 
 
 |
