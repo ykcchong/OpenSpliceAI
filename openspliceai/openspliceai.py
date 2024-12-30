@@ -6,7 +6,7 @@ import numpy as np
 from openspliceai import header
 from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
 from openspliceai.train import train
-from openspliceai.test import test
+# from openspliceai.test import test
 from openspliceai.calibrate import calibrate
 from openspliceai.fine_tune import fine_tune
 from openspliceai.predict import predict

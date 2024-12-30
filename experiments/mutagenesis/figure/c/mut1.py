@@ -374,6 +374,16 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, mut
     if not isinstance(donor_scores_mut, np.ndarray):
         donor_scores_mut = donor_scores_mut.cpu().numpy()
 
+    # Save the donor and acceptor scores into a csv file
+    scores_df = pd.DataFrame({
+        'Position': range(len(acceptor_scores_ref)),
+        'Acceptor_Ref': acceptor_scores_ref,
+        'Donor_Ref': donor_scores_ref,
+        'Acceptor_Mut': acceptor_scores_mut,
+        'Donor_Mut': donor_scores_mut
+    })
+    scores_df.to_csv(os.path.join(output_dir, 'scores.csv'), index=False)
+    
     # Compute score differences
     acceptor_diff = acceptor_scores_mut - acceptor_scores_ref
     donor_diff = donor_scores_mut - donor_scores_ref
@@ -412,7 +422,7 @@ def mutagenesis():
         
     model_types = ['pytorch', 'keras']
     flanking_sizes = [10000]
-    exp_number = 1
+    exp_number = 2
     sample = 'mybpc3'
     mutation_position = 6000
     mutation_base = 'A'
@@ -421,15 +431,15 @@ def mutagenesis():
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
+            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
         else:
             print('not possible')
             exit(1)
         
-        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/c/data/{sample}.fa'
+        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/c/data/{sample}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/c/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample}"
+        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/c/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging

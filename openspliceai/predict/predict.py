@@ -808,8 +808,8 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
                     donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
         elif strand == '-':
             for pos in range(len(acceptor_scores)):
-                acceptor_score = donor_scores[pos]
-                donor_score = acceptor_scores[pos]
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
                     acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
                 if donor_score > threshold:
@@ -832,8 +832,8 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
                     donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
         elif strand == '-':
             for pos in range(len(acceptor_scores)):
-                acceptor_score = donor_scores[pos]
-                donor_score = acceptor_scores[pos]
+                acceptor_score = acceptor_scores[pos]
+                donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
                     acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
                 if donor_score > threshold:
