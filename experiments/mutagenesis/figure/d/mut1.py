@@ -442,20 +442,20 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device, mut
     donor_score_change_df.to_csv(os.path.join(output_dir, 'donor_score_changes.csv'))
 
     # Plot DNA logos
-    generate_dna_logo(acceptor_score_change_df, os.path.join(output_dir, 'acceptor_score_difference_logo.png'), start=1000-5, end=1000+20)
-    generate_dna_logo(donor_score_change_df, os.path.join(output_dir, 'donor_score_difference_logo.png'), start=1000-5, end=1000+20)
+    generate_dna_logo(acceptor_score_change_df, os.path.join(output_dir, 'acceptor_score_difference_logo.png'), start=2000, end=3000)
+    generate_dna_logo(donor_score_change_df, os.path.join(output_dir, 'donor_score_difference_logo.png'), start=2000, end=3000)
 
     # Plot the donor and acceptor sites
     plot_donor_acceptor_sites(acceptor_scores_ref, acceptor_scores_mut, donor_scores_ref, donor_scores_mut, output_dir)
-    
+
 def mutagenesis():
         
     model_types = ['pytorch', 'keras']
     flanking_sizes = [10000]
     exp_number = 1
-    sample = 'mybpc3'
-    mutation_position = 6000
-    mutation_base = 'A'
+    sample = 'OPA1'
+    mutation_position = 7500
+    mutation_base = 'G'
     
     for model_type, flanking_size in itertools.product(model_types, flanking_sizes):
         if model_type == "keras":
@@ -466,10 +466,10 @@ def mutagenesis():
             print('not possible')
             exit(1)
         
-        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/c/data/{sample}.fa'
+        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/d/data/{sample}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/c/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample}"
+        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/d/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
