@@ -3,7 +3,7 @@
 from openspliceai.predict import predict
 from pathlib import Path
 
-# Define the absolute path to parent dir
+# Resolve the absolute path to parent dir
 pdir = Path(__file__).resolve().parents[2]
 
 # Define file paths and model
