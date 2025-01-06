@@ -9,6 +9,8 @@
 *.fa
 *.fai
 !test/example.fa
+!examples/predict/chr22.fa
+!examples/predict/tp53.fa
 
 models/prev/
 experiments/alan/
