@@ -788,6 +788,7 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
     match = pattern.match(seq_name)
 
     if match:
+        chrom = match.group(1)
         start = int(match.group(2))
         end = int(match.group(3))
         strand = match.group(4)
@@ -803,17 +804,17 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
                 acceptor_score = acceptor_scores[pos]
                 donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{start+pos-2}\t{start+pos}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{chrom}\t{start+pos-3}\t{start+pos-1}\t{name}_Acceptor\t{acceptor_score:.6f}\t{strand}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{chrom}\t{start+pos}\t{start+pos+2}\t{name}_Donor\t{donor_score:.6f}\t{strand}\n")
         elif strand == '-':
             for pos in range(len(acceptor_scores)):
                 acceptor_score = acceptor_scores[pos]
                 donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{chrom}\t{end-pos}\t{end-pos+2}\t{name}_Acceptor\t{acceptor_score:.6f}\t{strand}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{chrom}\t{end-pos-3}\t{end-pos-1}\t{name}_Donor\t{donor_score:.6f}\t{strand}\n")
         else:
             print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
@@ -822,25 +823,13 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         strand = seq_name[-1] # use the ending as the strand (when lack other information)
         
         # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
-        if strand == '+':
-            for pos in range(len(acceptor_scores)):
-                acceptor_score = acceptor_scores[pos]
-                donor_score = donor_scores[pos]
-                if acceptor_score > threshold:
-                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
-                if donor_score > threshold:
-                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
-        elif strand == '-':
-            for pos in range(len(acceptor_scores)):
-                acceptor_score = acceptor_scores[pos]
-                donor_score = donor_scores[pos]
-                if acceptor_score > threshold:
-                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
-                if donor_score > threshold:
-                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
-        else:
-            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
-
+        for pos in range(len(acceptor_scores)):
+            acceptor_score = acceptor_scores[pos]
+            donor_score = donor_scores[pos]
+            if acceptor_score > threshold:
+                acceptor_bed.write(f"{chrom}\t{pos-3}\t{pos-1}\t{seq_name}_Acceptor\t{acceptor_score:.6f}\t{strand}\tabsolute_coordinates\n")
+            if donor_score > threshold:
+                donor_bed.write(f"{chrom}\t{pos}\t{pos-2}\t{seq_name}_Donor\t{donor_score:.6f}\t{strand}\tabsolute_coordinates\n")
 
 # NOTE: need to handle naming when gff file not provided.
 def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypred=None, debug=False):
@@ -1171,14 +1160,11 @@ def predict(input_sequence, model_path, flanking_size):
     # Initialize global variables
     initialize_globals(flanking_size)
     sequence_length = len(input_sequence)
-    #print(sequence_length)
 
     # One-hot encode input
     X = create_datapoints(input_sequence)
     X = torch.tensor(X, dtype=torch.float32)  # Convert to tensor
-    #print(X, X.shape)
     X = X.permute(0, 2, 1)
-    #print(X.shape)
 
     # Setup device and model
     device = setup_device()
