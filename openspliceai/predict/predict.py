@@ -13,41 +13,6 @@ from openspliceai.train_base.spliceai import SpliceAI
 from openspliceai.predict.utils import *
 from openspliceai.constants import *
 
-# FOR TESTING PURPOSES
-import psutil
-def log_memory_usage():
-    process = psutil.Process(os.getpid())
-    print(f"Memory usage: {process.memory_info().rss / (1024 * 1024)} MB", file=sys.stderr)
-
-#####################
-##      SETUP      ##
-#####################
-
-def initialize_globals(flanking_size, hdf_threshold_len=0, flush_predict_threshold=500, chunk_size=100, split_fasta_threshold=1500000):
-    
-    assert int(flanking_size) in [80, 400, 2000, 10000]
-    
-    global CL_max                  # context length for sequence prediction (flanking size sum)
-    global HDF_THRESHOLD_LEN       # maximum size before reading sequence into an HDF file for storage
-    global FLUSH_PREDICT_THRESHOLD # maximum number of predictions before flushing to file
-    global CHUNK_SIZE              # chunk size for loading hdf5 dataset
-    global SPLIT_FASTA_THRESHOLD   # maximum length of fasta entry before splitting
-    
-    CL_max = flanking_size
-    HDF_THRESHOLD_LEN = hdf_threshold_len
-    FLUSH_PREDICT_THRESHOLD = flush_predict_threshold
-    CHUNK_SIZE = chunk_size
-    SPLIT_FASTA_THRESHOLD = split_fasta_threshold
-
-def initialize_paths(output_dir, flanking_size, sequence_length, model_arch='SpliceAI'):
-    """Initialize project directories and create them if they don't exist."""
-
-    BASENAME = f"{model_arch}_{sequence_length}_{flanking_size}"
-    model_pred_outdir = f"{output_dir}/{BASENAME}/"
-    os.makedirs(model_pred_outdir, exist_ok=True)
-
-    return model_pred_outdir
-
 ################
 ##   STEP 1   ##
 ################
@@ -118,7 +83,7 @@ def process_gff(fasta_file, gff_file, output_dir):
 
     return output_fasta_file
 
-def split_fasta(genes, split_fasta_file):
+def split_fasta(genes, split_fasta_file, cl_max=CL_max, split_fasta_threshold=SPLIT_FASTA_THRESHOLD):
     '''
     Splits any long genes in the given Fasta object into segments of SPLIT_FASTA_THRESHOLD length and writes them to a FASTA file.
 
@@ -173,13 +138,13 @@ def split_fasta(genes, split_fasta_file):
     with open(split_fasta_file, 'w') as output_file:
         for record in genes:
             seq_length = len(genes[record.name])
-            if seq_length > SPLIT_FASTA_THRESHOLD:
+            if seq_length > split_fasta_threshold:
                 # process each segment into a new entry
-                for i in range(0, seq_length, SPLIT_FASTA_THRESHOLD):
+                for i in range(0, seq_length, split_fasta_threshold):
                     
                     # obtain the split sequence (with flanking to preserve predictions across splits)
-                    start_slice = i - (CL_max // 2) if i - (CL_max // 2) >= 0 else 0
-                    end_slice = i + SPLIT_FASTA_THRESHOLD + (CL_max // 2) if i + SPLIT_FASTA_THRESHOLD + (CL_max // 2) <= seq_length else seq_length
+                    start_slice = i - (cl_max // 2) if i - (cl_max // 2) >= 0 else 0
+                    end_slice = i + split_fasta_threshold + (cl_max // 2) if i + split_fasta_threshold + (cl_max // 2) <= seq_length else seq_length
                     segment_seq = genes[record.name][start_slice:end_slice].seq # added flanking sequences to preserve predictions 
                     
                     # formulate the sequence name using pattern matching
@@ -197,7 +162,7 @@ def split_fasta(genes, split_fasta_file):
                 output_file.write(f"{segment_seq}\n")
     
 
-def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
+def get_sequences(fasta_file, output_dir, neg_strands=None, hdf_threshold_len=HDF_THRESHOLD_LEN, split_fasta_threshold=SPLIT_FASTA_THRESHOLD, debug=False):
     """
     Extract sequences for each protein-coding gene, process them based on strand orientation,
     and save data in file depending on the sequence size (HDF file if sequence >HDF_THRESHOLD_LEN, 
@@ -223,12 +188,12 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
     for record in genes:
         record_length = len(genes[record.name])
         total_length += record_length
-        if not use_hdf and total_length > HDF_THRESHOLD_LEN:
+        if not use_hdf and total_length > hdf_threshold_len:
             use_hdf = True
-            print(f'\t[INFO] Input FASTA sequences over {HDF_THRESHOLD_LEN}: use_hdf = True.')
-        if not need_splitting and record_length > SPLIT_FASTA_THRESHOLD:
+            print(f'\t[INFO] Input FASTA sequences over {hdf_threshold_len}: use_hdf = True.')
+        if not need_splitting and record_length > split_fasta_threshold:
             need_splitting = True
-            print(f'\t[INFO] Input FASTA contains sequence(s) over {SPLIT_FASTA_THRESHOLD}: need_splitting = True')
+            print(f'\t[INFO] Input FASTA contains sequence(s) over {split_fasta_threshold}: need_splitting = True')
         if use_hdf and need_splitting:
             break
     
@@ -285,7 +250,7 @@ def get_sequences(fasta_file, output_dir, neg_strands=None, debug=False):
 ##   STEP 2   ##
 ################
 
-def create_datapoints(input_string, debug=False):
+def create_datapoints(input_string, sl=SL, cl_max=CL_max, debug=False):
     """
     Parameters:
     - input_string (str): The nucleotide sequence.
@@ -293,6 +258,66 @@ def create_datapoints(input_string, debug=False):
     Returns:
     - X (np.ndarray): The one-hot encoded input nucleotide sequence.
     """
+    
+    def reformat_data(X0):
+        """
+        Breaks up an input sequence into overlapping windows of size SL + CL_max.
+        
+        Parameters:
+        - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
+        - (global) CL_max: Maximum context length for sequence prediction (flanking size sum).
+        - (global) SL: Sequence length for prediction, default = 5000. 
+
+        Returns:
+        - numpy.ndarray: Reformatted sequence data.
+        """
+        
+        if debug:
+            print('\n\t[DEBUG] reformat_data', file=sys.stderr)
+            print('\tlen(X0)', len(X0), file=sys.stderr)
+            print('\tSL', sl, ' CL_max', cl_max, file=sys.stderr)
+        # Calculate the number of data points needed
+        num_points = ceil_div(len(X0) - cl_max, sl) # NOTE: subtracting the flanking here because X0 is already padded at the ends by create_datapoints and only want window on actual sequence length 
+        if debug:
+            print('\tnum_points', num_points, file=sys.stderr)
+        # Initialize arrays to hold the reformatted data
+        Xd = np.zeros((num_points, sl + cl_max))
+        if debug:
+            print('\tXd.shape', Xd.shape, file=sys.stderr)
+        # Pad the end sequence to ensure divisibility
+        padding_length = ((sl + cl_max) * num_points) - len(X0)
+        X0 = np.pad(X0, (0, padding_length), 'constant', constant_values=0)
+        if debug:
+            print('\tpadding_length', padding_length, file=sys.stderr)
+            print('\tnew len(X0)', len(X0), file=sys.stderr)
+
+        # Fill the initialized arrays with data in blocks
+        for i in range(num_points):
+            Xd[i] = X0[sl * i : sl * (i + 1) + cl_max]
+
+        return Xd   
+
+    def one_hot_encode(Xd):
+        """
+        Perform one-hot encoding on the input sequence data (Xd).
+
+        Parameters:
+        - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
+            is encoded as an integer (1 for 'A', 2 for 'C', 3 for 'G', 4 for 'T', and 0 for padding).
+
+        Returns:
+        - numpy.ndarray: the one-hot encoded input sequence data.
+        """
+
+        # One-hot encoding of the inputs: 
+        # 1: A;  2: C;  3: G;  4: T;  0: padding
+        IN_MAP = np.asarray([[0, 0, 0, 0],
+                            [1, 0, 0, 0],
+                            [0, 1, 0, 0],
+                            [0, 0, 1, 0],
+                            [0, 0, 0, 1]])
+
+        return IN_MAP[Xd.astype('int8')]
 
     # NOTE: No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     
@@ -301,7 +326,7 @@ def create_datapoints(input_string, debug=False):
     seq = ''.join(char if char in allowed_chars else 'N' for char in input_string) 
     
     # Convert to vector array
-    seq = 'N' * (CL_max // 2) + seq + 'N' * (CL_max // 2)
+    seq = 'N' * (cl_max // 2) + seq + 'N' * (cl_max // 2)
     seq = seq.replace('A', '1').replace('C', '2').replace('G', '3').replace('T', '4').replace('N', '0')
 
     # One-hot-encode the inputs
@@ -311,7 +336,7 @@ def create_datapoints(input_string, debug=False):
     X0 = np.asarray(list(map(int, list(seq)))) # convert string to np array
     if debug:
         print('\tX0.shape', X0.shape, file=sys.stderr)
-    Xd = reformat_data(X0, debug=debug) # apply window size
+    Xd = reformat_data(X0) # apply window size
     if debug:
         print('\tXd.shape', Xd.shape, file=sys.stderr) 
     X = one_hot_encode(Xd) # one-hot encode
@@ -319,88 +344,7 @@ def create_datapoints(input_string, debug=False):
         print('\tX', X.shape, file=sys.stderr)
     return X 
 
-def reformat_data(X0, debug=False):
-    """
-    Breaks up an input sequence into overlapping windows of size SL + CL_max.
-    
-    Parameters:
-    - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
-    - (global) CL_max: Maximum context length for sequence prediction (flanking size sum).
-    - (global) SL: Sequence length for prediction, default = 5000. 
-
-    Returns:
-    - numpy.ndarray: Reformatted sequence data.
-    """
-    
-    if debug:
-        print('\n\t[DEBUG] reformat_data', file=sys.stderr)
-        print('\tlen(X0)', len(X0), file=sys.stderr)
-        print('\tSL', SL, ' CL_max', CL_max, file=sys.stderr)
-    # Calculate the number of data points needed
-    num_points = ceil_div(len(X0) - CL_max, SL) # NOTE: subtracting the flanking here because X0 is already padded at the ends by create_datapoints and only want window on actual sequence length 
-    if debug:
-        print('\tnum_points', num_points, file=sys.stderr)
-    # Initialize arrays to hold the reformatted data
-    Xd = np.zeros((num_points, SL + CL_max))
-    if debug:
-        print('\tXd.shape', Xd.shape, file=sys.stderr)
-    # Pad the end sequence to ensure divisibility
-    padding_length = ((SL + CL_max) * num_points) - len(X0)
-    X0 = np.pad(X0, (0, padding_length), 'constant', constant_values=0)
-    if debug:
-        print('\tpadding_length', padding_length, file=sys.stderr)
-        print('\tnew len(X0)', len(X0), file=sys.stderr)
-
-    # Fill the initialized arrays with data in blocks
-    for i in range(num_points):
-        Xd[i] = X0[SL * i : SL * (i + 1) + CL_max]
-
-    return Xd    
-
-def one_hot_encode(Xd):
-    """
-    Perform one-hot encoding on the input sequence data (Xd).
-
-    Parameters:
-    - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
-        is encoded as an integer (1 for 'A', 2 for 'C', 3 for 'G', 4 for 'T', and 0 for padding).
-
-    Returns:
-    - numpy.ndarray: the one-hot encoded input sequence data.
-    """
-
-    # One-hot encoding of the inputs: 
-    # 1: A;  2: C;  3: G;  4: T;  0: padding
-    IN_MAP = np.asarray([[0, 0, 0, 0],
-                        [1, 0, 0, 0],
-                        [0, 1, 0, 0],
-                        [0, 0, 1, 0],
-                        [0, 0, 0, 1]])
-
-    return IN_MAP[Xd.astype('int8')]
-
-def process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f, debug=False):
-    '''Processes an entire chunk and writes to dataset.'''
-    X_batch = []
-    for j in range(NEW_CHUNK_SIZE):
-        idx = i * CHUNK_SIZE + j
-
-        seq_decode = SEQ[idx]
-        X = create_datapoints(seq_decode, debug=debug) 
-        if debug:      
-            print('\tX.shape:', X.shape, file=sys.stderr)
-        LEN.append(len(X))
-        X_batch.extend(X)
-
-    # Convert batches to arrays and save as HDF5
-    X_batch = np.asarray(X_batch).astype('int8')
-    if debug:
-        print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE, file=sys.stderr)
-        print("\tX_batch.shape:", X_batch.shape, file=sys.stderr)
-        log_memory_usage()
-    out_h5f.create_dataset('X' + str(i), data=X_batch)
-
-def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
+def convert_sequences(datafile_path, output_dir, chunk_size=CHUNK_SIZE, SEQ=None, debug=False):
     '''
     Script to convert datafile into a one-hot encoded dataset ready to input to model. 
     If HDF5 file used, data is chunked for loading. 
@@ -415,6 +359,27 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
     - LEN: list of how many chunks each gene takes up
     '''
 
+    def process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f):
+        '''Processes an entire chunk and writes to dataset.'''
+        X_batch = []
+        for j in range(NEW_CHUNK_SIZE):
+            idx = i * chunk_size + j
+
+            seq_decode = SEQ[idx]
+            X = create_datapoints(seq_decode, debug=debug) 
+            if debug:      
+                print('\tX.shape:', X.shape, file=sys.stderr)
+            LEN.append(len(X))
+            X_batch.extend(X)
+
+        # Convert batches to arrays and save as HDF5
+        X_batch = np.asarray(X_batch).astype('int8')
+        if debug:
+            print('\tNEW_CHUNK_SIZE:', NEW_CHUNK_SIZE, file=sys.stderr)
+            print("\tX_batch.shape:", X_batch.shape, file=sys.stderr)
+            log_memory_usage()
+        out_h5f.create_dataset('X' + str(i), data=X_batch)
+    
     # determine whether to convert an h5 or txt file
     file_ext = os.path.splitext(datafile_path)[1]
     assert file_ext in ['.h5', '.txt']
@@ -452,17 +417,17 @@ def convert_sequences(datafile_path, output_dir, SEQ=None, debug=False):
         with h5py.File(dataset_path, 'w') as out_h5f:
 
             # create dataset
-            num_chunks = ceil_div(num_seqs, CHUNK_SIZE) # ensures that even if num_seqs < CHUNK_SIZE, will still create a chunk
+            num_chunks = ceil_div(num_seqs, chunk_size) # ensures that even if num_seqs < CHUNK_SIZE, will still create a chunk
             for i in tqdm(range(num_chunks), desc='Processing chunks...'):
 
                 # each dataset has CHUNK_SIZE genes
                 if i == num_chunks - 1: # if last chunk, process remainder or full chunk size if no remainder
-                    NEW_CHUNK_SIZE = num_seqs % CHUNK_SIZE or CHUNK_SIZE 
+                    NEW_CHUNK_SIZE = num_seqs % chunk_size or chunk_size 
                 else:
-                    NEW_CHUNK_SIZE = CHUNK_SIZE
+                    NEW_CHUNK_SIZE = chunk_size
 
                 # chunk conversion 
-                process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f, debug)            
+                process_chunk(NEW_CHUNK_SIZE, i, SEQ, LEN, out_h5f)            
       
     # convert to tensor and write directly to a binary PyTorch file for quick loading
     else:
@@ -533,10 +498,9 @@ def load_model(device, flanking_size):
     CL = 2 * np.sum(AR*(W-1))
 
     print(f"\t[INFO] Context nucleotides: {CL}")
-    print(f"\t[INFO] Sequence length (output): {SL}")
     
     model = SpliceAI(L, W, AR).to(device)
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
 
     return model, params
 
@@ -560,36 +524,22 @@ def load_shard(h5f, batch_size, shard_idx):
 
     return DataLoader(ds, batch_size=batch_size, shuffle=False, drop_last=False, pin_memory=True)
 
-def clip_datapoints(X, CL, N_GPUS, debug=False):
+def clip_datapoints(X, CL, debug=False):
     """
-    This function is necessary to make sure of the following:
-    (i) Each time model_m.fit is called, the number of datapoints is a
-    multiple of N_GPUS. Failure to ensure this often results in crashes.
-    (ii) If the required context length is less than CL_max, then
-    appropriate clipping is done below.
+    If the required context length is less than CL_max, then
+    appropriate clipping is done below. 
+    (no more need to fit to N_GPUS as running prediction only)
     Additionally, Y is also converted to a list (the .h5 files store 
     them as an array).
     """
 
-    rem = X.shape[0] % N_GPUS
     clip = (CL_max-CL)//2
 
     if debug: 
         print('\n\t[DEBUG] clip_datapoints', file=sys.stderr)
         print("\tX.shape: ", X.shape, file=sys.stderr)
         print("\tCL: ", CL, file=sys.stderr)
-        print("\tN_GPUS: ", N_GPUS, file=sys.stderr)
-        print("\trem: ", rem, file=sys.stderr)
         print("\tclip: ", clip, file=sys.stderr)
-
-    # if rem != 0 and clip != 0:
-    #     X_clipped = X[:-rem, :, clip:-clip]
-    # elif rem == 0 and clip != 0:
-    #     X_clipped = X[:, :, clip:-clip]
-    # elif rem != 0 and clip == 0:
-    #     X_clipped = X[:-rem]
-    # else:
-    #     X_clipped = X
 
     if clip != 0:
         X_clipped = X[:, :, clip:-clip]
@@ -600,7 +550,6 @@ def clip_datapoints(X, CL, N_GPUS, debug=False):
         print("\tX_clipped.shape: ", X_clipped.shape, file=sys.stderr)
     
     return X_clipped
-
 
 def flush_predictions(predictions, file_path):
     """
@@ -728,7 +677,7 @@ def get_prediction(model, dataset_path, device, params, output_dir, debug=False)
         for batch in pbar:
             DNAs = batch[0].to(device)
 
-            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
+            DNAs = clip_datapoints(DNAs, params["CL"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
 
             with torch.no_grad():
@@ -942,7 +891,7 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
                     if debug:
                         print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr) # should be 36 -> referring to 5k blocks
 
-                    DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug) # NOTE: clip no longer requires N_GPUS
+                    DNAs = clip_datapoints(DNAs, params["CL"], debug=debug) # NOTE: clip no longer requires N_GPUS
                     DNAs = DNAs.to(torch.float32).to(device)
                     with torch.no_grad():
                         y_pred = model(DNAs)
@@ -997,7 +946,7 @@ def predict_and_write(model, dataset_path, device, params, NAME, LEN, output_dir
 
             # getting prediction
             DNAs = batch[0].to(device)
-            DNAs = clip_datapoints(DNAs, params["CL"], params["N_GPUS"], debug=debug)
+            DNAs = clip_datapoints(DNAs, params["CL"], debug=debug)
             DNAs = DNAs.to(torch.float32).to(device)
             with torch.no_grad():
                 y_pred = model(DNAs)
@@ -1057,7 +1006,7 @@ def predict_cli(args):
     chunk_size = args.chunk_size
     
     # initialize global variables
-    initialize_globals(flanking_size, hdf_threshold_len, flush_predict_threshold, chunk_size, split_fasta_threshold)
+    initialize_constants(flanking_size, hdf_threshold_len, flush_predict_threshold, chunk_size, split_fasta_threshold)
 
     print(f'''Running predict with SL: {sequence_length}, flanking_size: {flanking_size}, threshold: {threshold}, in {'debug, ' if debug else ''}{'turbo' if not predict_all else 'all'} mode.
           model: {model_path}, 
@@ -1095,7 +1044,7 @@ def predict_cli(args):
     print("--- Step 2: Creating one-hot encoding ... ---", flush=True)
     start_time = time.time()
 
-    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ, debug=debug)
+    dataset_path, LEN = convert_sequences(datafile_path, output_base, SEQ=SEQ, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -1158,7 +1107,7 @@ def predict(input_sequence, model_path, flanking_size):
     '''
 
     # Initialize global variables
-    initialize_globals(flanking_size)
+    initialize_constants(flanking_size)
     sequence_length = len(input_sequence)
 
     # One-hot encode input

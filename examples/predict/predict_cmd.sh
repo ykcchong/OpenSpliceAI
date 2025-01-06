@@ -1,4 +1,5 @@
 #!/bin/bash
+# A script to run the openspliceai predict command with the required arguments
 
 # Resolve the parent directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
