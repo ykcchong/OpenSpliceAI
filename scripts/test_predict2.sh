@@ -4,6 +4,7 @@
 
 SETUP="/ccb/cybertron/smao10/openspliceai/setup.py"
 RESULT_DIR="./results/predict/test2/SpliceAI_5000_400"
+mkdir -p $RESULT_DIR
 
 # Run the setup script
 pip install .
