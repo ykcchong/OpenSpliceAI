@@ -461,7 +461,7 @@ def setup_device():
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
     return torch.device(device_str)
 
-def load_model(device, flanking_size):
+def load_model(model_path, device, flanking_size):
     """Loads the given model."""
     # Hyper-parameters:
     # L: Number of convolution kernels
@@ -499,8 +499,11 @@ def load_model(device, flanking_size):
     print(f"\t[INFO] Context nucleotides: {CL}")
     
     model = SpliceAI(L, W, AR).to(device)
+    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
+    model = model.to(device)
+    
     params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
-
+    
     return model, params
 
 
@@ -539,7 +542,6 @@ def flush_predictions(predictions, file_path):
         else:
             maxshape = (None,) + predictions.shape[1:]
             f.create_dataset('predictions', data=predictions.numpy(), maxshape=maxshape, chunks=True)
-
 
 def get_prediction(model, dataset_path, device, batch_size, output_dir, flush_predict_threshold=500, debug=False):
     """
@@ -1006,7 +1008,7 @@ def predict_cli(args):
     print("--- Step 2: Creating one-hot encoding ... ---", flush=True)
     start_time = time.time()
 
-    dataset_path, LEN = convert_sequences(datafile_path, output_base, SL=consts['SL'], CL_max=consts['CL_max'], chunk_size=consts['CHUNK_SIZE'], SEQ=SEQ, debug=debug)
+    dataset_path, LEN = convert_sequences(datafile_path, output_base, consts['SL'], consts['CL_max'], chunk_size=consts['CHUNK_SIZE'], SEQ=SEQ, debug=debug)
 
     print("--- %s seconds ---" % (time.time() - start_time))
 
@@ -1018,9 +1020,7 @@ def predict_cli(args):
     device = setup_device()
 
     # load model from current state
-    model, params = load_model(device, flanking_size)
-    model.load_state_dict(torch.load(model_path, map_location=device))
-    model = model.to(device)
+    model, params = load_model(model_path, device, flanking_size)
     print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
 
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -1049,7 +1049,7 @@ def predict_cli(args):
         print("--- Step 4o: Extract predictions to BED ... ---", flush=True)
         start_time = time.time()
         
-        predict_file = predict_and_write(model, dataset_path, device, params['BATCH_SIZE'], NAME, LEN, output_base, threshold=threshold, debug=debug)
+        predict_and_write(model, dataset_path, device, params['BATCH_SIZE'], NAME, LEN, output_base, threshold=threshold, debug=debug)
 
         print("--- %s seconds ---" % (time.time() - start_time))  
 
@@ -1078,9 +1078,7 @@ def predict(input_sequence, model_path, flanking_size):
     # Setup device and model
     device = setup_device()
     print(f'\t[INFO] Device: {device}')
-    model, params = load_model(device, flanking_size)
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
-    model = model.to(device)
+    model, params = load_model(model_path, device, flanking_size)
   
     # Get predictions
     DNAs = X.to(device)
