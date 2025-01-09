@@ -102,10 +102,10 @@ def parse_args_fine_tune(subparsers):
 
 def parse_args_predict(subparsers):
     parser_predict = subparsers.add_parser('predict', help='Predict splice sites in a given sequence using the SpliceAI model')
-    parser_predict.add_argument('--model', '-m', type=str, default="SpliceAI", help='Path to a PyTorch SpliceAI model file or "SpliceAI" for the default model')
-    parser_predict.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    parser_predict.add_argument('--flanking-size', '-f', type=int, default=80, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
-    parser_predict.add_argument('--input-sequence', '-i', type=str, help="Path to FASTA file of the input sequence")
+    parser_predict.add_argument('--input-sequence', '-i', type=str, required=True, help="Path to FASTA file of the input sequence")
+    parser_predict.add_argument('--model', '-m', type=str, required=True, help='Path to a PyTorch SpliceAI model file')
+    parser_predict.add_argument('--flanking-size', '-f', type=int, required=True, help='Sum of flanking sequence lengths on each side of input (i.e. 40+40)')
+    parser_predict.add_argument('--output-dir', '-o', type=str, default="./predict_out", help='Output directory to save the data')
     parser_predict.add_argument('--annotation-file', '-a', type=str, required=False, help="Path to GFF file of coordinates for genes")
     parser_predict.add_argument('--threshold', '-t', type=float, default=1e-6, help="Threshold to determine acceptor and donor sites")
     parser_predict.add_argument('--predict-all', '-p', action='store_true', required=False, help="Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)")

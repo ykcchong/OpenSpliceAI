@@ -742,9 +742,9 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
             acceptor_score = acceptor_scores[pos]
             donor_score = donor_scores[pos]
             if acceptor_score > threshold:
-                acceptor_bed.write(f"{chrom}\t{pos-3}\t{pos-1}\t{seq_name}_Acceptor\t{acceptor_score:.6f}\t{strand}\tabsolute_coordinates\n")
+                acceptor_bed.write(f"{seq_name}\t{pos-3}\t{pos-1}\t{seq_name}_Acceptor\t{acceptor_score:.6f}\t{strand}\tabsolute_coordinates\n")
             if donor_score > threshold:
-                donor_bed.write(f"{chrom}\t{pos}\t{pos-2}\t{seq_name}_Donor\t{donor_score:.6f}\t{strand}\tabsolute_coordinates\n")
+                donor_bed.write(f"{seq_name}\t{pos}\t{pos-2}\t{seq_name}_Donor\t{donor_score:.6f}\t{strand}\tabsolute_coordinates\n")
 
 # NOTE: need to handle naming when gff file not provided.
 def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypred=None, debug=False):
