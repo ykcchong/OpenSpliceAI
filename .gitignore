@@ -12,6 +12,8 @@
 !examples/predict/chr22.fa
 !examples/predict/tp53.fa
 
+results/
+
 models/prev/
 experiments/alan/
 
