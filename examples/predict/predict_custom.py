@@ -7,7 +7,7 @@ from pathlib import Path
 pdir = Path(__file__).resolve().parents[2]
 
 # Define file paths and model
-input_sequence_file = f'{pdir}/examples/predict/chr22.fa'
+input_sequence_file = f'{pdir}/examples/data/chr22.fa'
 output_dir = f'{pdir}/examples/predict/results/'
 flanking_size = 10000
 model = f'{pdir}/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pt'
@@ -25,7 +25,7 @@ device = predict.setup_device()
 model, params = predict.load_model(model, device, flanking_size)
 
 # optional argument definition
-gff_file = f'{pdir}/examples/predict/chr22.gff'
+gff_file = f'{pdir}/examples/data/chr22.gff'
 debug = False
 get_raw_tensors = True
 threshold = 0.5

@@ -5,17 +5,17 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 PDIR="$(dirname "$(dirname "$SCRIPT_DIR")")"
 
-# Ensure the openspliceai package is installed
-pip install $PDIR
+# # Ensure the openspliceai package is installed
+# pip install $PDIR
 
 # Define required arguments
-DATA_PATH="$PDIR/examples/predict/chr22.fa"
+DATA_PATH="$PDIR/examples/data/chr22.fa"
 MODEL_PATH="$PDIR/models/spliceai-mane/10000nt/model_10000nt_rs14.pt"
 FLANKING_SIZE=10000
 OUTPUT_PATH="$PDIR/examples/predict/results"
 
 # Define optional arguments (set to empty string to disable)
-ANNOTATION_PATH="$PDIR/examples/predict/chr22.gff"
+ANNOTATION_PATH="$PDIR/examples/data/chr22.gff"
 THRESHOLD=0.9
 DEBUG_MODE=""
 TURBO_MODE=T
@@ -33,7 +33,7 @@ if [ -n "$THRESHOLD" ]; then
 fi
 
 if [ -n "$DEBUG_MODE" ]; then
-  CMD="$CMD -D"
+  CMD="$CMD -D"-
 fi
 
 if [ -z "$TURBO_MODE" ]; then
