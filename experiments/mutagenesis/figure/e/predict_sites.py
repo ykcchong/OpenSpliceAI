@@ -86,7 +86,7 @@ def load_pytorch_models(model_path, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.p[th]')) # gets all PyTorch models from supplied directory
+        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
         if not model_files:
             logging.error(f"No PyTorch model files found in directory: {model_path}")
             exit()
@@ -362,14 +362,14 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device):
     fasta = Fasta(fasta_file)
     header = list(fasta.keys())[0]
     sequence = str(fasta[header])
-    print(len(sequence))
+    print('seqlen', len(sequence))
     
     #### PADDING
     padding=False
 
     # Get the reference base sequence scores
     acceptor_scores_ref, donor_scores_ref = predict(models, model_type, flanking_size, sequence, device=device, padding=padding)
-
+    print('finished predict')
     # Convert scores to numpy arrays if they're tensors
     if not isinstance(acceptor_scores_ref, np.ndarray):
         acceptor_scores_ref = acceptor_scores_ref.cpu().numpy()
@@ -389,16 +389,17 @@ def exp_1(fasta_file, models, model_type, flanking_size, output_dir, device):
     
 def mutagenesis():
         
-    model_types = ['pytorch', 'keras']
+    # model_types = ['pytorch', 'keras']
+    model_types = ['pytorch']
     flanking_sizes = [10000]
     exp_number = 1
-    sample = 'mybpc3_full'
+    sample = 'cftr'
     
     for model_type, flanking_size in itertools.product(model_types, flanking_sizes):
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
+            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/'
         else:
             print('not possible')
             exit(1)

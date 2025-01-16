@@ -288,12 +288,13 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
         
     # parse out key information from name
-    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
+    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\)([-+])?.*')
     match = pattern.match(seq_name)
 
     if match:
-        start = int(match.group(2)) - 5000
-        end = int(match.group(3)) - 5000
+        chrom = match.group(1)
+        start = int(match.group(2))
+        end = int(match.group(3))
         strand = match.group(4)
         name = seq_name[:-2] # remove endings
         
@@ -303,21 +304,25 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
 
         # handle file writing based on strand
         if strand == '+':
+            start += 5000
+            end += 5000
             for pos in range(len(acceptor_scores)): # NOTE: donor and acceptor should have same num of scores 
                 acceptor_score = acceptor_scores[pos]
                 donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{start+pos-2}\t{start+pos}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{chrom}\t{start+pos-3}\t{start+pos-1}\t{name}_Acceptor\t{acceptor_score:.6f}\t{strand}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{start+pos+1}\t{start+pos+3}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{chrom}\t{start+pos}\t{start+pos+2}\t{name}_Donor\t{donor_score:.6f}\t{strand}\n")
         elif strand == '-':
+            start -= 5000
+            end -= 5000
             for pos in range(len(acceptor_scores)):
                 acceptor_score = acceptor_scores[pos]
                 donor_score = donor_scores[pos]
                 if acceptor_score > threshold:
-                    acceptor_bed.write(f"{name}\t{end-pos+1}\t{end-pos+3}\tAcceptor\t{acceptor_score:.6f}\n")
+                    acceptor_bed.write(f"{chrom}\t{end-pos}\t{end-pos+2}\t{name}_Acceptor\t{acceptor_score:.6f}\t{strand}\n")
                 if donor_score > threshold:
-                    donor_bed.write(f"{name}\t{end-pos-2}\t{end-pos}\tDonor\t{donor_score:.6f}\n")
+                    donor_bed.write(f"{chrom}\t{end-pos-3}\t{end-pos-1}\t{name}_Donor\t{donor_score:.6f}\t{strand}\n")
         else:
             print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
 
@@ -326,24 +331,13 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         strand = seq_name[-1] # use the ending as the strand (when lack other information)
         
         # write to file using absolute coordinates (using input FASTA as coordinates rather than GFF)
-        if strand == '+':
-            for pos in range(len(acceptor_scores)):
-                acceptor_score = acceptor_scores[pos]
-                donor_score = donor_scores[pos]
-                if acceptor_score > threshold:
-                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
-                if donor_score > threshold:
-                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
-        elif strand == '-':
-            for pos in range(len(acceptor_scores)):
-                acceptor_score = acceptor_scores[pos]
-                donor_score = donor_scores[pos]
-                if acceptor_score > threshold:
-                    acceptor_bed.write(f"{seq_name}\t{pos-2}\t{pos}\tAcceptor\t{acceptor_score:.6f}\tabsolute_coordinates\n")
-                if donor_score > threshold:
-                    donor_bed.write(f"{seq_name}\t{pos+1}\t{pos+3}\tDonor\t{donor_score:.6f}\tabsolute_coordinates\n")
-        else:
-            print(f'\t[ERR] Undefined strand {strand}. Skipping {seq_name} batch...')
+        for pos in range(len(acceptor_scores)):
+            acceptor_score = acceptor_scores[pos]
+            donor_score = donor_scores[pos]
+            if acceptor_score > threshold:
+                acceptor_bed.write(f"{seq_name}\t{pos-3}\t{pos-1}\t{seq_name}_Acceptor\t{acceptor_score:.6f}\t{strand}\tabsolute_coordinates\n")
+            if donor_score > threshold:
+                donor_bed.write(f"{seq_name}\t{pos}\t{pos-2}\t{seq_name}_Donor\t{donor_score:.6f}\t{strand}\tabsolute_coordinates\n")
 
 
 #####################

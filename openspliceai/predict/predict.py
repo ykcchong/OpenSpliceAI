@@ -1,5 +1,5 @@
 import argparse
-import os, sys
+import os, sys, glob
 import re
 import numpy as np
 import torch
@@ -461,50 +461,110 @@ def setup_device():
     device_str = "cuda" if torch.cuda.is_available() else "mps" if platform.system() == "Darwin" else "cpu"
     return torch.device(device_str)
 
-def load_model(model_path, device, flanking_size):
-    """Loads the given model."""
-    # Hyper-parameters:
-    # L: Number of convolution kernels
-    # W: Convolution window size in each residual unit
-    # AR: Atrous rate in each residual unit
-    L = 32
-    W = np.asarray([11, 11, 11, 11])
-    AR = np.asarray([1, 1, 1, 1])
-    N_GPUS = 2
-    BATCH_SIZE = 18*N_GPUS
-
-    if int(flanking_size) == 80:
+def load_pytorch_models(model_path, device, SL, CL):
+    """
+    Loads a SpliceAI PyTorch model from given state, inferring device.
+    
+    Params:
+    - model_path (str): Path to the model state dict, or a directory of models
+    - CL (int): Context length parameter for model conversion.
+    
+    Returns:
+    - loaded_models (list): SpliceAI model(s) loaded with given state.
+    """
+    
+    def load_model(device, flanking_size):
+        """Loads the given model."""
+        # Hyper-parameters:
+        # L: Number of convolution kernels
+        # W: Convolution window size in each residual unit
+        # AR: Atrous rate in each residual unit
+        L = 32
         W = np.asarray([11, 11, 11, 11])
         AR = np.asarray([1, 1, 1, 1])
+        N_GPUS = 2
         BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 400:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
-        BATCH_SIZE = 18*N_GPUS
-    elif int(flanking_size) == 2000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10])
-        BATCH_SIZE = 12*N_GPUS
-    elif int(flanking_size) == 10000:
-        W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
-                        21, 21, 21, 21, 41, 41, 41, 41])
-        AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
-                        10, 10, 10, 10, 25, 25, 25, 25])
-        BATCH_SIZE = 6*N_GPUS
 
-    CL = 2 * np.sum(AR*(W-1))
+        if int(flanking_size) == 80:
+            W = np.asarray([11, 11, 11, 11])
+            AR = np.asarray([1, 1, 1, 1])
+            BATCH_SIZE = 18*N_GPUS
+        elif int(flanking_size) == 400:
+            W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11])
+            AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4])
+            BATCH_SIZE = 18*N_GPUS
+        elif int(flanking_size) == 2000:
+            W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                            21, 21, 21, 21])
+            AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                            10, 10, 10, 10])
+            BATCH_SIZE = 12*N_GPUS
+        elif int(flanking_size) == 10000:
+            W = np.asarray([11, 11, 11, 11, 11, 11, 11, 11,
+                            21, 21, 21, 21, 41, 41, 41, 41])
+            AR = np.asarray([1, 1, 1, 1, 4, 4, 4, 4,
+                            10, 10, 10, 10, 25, 25, 25, 25])
+            BATCH_SIZE = 6*N_GPUS
 
-    print(f"\t[INFO] Context nucleotides: {CL}")
+        CL = 2 * np.sum(AR*(W-1))
+
+        print(f"\t[INFO] Context nucleotides {CL}")
+        print(f"\t[INFO] Sequence length (output): {SL}")
+        
+        model = SpliceAI(L, W, AR).to(device)
+        params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'SL': SL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+
+        return model, params
     
-    model = SpliceAI(L, W, AR).to(device)
-    model.load_state_dict(torch.load(model_path, map_location=device, weights_only=True))
-    model = model.to(device)
+    # Load all model state dicts given the supplied model path
+    if os.path.isdir(model_path):
+        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
+        if not model_files:
+            print(f"\t[ERR] No PyTorch model files found in directory: {model_path}")
+            exit()
+            
+        models = []
+        for model_file in model_files:
+            try:
+                model = torch.load(model_file, map_location=device)
+                models.append(model)
+            except Exception as e:
+                print(f"\t[ERR] Error loading PyTorch model from file {model_file}: {e}. Skipping...")
+                
+        if not models:
+            print(f"\t[ERR] No valid PyTorch models found in directory: {model_path}")
+            exit()
     
-    params = {'L': L, 'W': W, 'AR': AR, 'CL': CL, 'BATCH_SIZE': BATCH_SIZE, 'N_GPUS': N_GPUS}
+    elif os.path.isfile(model_path):
+        try:
+            models = [torch.load(model_path, map_location=device)]
+        except Exception as e:
+            print(f"\t[ERR] Error loading PyTorch model from file {model_path}: {e}.")
+            exit()
+        
+    else:
+        print(f"\t[ERR] Invalid path: {model_path}")
+        exit()
     
-    return model, params
+    # Load state of model to device
+    # NOTE: supplied model paths should be state dicts, not model files  
+    loaded_models = []
+    
+    for state_dict in models:
+        try: 
+            model, params = load_model(device, CL) # loads new SpliceAI model with correct hyperparams
+            model.load_state_dict(state_dict)      # loads state dict
+            model = model.to(device)               # puts model on device
+            model.eval()                           # puts model in evaluation mode
+            loaded_models.append(model)            # appends model to list of loaded models  
+        except Exception as e:
+            print(f"\t[ERR] Error processing model for device: {e}. Skipping...")
+            
+    if not loaded_models:
+        print("\t[ERR] No models were successfully loaded to the device.")
+        exit()
+        
+    return loaded_models, params # NOTE: returns the last params, assuming all models have the same hyperparameters
 
 
 ################
@@ -543,7 +603,7 @@ def flush_predictions(predictions, file_path):
             maxshape = (None,) + predictions.shape[1:]
             f.create_dataset('predictions', data=predictions.numpy(), maxshape=maxshape, chunks=True)
 
-def get_prediction(model, dataset_path, device, batch_size, output_dir, flush_predict_threshold=500, debug=False):
+def get_prediction(models, dataset_path, device, batch_size, output_dir, flush_predict_threshold=500, debug=False):
     """
     Parameters:
     - model (torch.nn.Module): The SpliceAI model to be evaluated.
@@ -563,7 +623,8 @@ def get_prediction(model, dataset_path, device, batch_size, output_dir, flush_pr
         print('\n\t[DEBUG] get_prediction', file=sys.stderr)
 
     # put model in evaluation mode
-    model.eval()
+    for model in models:
+        model.eval()
     print('\t[INFO] Model in evaluation mode.')
 
     # determine which file to proceed with
@@ -599,9 +660,11 @@ def get_prediction(model, dataset_path, device, batch_size, output_dir, flush_pr
                 if debug:
                     print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr)
                 DNAs = DNAs.to(torch.float32).to(device)
+                # with torch.no_grad():
+                    #     y_pred = model(DNAs)
+                    # y_pred = y_pred.detach().cpu()
                 with torch.no_grad():
-                    y_pred = model(DNAs)
-                y_pred = y_pred.detach().cpu()
+                    y_pred = torch.mean(torch.stack([models[m](DNAs).detach().cpu() for m in range(len(models))]), axis=0)
 
                 if debug:
                     print('\tbatch ', len(y_pred), file=sys.stderr)
@@ -699,7 +762,7 @@ def write_batch_to_bed(seq_name, gene_predictions, acceptor_bed, donor_bed, thre
         print('\t',acceptor_scores[:5], donor_scores[:5], file=sys.stderr)
         
     # parse out key information from name
-    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\):([-+])')
+    pattern = re.compile(r'.*(chr[a-zA-Z0-9_]*):(\d+)-(\d+)\(([-+.])\)([-+])?.*')
     match = pattern.match(seq_name)
 
     if match:
@@ -802,7 +865,7 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 ##   STEP 4o   ##
 #################
 
-def predict_and_write(model, dataset_path, device, batch_size, NAME, LEN, output_dir, threshold=1e-6, debug=False):
+def predict_and_write(models, dataset_path, device, batch_size, NAME, LEN, output_dir, threshold=1e-6, debug=False):
     
     # define batch_size
     print(f'\t[INFO] Batch size: {batch_size}')
@@ -812,7 +875,8 @@ def predict_and_write(model, dataset_path, device, batch_size, NAME, LEN, output
     assert len(NAME) == len(LEN)
 
     # put model in evaluation mode
-    model.eval()
+    for model in models:
+        model.eval() 
     print('\t[INFO] Model in evaluation mode.')
 
     # determine which file to proceed with
@@ -856,9 +920,11 @@ def predict_and_write(model, dataset_path, device, batch_size, NAME, LEN, output
                     if debug:
                         print('\t\t\tbatch DNA ', len(DNAs), end='', file=sys.stderr) # should be 36 -> referring to 5k blocks
                     DNAs = DNAs.to(torch.float32).to(device)
+                    # with torch.no_grad():
+                    #     y_pred = model(DNAs)
+                    # y_pred = y_pred.detach().cpu()
                     with torch.no_grad():
-                        y_pred = model(DNAs)
-                    y_pred = y_pred.detach().cpu()
+                        y_pred = torch.mean(torch.stack([models[m](DNAs).detach().cpu() for m in range(len(models))]), axis=0)
                     count += len(y_pred)  # update the count for the current batch
 
                     if debug:
@@ -910,9 +976,11 @@ def predict_and_write(model, dataset_path, device, batch_size, NAME, LEN, output
             # getting prediction
             DNAs = batch[0].to(device)
             DNAs = DNAs.to(torch.float32).to(device)
+            # with torch.no_grad():
+            #     y_pred = model(DNAs)
+            # y_pred = y_pred.detach().cpu()
             with torch.no_grad():
-                y_pred = model(DNAs)
-            y_pred = y_pred.detach().cpu()
+                y_pred = torch.mean(torch.stack([models[m](DNAs).detach().cpu() for m in range(len(models))]), axis=0)
             count += 1
 
             # writing to BED
@@ -1020,7 +1088,7 @@ def predict_cli(args):
     device = setup_device()
 
     # load model from current state
-    model, params = load_model(model_path, device, flanking_size)
+    model, params = load_pytorch_models(model_path, device, consts['SL'], flanking_size)
     print(f"\t[INFO] Device: {device}, Model: {model}, Params: {params}")
 
     print("--- %s seconds ---" % (time.time() - start_time))
@@ -1078,13 +1146,15 @@ def predict(input_sequence, model_path, flanking_size):
     # Setup device and model
     device = setup_device()
     print(f'\t[INFO] Device: {device}')
-    model, params = load_model(model_path, device, flanking_size)
+    models, params = load_pytorch_models(model_path, device, consts['SL'], flanking_size)
   
     # Get predictions
     DNAs = X.to(device)
+    # with torch.no_grad():
+    #     y_pred = model(DNAs)
+    # y_pred = y_pred.detach().cpu()
     with torch.no_grad():
-        y_pred = model(DNAs)
-    y_pred = y_pred.detach().cpu()
+        y_pred = torch.mean(torch.stack([models[m](DNAs).detach().cpu() for m in range(len(models))]), axis=0)
     y_pred = y_pred.permute(0, 2, 1).contiguous().view(-1, y_pred.shape[1])
     y_pred = y_pred[:sequence_length, :] # crop out the extra padding
 
