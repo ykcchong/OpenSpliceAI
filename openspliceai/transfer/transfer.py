@@ -16,7 +16,7 @@ import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 
-def initialize_model_and_optim(device, flanking_size, epochs, scheduler,
+def initialize_model_and_optim_transfer(device, flanking_size, epochs, scheduler,
                                pretrained_model, unfreeze, unfreeze_all):
     L = 32
     N_GPUS = 2
@@ -95,7 +95,7 @@ def transfer(args):
     model_output_base, log_output_train_base, log_output_val_base, log_output_test_base = initialize_paths(args)
     train_h5f, test_h5f, batch_num = load_datasets(args)
     train_idxs, val_idxs, test_idxs = generate_indices(batch_num, args.random_seed, test_h5f)
-    model, optimizer, scheduler, params = initialize_model_and_optim(device, args.flanking_size, args.epochs, args.scheduler, args.pretrained_model, args.unfreeze, args.unfreeze_all)
+    model, optimizer, scheduler, params = initialize_model_and_optim_transfer(device, args.flanking_size, args.epochs, args.scheduler, args.pretrained_model, args.unfreeze, args.unfreeze_all)
     
     params["RANDOM_SEED"] = args.random_seed
     train_metric_files = create_metric_files(log_output_train_base)
