@@ -56,7 +56,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test
         if len(transcripts) == 0:
             continue
         elif len(transcripts) > 1:
-            print(f"Gene {gene_id} has multiple transcripts: {len(transcripts)}")
+            print(f"\tGene {gene_id} has multiple transcripts: {len(transcripts)}")
 
         # Selecting which mode to process the data
         transcripts_ls = []
@@ -135,22 +135,22 @@ def create_datafile(args):
     
     # Find all distinct chromosomes and split them
     TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(db, method=args.split_method, split_ratio=args.split_ratio)
-    print("TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
-    print("TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
+    print("* TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
+    print("* TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
 
     # Collect sequences and labels for testing and/or training groups
     if args.chr_split == 'test':
-        print("Creating test datafile...")
+        print("> Creating test datafile...")
         test_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TEST_CHROM_GROUP, 'test', parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only, write_fasta=args.write_fasta)
         paralogs.write_h5_file(args.output_dir, "test", test_data)
     elif args.chr_split == 'train-test':
-        print("Creating train datafile...")
+        print("> Creating train datafile...")
         train_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TRAIN_CHROM_GROUP, 'train', parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only, write_fasta=args.write_fasta)
-        print("Creating test datafile...")
+        print("> Creating test datafile...")
         test_data = get_sequences_and_labels(db, args.output_dir, seq_dict, TEST_CHROM_GROUP, 'test', parse_type=args.parse_type, biotype=args.biotype, canonical_only=args.canonical_only, write_fasta=args.write_fasta)
         if args.remove_paralogs:
             # Remove homologous sequences
-            print("Removing homologous sequences...")
+            print("> Removing homologous sequences...")
             train_data, test_data = paralogs.remove_paralogous_sequences(train_data, test_data, args.min_identity, args.min_coverage, args.output_dir)        
         # Write the filtered data to h5 files
         paralogs.write_h5_file(args.output_dir, "train", train_data)

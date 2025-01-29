@@ -6,7 +6,7 @@ import numpy as np
 from openspliceai import header
 from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
 from openspliceai.train import train
-# from openspliceai.test import test
+from openspliceai.test import test
 from openspliceai.calibrate import calibrate
 from openspliceai.transfer import transfer
 from openspliceai.predict import predict
@@ -33,6 +33,7 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--min-coverage', type=float, default=0.5, help='Minimum minimap2 alignment coverage for paralog removal between training and testing dataset')
     parser_create_data.add_argument('--write-fasta', action='store_true', default=False, help='Flag to write out sequences into fasta files')
 
+
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
     parser_train.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
@@ -40,8 +41,8 @@ def parse_args_train(subparsers):
     parser_train.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
     parser_train.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
     parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    parser_train.add_argument('--project-name', '-p', type=str, required=True, help="Project name for the fine-tuning experiment")
-    parser_train.add_argument('--exp-num', '-e', type=str, default=0, help="Experiment number")
+    parser_train.add_argument('--project-name', '-p', type=str, required=True, help="Project name for the train experiment")
+    parser_train.add_argument('--exp-num', '-e', type=str, default="0", help="Experiment number")
     parser_train.add_argument('--flanking-size', '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
     parser_train.add_argument('--random-seed', '-r', type=int, default=42, help="Random seed for reproducibility")
     parser_train.add_argument('--train-dataset', '-train', type=str, required=True, help="Path to the training dataset")
@@ -116,6 +117,7 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--split-threshold', type=int, default=1500000, help='Maximum length of FASTA entry before splitting')
     parser_predict.add_argument('--chunk-size', type=int, default=100, help='Chunk size for loading HDF5 dataset')
 
+
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
     parser_variant.add_argument('-R', metavar='reference', required=True, help='path to the reference genome fasta file')
@@ -181,8 +183,8 @@ Deep learning framework to train your own SpliceAI model
             verify_h5_file.verify_h5(args)
     elif args.command == 'train':
         train.train(args)
-    # elif args.command == 'test':
-    #     test.test(args)
+    elif args.command == 'test':
+        test.test(args)
     elif args.command == 'calibrate':
         calibrate.calibrate(args)
     elif args.command == 'transfer':
