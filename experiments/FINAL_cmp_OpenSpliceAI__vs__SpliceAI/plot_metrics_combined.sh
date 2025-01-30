@@ -1,6 +1,6 @@
 # for model_type in MANE species; do
 # for model_type in species MANE; do
-for model_type in MANE; do
+for model_type in species; do
     for species in MANE honeybee arabidopsis zebrafish mouse; do
     # for species in mouse; do
     # for species in RefSeq_noncoding; do
