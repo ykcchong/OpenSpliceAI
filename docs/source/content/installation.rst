@@ -9,6 +9,8 @@ Installation
 
 .. _sys-reqs:
 
+OpenSpliceAI package includes frameworks and libraries that are required to train and predict SpliceAI models. The pretrained OpenSpliceAI models are separated from the package and can be downloaded from `OpenSpliceAI ftp site <https://openspliceai.com/>`_.
+
 There are three ways that you can install OpenSpliceAI:
 
 .. _install-through-pip:
