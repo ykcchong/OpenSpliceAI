@@ -143,18 +143,18 @@ def collect_metrics(random_seeds, species, experiment, flanking_sizes, opensplic
 def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, flanking_sizes, species, experiment):
     key_mappings = {
         'donor_topk': 'Donor Top-1',
-        # 'donor_auprc': 'Donor AUPRC',
+        'donor_auprc': 'Donor AUPRC',
         # 'donor_auroc': 'Donor AUROC',
-        # 'donor_accuracy': 'Donor Accuracy',
-        # 'donor_precision': 'Donor Precision',
-        # 'donor_recall': 'Donor Recall',
+        'donor_accuracy': 'Donor Accuracy',
+        'donor_precision': 'Donor Precision',
+        'donor_recall': 'Donor Recall',
         'donor_f1': 'Donor F1',
         'acceptor_topk': 'Acceptor Top-1',
-        # 'acceptor_auprc': 'Acceptor AUPRC',
+        'acceptor_auprc': 'Acceptor AUPRC',
         # 'acceptor_auroc': 'Acceptor AUROC',
-        # 'acceptor_accuracy': 'Acceptor Accuracy',
-        # 'acceptor_precision': 'Acceptor Precision',
-        # 'acceptor_recall': 'Acceptor Recall',
+        'acceptor_accuracy': 'Acceptor Accuracy',
+        'acceptor_precision': 'Acceptor Precision',
+        'acceptor_recall': 'Acceptor Recall',
         'acceptor_f1': 'Acceptor F1'
     }
 
@@ -168,9 +168,9 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, fla
         openspliceai_label = f'OpenSpliceAI (Honeybee)'
         title = f"Splice site prediction metrics for Honeybee"
     elif species == "arabidopsis":
-        spliceai_keras_label = f'SpliceAI-Keras (Thale Cress)'
-        openspliceai_label = f'OpenSpliceAI (Thale Cress)'
-        title = f"Splice site prediction metrics for Thale Cress"
+        spliceai_keras_label = r"SpliceAI-Keras ($\mathit{Arabidopsis}$)"
+        openspliceai_label = r"OpenSpliceAI ($\mathit{Arabidopsis}$)"
+        title = r"Splice site prediction metrics for $\mathit{Arabidopsis}$"
     elif species == "zebrafish":
         spliceai_keras_label = f'SpliceAI-Keras (Zebrafish)'
         openspliceai_label = f'OpenSpliceAI (Zebrafish)'
@@ -182,8 +182,118 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, fla
 
     metrics_keys = list(key_mappings.keys())
     n_metrics = len(metrics_keys)
-    n_cols = n_metrics // 2
-    n_rows = 2  # Multiply by 2 for donor and acceptor rows
+    n_rows = 4  # Multiply by 2 for donor and acceptor rows
+    n_cols = n_metrics // n_rows
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), sharey=False)
+    # n_cols = 5
+    # n_rows = math.ceil(n_metrics / n_cols)
+    # fig, axs = plt.subplots(n_rows, n_cols, figsize=(18, 4 * n_rows), sharey=False)
+    fig.suptitle(title, fontsize=24)
+    plt.tight_layout(pad=3.0)
+    plt.subplots_adjust(hspace=0.5)
+    axs = axs.flatten()
+    for i, key in enumerate(metrics_keys):
+        ax = axs[i]
+        
+        # Generate letter labels starting with "A"
+        label = chr(65 + i)  # 65 is ASCII for "A"
+        
+        # Add the label at a position relative to the axis (0,0 is bottom left; 1,1 is top right)
+        ax.text(
+            -0.2, 1.15, label,
+            transform=ax.transAxes,  # Use axis coordinate system
+            fontsize=20, fontweight='bold',
+            verticalalignment='top', horizontalalignment='left'
+        )
+        
+        # ... rest of your plotting code for this axis ...
+        values_keras = []
+        std_dev_keras = []
+        values_pytorch = []
+        std_dev_pytorch = []
+
+        for flanking_size in flanking_sizes:
+            keras_samples = [
+                value for idx, value, fs in metrics_keras[key] if fs == flanking_size
+            ]
+            pytorch_samples = [
+                value for idx, value, fs in metrics_pytorch[key] if fs == flanking_size
+            ]
+
+            values_keras.append(np.mean(keras_samples) if keras_samples else np.nan)
+            std_dev_keras.append(np.std(keras_samples) if keras_samples else np.nan)
+            values_pytorch.append(np.mean(pytorch_samples) if pytorch_samples else np.nan)
+            std_dev_pytorch.append(np.std(pytorch_samples) if pytorch_samples else np.nan)
+
+        x_ticks = np.arange(len(flanking_sizes))
+
+        ax.errorbar(
+            x_ticks, values_keras, yerr=std_dev_keras, fmt='-o', capsize=5,
+            label=spliceai_keras_label
+        )
+        ax.errorbar(
+            x_ticks, values_pytorch, yerr=std_dev_pytorch, fmt='-X', capsize=5,
+            label=openspliceai_label
+        )
+        ax.set_ylim(0, 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels(flanking_sizes)
+        ax.set_xlabel('Flanking Size')
+        ax.set_ylabel(key_mappings[key])
+        ax.set_title(key_mappings[key], fontweight='bold')
+        ax.grid(True)
+        ax.legend()
+
+    # Remove any unused subplots
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+
+    plt.savefig(f"{output_dir}/combined_metrics_{species}_selected_all.png", dpi=300)
+
+
+def plot_metrics_with_error_bars_selected(output_dir, metrics_keras, metrics_pytorch, flanking_sizes, species, experiment):
+    key_mappings = {
+        # 'donor_topk': 'Donor Top-1',
+        # 'donor_auprc': 'Donor AUPRC',
+        # 'donor_auroc': 'Donor AUROC',
+        # 'donor_accuracy': 'Donor Accuracy',
+        # 'donor_precision': 'Donor Precision',
+        # 'donor_recall': 'Donor Recall',
+        'donor_f1': 'Donor F1',
+        # 'acceptor_topk': 'Acceptor Top-1',
+        # 'acceptor_auprc': 'Acceptor AUPRC',
+        # 'acceptor_auroc': 'Acceptor AUROC',
+        # 'acceptor_accuracy': 'Acceptor Accuracy',
+        # 'acceptor_precision': 'Acceptor Precision',
+        # 'acceptor_recall': 'Acceptor Recall',
+        'acceptor_f1': 'Acceptor F1'
+    }
+
+    if species == "MANE":
+        spliceai_keras_label = f'SpliceAI-Keras (Human-MANE)'
+        openspliceai_label = f'OpenSpliceAI (Human-MANE)'
+        title = f"Splice site prediction metrics for Human-MANE"
+    elif species == "honeybee":
+        spliceai_keras_label = f'SpliceAI-Keras (Honeybee)'
+        openspliceai_label = f'OpenSpliceAI (Honeybee)'
+        title = f"Splice site prediction metrics for Honeybee"
+    elif species == "arabidopsis":
+        spliceai_keras_label = r"SpliceAI-Keras ($\mathit{Arabidopsis}$)"
+        openspliceai_label = r"OpenSpliceAI ($\mathit{Arabidopsis}$)"
+        title = r"Splice site prediction metrics for $\mathit{Arabidopsis}$"
+    elif species == "zebrafish":
+        spliceai_keras_label = f'SpliceAI-Keras (Zebrafish)'
+        openspliceai_label = f'OpenSpliceAI (Zebrafish)'
+        title = f"Splice site prediction metrics for Zebrafish"
+    elif species == "mouse":
+        spliceai_keras_label = f'SpliceAI-Keras (Mouse)'
+        openspliceai_label = f'OpenSpliceAI (Mouse)'
+        title = f"Splice site prediction metrics for Mouse"
+
+    metrics_keys = list(key_mappings.keys())
+    n_metrics = len(metrics_keys)
+    n_cols = n_metrics 
+    n_rows = 1  # Multiply by 2 for donor and acceptor rows
     fig, axs = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), sharey=False)
     # n_cols = 5
     # n_rows = math.ceil(n_metrics / n_cols)
@@ -235,7 +345,9 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, fla
     for j in range(i + 1, len(axs)):
         fig.delaxes(axs[j])
 
-    plt.savefig(f"{output_dir}/combined_metrics_{species}_selected_topk_f1.png", dpi=300)
+    plt.savefig(f"{output_dir}/combined_metrics_{species}_selected_f1.png", dpi=300)
+
+
 
 
 def main():
@@ -359,7 +471,7 @@ def main():
     # for metric, improvements in improvement_pytorch.items():
     #     print(f"\t {metric} improvements:", improvements)
 
-    plot_metrics_with_error_bars(
+    plot_metrics_with_error_bars_selected(
         args.output_dir, metrics_keras, metrics_pytorch, flanking_sizes, 
         args.species, args.experiment
     )
