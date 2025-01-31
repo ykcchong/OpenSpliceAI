@@ -84,7 +84,7 @@ def plot_comparison(data_dict, std_dict, metrics, metrics_name, specie, specie_t
     n_rows = (n_metrics + n_cols - 1) // n_cols
 
     fig, axes = plt.subplots(n_rows, n_cols, figsize=(8, 5 * n_rows))
-    fig.suptitle(f'Splice Site Prediction Metrics for {specie_title.capitalize()}', fontsize=22, y=0.95)
+    fig.suptitle(f'Splice Site Prediction Metrics for {specie_title}', fontsize=22, y=0.95)
 
     # scratch_colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3',
     #                   '#ff7f00', '#a65628', '#f781bf', '#999999']
@@ -207,7 +207,7 @@ def main():
     base_path = '/home/kchao10/data_ssalzbe1/khchao/OpenSpliceAI/results'
     conditions = ['80', '400', '2000', '10000']
     species_ls = ['arabidopsis', 'mouse', 'honeybee', 'zebrafish']
-    species_titles = ['Thale cress', "Mouse", "Honeybee", "Zebrafish"]
+    species_titles = [r'$\mathit{Arabidopsis}$', "Mouse", "Honeybee", "Zebrafish"]
 
     # species_ls = ['honeybee']
     # species_titles = ["Honeybee"]
