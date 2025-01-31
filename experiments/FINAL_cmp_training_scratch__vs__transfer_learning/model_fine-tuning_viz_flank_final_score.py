@@ -152,22 +152,22 @@ def plot_first_last_epoch_comparison(metric_first_epoch_data_scratch, metric_fir
 
         # Plot first epoch scratch
         line1 = ax.errorbar(x_positions, y_first_scratch, yerr=std_first_scratch,
-                            label='Scratch (1st epoch)', color=scratch_color_first,
+                            label='Scratch-trained (1st epoch)', color=scratch_color_first,
                             **scratch_style_first, markersize=6, linewidth=2)
 
         # Plot last epoch scratch
         line2 = ax.errorbar(x_positions, y_last_scratch, yerr=std_last_scratch,
-                            label='Scratch (10th epoch)', color=scratch_color,
+                            label='Scratch-trained (10th epoch)', color=scratch_color,
                             **scratch_style_last, markersize=6, linewidth=2)
 
         # Plot first epoch finetune
         line3 = ax.errorbar(x_positions, y_first_finetune, yerr=std_first_finetune,
-                            label='Transfer-learning (1st epoch)', color=finetune_color_first,
+                            label='Transfer-learned (1st epoch)', color=finetune_color_first,
                             **finetune_style_first, markersize=6, linewidth=2)
 
         # Plot last epoch finetune
         line4 = ax.errorbar(x_positions, y_last_finetune, yerr=std_last_finetune,
-                            label='Transfer-learning (10th epoch)', color=finetune_color,
+                            label='Transfer-learned (10th epoch)', color=finetune_color,
                             **finetune_style_last, markersize=6, linewidth=2)
 
         # Collect handles and labels for the legend
@@ -193,11 +193,12 @@ def plot_first_last_epoch_comparison(metric_first_epoch_data_scratch, metric_fir
     # Create a single legend for all subplots at the bottom
     # fig.legend(handles, labels, loc='lower center', fontsize=16, ncol=4, bbox_to_anchor=(0.5, -0.05))
 
+    # Create a single legend for all subplots
+    fig.legend(handles, labels, loc='lower center', fontsize=8, ncol=4)
+
+
     plt.tight_layout(rect=[0, 0.03, 1, 0.93])
     
-    # # Create a single legend for all subplots
-    # fig.legend(handles, labels, loc='lower center', fontsize=12, ncol=2)
-
     # # Adjust layout to accommodate the legend
     # plt.tight_layout(rect=[0, 0, 1, 0.93])  # Adjust the top to make room for the legend
 
