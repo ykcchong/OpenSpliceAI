@@ -16,7 +16,7 @@ x = np.arange(len(species))
 bar_width = 0.4
 
 # Set up the plot
-fig, ax = plt.subplots(figsize=(8, 4))
+fig, ax = plt.subplots(figsize=(10, 3.4))
 
 # Create bars for training set size
 bars_train = ax.bar(x - bar_width/2, train_sizes, width=bar_width, label='Training Set Size')
