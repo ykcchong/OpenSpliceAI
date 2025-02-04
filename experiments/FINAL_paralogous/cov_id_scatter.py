@@ -26,13 +26,14 @@ def read_aln_stats(aln_stats_file):
 def main():
     # data_type = sys.argv[1]
     # print("data_type: ", data_type)
+    os.makedirs("viz", exist_ok=True)
     x_threshold = 80
     y_threshold = 80
     species_names = ["Human-MANE", "Honeybee", "Thale Cress", "Zebrafish", "Mouse"]
     exp_names = ["MANE", "honeybee", "arabidopsis", "zebrafish", "mouse"]
     for idx, species in enumerate(exp_names):
         for target in ["test"]:
-            aln_fn = f"/home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_{species}/removed_paralogs.txt"
+            aln_fn = f"/home/kchao10/data_ssalzbe1/khchao/data/REDO_train_test_dataset/train_test_dataset_{species}/removed_paralogs.txt"
             print("aln_fn: ", aln_fn)
             ids, cov = read_aln_stats(aln_fn)
             # ids = ids*100
@@ -56,7 +57,8 @@ def main():
             plt.fill_betweenx([y_threshold, 105], 0, x_threshold, color='green', alpha=0.2)
             plt.fill_betweenx([y_threshold, 105], x_threshold, 105, color='red', alpha=0.2)
 
-            plt.savefig(f"/home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_{species}/removed_paralogs.png")
+            plt.savefig(f"viz/{species}_removed_paralogs.png")
+            # plt.savefig(f"/home/kchao10/data_ssalzbe1/khchao/data/train_test_dataset_{species}/removed_paralogs.png")
             plt.clf()
 
 
