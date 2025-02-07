@@ -3,62 +3,64 @@
 
 .. _quick-start_predict:
 
-Quick Start Guide Predict 
-=========================
+Quick Start Guide: Predict
+==========================
 
-This page provides a straightforward quick-start guide to using OpenSpliceAI to (1) predict splice sites from DNA sequences. If you haven't already, please follow the steps outlined on the :ref:`Installation` page to install and load OpenSpliceAI.
+This page provides a streamlined guide for using OpenSpliceAI to **predict splice sites** from DNA sequences. If you haven't done so already, please see the :ref:`Installation` page for details on installing and configuring OpenSpliceAI.
 
+Before You Begin
+----------------
 
-Before you get started, make sure you have already cloned the `LiftOn OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_. We provide an example in `test/lifton_chr22_example.sh <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/lifton_chr22_example.sh>`_.
+- **Clone the Repository**: Make sure you have cloned the `LiftOn OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.  
+- **Check Example Scripts**: We provide an example script, `test/lifton_chr22_example.sh <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/lifton_chr22_example.sh>`_, which demonstrates a sample pipeline using OpenSpliceAI.
 
+Super-Quick Start (One-Liner)
+-----------------------------
 
-|
+OpenSpliceAI can predict splice sites from DNA sequences with a default **10,000 nt** flanking region. You need:
 
-.. _super-quick-start:
+1. **A reference genome (FASTA)**  
+   Example: `chm13_chr22.fa <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/chm13_chr22.fa>`_
 
-Super-Quick Start (one-liner)
-+++++++++++++++++++++++++++++++++++
+2. **A pre-trained OpenSpliceAI model or reference (FASTA)**  
+   Example: `GRCh38_chr22.fa <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/GRCh38_chr22.fa>`_
 
-OpenSpliceAI predicts splice sites from DNA sequences with 10,000 nt flanking sequences. To run OpenSpliceAI, all you need are three files:
-
-1. A reference genome (**Genome** :math:`T`, FASTA Format):  `chm13_chr22.fa <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/chm13_chr22.fa>`_
-2. A pretrained OpenSpliceAI model (**Genome** :math:`R`, FASTA Format): `GRCh38_chr22.fa <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/GRCh38_chr22.fa>`_
-
-Run the following commands:
+Run the following commands (adapt or replace filenames as needed):
 
 .. code-block:: bash
 
-    $ cd test
+    cd test
 
-    $ openspliceai -g GRCh38_chr22.gff3 -o GRCh38_2_CHM13_lifton.gff3 -copies chm13_chr22.fa GRCh38_chr22.fa
+    openspliceai -g GRCh38_chr22.gff3 \
+                 -o GRCh38_2_CHM13_lifton.gff3 \
+                 -copies chm13_chr22.fa GRCh38_chr22.fa
 
-After this step, you will obtain ... We provide further explanations of the output file hierarchy in the :ref:`output files section <output_files>`.
+This command will generate a GFF file (``GRCh38_2_CHM13_lifton.gff3``) that contains predictions and any relevant coordinate transformations. (In this example, the command references a "lift" process, but the principle is similar for direct splice site predictions.)
 
-
-|
-
-.. _google-colab:
+After the process completes, you will see new output files in the directory. Refer to the :ref:`output_files` section for details on interpreting the results.
 
 Try OpenSpliceAI on Google Colab
-+++++++++++++++++++++++++++++++++++
+--------------------------------
 
-We created a reproducible and easy-to-run OpenSpliceAI example on Google Colab. It's a good starting point, so go ahead and check it out!
+We have created a reproducible Google Colab notebook to demonstrate OpenSpliceAI in a user-friendly environment:
 
 .. image:: https://colab.research.google.com/assets/colab-badge.svg
-    :target: https://colab.research.google.com/github/Kuanhao-Chao/LiftOn/blob/main/notebook/lifton_example.ipynb
+   :target: https://colab.research.google.com/github/Kuanhao-Chao/LiftOn/blob/main/notebook/lifton_example.ipynb
 
+Click the badge above to open the notebook and run OpenSpliceAI interactively.
 
-|
+Summary
+-------
 
-Congratulations! You have successfully installed and run OpenSpliceAI. For more detailed analysis explaination and file format, please check:
+Congratulations! You have successfully run OpenSpliceAI to predict splice sites. For a deeper dive into analysis options and file formats, please check:
 
 .. seealso::
-    
-    * :ref:`same_species-section`
 
-    * :ref:`close_species-section`
+   * :ref:`same_species-section`
+   * :ref:`close_species-section`
+   * :ref:`distant_species-section`
 
-    * :ref:`distant_species-section`
+We hope this quick start guide helps you get up and running with OpenSpliceAI. Happy predicting!
 
 |
 |
@@ -67,12 +69,12 @@ Congratulations! You have successfully installed and run OpenSpliceAI. For more 
 |
 
 
-.. image:: ../_images/jhu-logo-dark.png
+.. image:: ../../_images/jhu-logo-dark.png
    :alt: My Logo
    :class: logo, header-image only-light
    :align: center
 
-.. image:: ../_images/jhu-logo-white.png
+.. image:: ../../_images/jhu-logo-white.png
    :alt: My Logo
    :class: logo, header-image only-dark
    :align: center
