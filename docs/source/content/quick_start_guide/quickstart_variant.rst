@@ -3,62 +3,57 @@
 
 .. _quick-start_variant:
 
-Quick Start Guide Variant
+Quick Start Guide: variant
 ==========================
 
-This page provides a straightforward quick-start guide to using OpenSpliceAI to (1) predict splice sites from DNA sequences. If you haven't already, please follow the steps outlined on the :ref:`Installation` page to install and load OpenSpliceAI.
-
-
-Before you get started, make sure you have already cloned the `LiftOn OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_. We provide an example in `test/lifton_chr22_example.sh <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/lifton_chr22_example.sh>`_.
-
+This page summarizes how to use OpenSpliceAI's ``variant`` subcommand to assess the impact of genomic variants on splice sites.
 
 |
 
-.. _super-quick-start:
+Before You Begin
+----------------
 
-Super-Quick Start (one-liner)
-+++++++++++++++++++++++++++++++++++
+- **VCF File**: A variant call format file containing SNPs or small INDELs.
+- **Reference Genome (FASTA)**: Must match the reference used in the VCF.
+- **Annotation File**: Gene annotations to filter variants by genomic region.
+- **Trained Model**: One or more OpenSpliceAI model checkpoints (PyTorch or Keras).
 
-OpenSpliceAI predicts splice sites from DNA sequences with 10,000 nt flanking sequences. To run OpenSpliceAI, all you need are three files:
+|
 
-1. A reference genome (**Genome** :math:`T`, FASTA Format):  `chm13_chr22.fa <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/chm13_chr22.fa>`_
-2. A pretrained OpenSpliceAI model (**Genome** :math:`R`, FASTA Format): `GRCh38_chr22.fa <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/GRCh38_chr22.fa>`_
+Super-Quick Start
+-----------------
 
-Run the following commands:
+1. **Variants**: ``input_variants.vcf``
+2. **Reference FASTA**: ``GRCh38.fa``
+3. **Annotation File**: ``grch38.txt``
+4. **Model**: Directory containing PyTorch checkpoints (e.g., ``/models/pytorch/``)
+
+Run:
 
 .. code-block:: bash
 
-    $ cd test
+   openspliceai variant \
+      --vcf input_variants.vcf \
+      --ref-fasta GRCh38.fa \
+      --annotation-file grch38.txt \
+      --model /models/pytorch/ \
+      --model-type pytorch \
+      --dist-var 50 \
+      --flanking-size 400 \
+      --output-vcf annotated_variants.vcf
 
-    $ openspliceai -g GRCh38_chr22.gff3 -o GRCh38_2_CHM13_lifton.gff3 -copies chm13_chr22.fa GRCh38_chr22.fa
-
-After this step, you will obtain ... We provide further explanations of the output file hierarchy in the :ref:`output files section <output_files>`.
-
-
-|
-
-.. _google-colab:
-
-Try OpenSpliceAI on Google Colab
-+++++++++++++++++++++++++++++++++++
-
-We created a reproducible and easy-to-run OpenSpliceAI example on Google Colab. It's a good starting point, so go ahead and check it out!
-
-.. image:: https://colab.research.google.com/assets/colab-badge.svg
-    :target: https://colab.research.google.com/github/Kuanhao-Chao/LiftOn/blob/main/notebook/lifton_example.ipynb
-
+This command:
+- **Loads** the VCF variants and checks them against the reference genome.
+- **Predicts** donor/acceptor scores for both wild-type and mutant sequences within ±50 nt.
+- **Outputs** an annotated VCF (``annotated_variants.vcf``) with delta scores and positions for donor/acceptor gain or loss.
 
 |
 
-Congratulations! You have successfully installed and run OpenSpliceAI. For more detailed analysis explaination and file format, please check:
+Next Steps
+----------
 
-.. seealso::
-    
-    * :ref:`same_species-section`
-
-    * :ref:`close_species-section`
-
-    * :ref:`distant_species-section`
+- **Review**: Inspect the appended INFO fields in the VCF for delta scores and their positions.
+- **Further Analysis**: Filter or rank variants by largest delta scores to prioritize functional splicing impacts.
 
 |
 |

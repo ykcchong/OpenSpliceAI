@@ -37,30 +37,37 @@
 
 
 
-Steps & Commands to train OpenSpliceAI
-=========================================
+Steps & Commands to Train OpenSpliceAI Models
+=============================================
 
+OpenSpliceAI offers a streamlined pipeline for training splice site prediction models on different species. Whether you aim to build a model using the Human MANE annotations or train a model for mouse, our framework provides a modular, efficient, and reproducible process.
 
-.. admonition:: LiftOn examples
+The training workflow typically involves:
+
+- **Data Preprocessing:**  
+  Use the ``create-data`` subcommand to convert your reference genome and gene annotation files into HDF5-formatted training and test datasets.
+
+- **Model Training:**  
+  Train your model from scratch using the ``train`` subcommand, which employs a deep residual CNN architecture with adaptive learning rate scheduling and early stopping for optimal performance.
+
+- **(Optional) Model Calibration:**  
+  Fine-tune the output probabilities using the ``calibrate`` subcommand, ensuring that the predicted splice site probabilities accurately reflect true likelihoods.
+
+For specific examples, please refer to the following OpenSpliceAI examples:
+
+.. admonition:: OpenSpliceAI Examples
     :class: note
 
-    * :ref:`human_mane_spliceai`
-    * :ref:`human_refseq_spliceai`
-    * :ref:`mouse_spliceai`
-    * :ref:`zebrafish_spliceai`
-    * :ref:`bee_insect_spliceai`
-    * :ref:`thale_cress_plant_spliceai`
-
+    * :ref:`train_your_own_model_mane` — Train the Human (MANE) model.
+    * :ref:`train_your_own_model_mouse` — Train a model using mouse data.
 
 .. toctree::
     :hidden:
 
-    GRCh38_MANE
-    GRCh38_RefSeq
-    mouse
-    zebrafish
-    bee_insect
-    arabidopsis_plant
+    train_human_mane
+    train_mouse
+
+These example pages provide detailed step-by-step instructions and commands for training models on different species. For further information, consult the individual pages.
 
 |
 |

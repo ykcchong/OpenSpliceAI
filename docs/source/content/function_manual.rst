@@ -15,25 +15,27 @@ OpenSpliceAI
       ====================================================================
 
 
-      ███████╗██████╗ ██╗     ██╗ ██████╗███████╗ █████╗ ██╗   ████████╗ ██████╗  ██████╗ ██╗     ██╗  ██╗██╗████████╗
-      ██╔════╝██╔══██╗██║     ██║██╔════╝██╔════╝██╔══██╗██║   ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██║ ██╔╝██║╚══██╔══╝
-      ███████╗██████╔╝██║     ██║██║     █████╗  ███████║██║█████╗██║   ██║   ██║██║   ██║██║     █████╔╝ ██║   ██║
-      ╚════██║██╔═══╝ ██║     ██║██║     ██╔══╝  ██╔══██║██║╚════╝██║   ██║   ██║██║   ██║██║     ██╔═██╗ ██║   ██║
-      ███████║██║     ███████╗██║╚██████╗███████╗██║  ██║██║      ██║   ╚██████╔╝╚██████╔╝███████╗██║  ██╗██║   ██║
-      ╚══════╝╚═╝     ╚══════╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝      ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚═╝  ╚═╝╚═╝   ╚═╝
+      ██████╗ ██████╗ ███████╗███╗   ██╗███████╗██████╗ ██╗     ██╗ ██████╗███████╗ █████╗ ██╗
+      ██╔═══██╗██╔══██╗██╔════╝████╗  ██║██╔════╝██╔══██╗██║     ██║██╔════╝██╔════╝██╔══██╗██║
+      ██║   ██║██████╔╝█████╗  ██╔██╗ ██║███████╗██████╔╝██║     ██║██║     █████╗  ███████║██║
+      ██║   ██║██╔═══╝ ██╔══╝  ██║╚██╗██║╚════██║██╔═══╝ ██║     ██║██║     ██╔══╝  ██╔══██║██║
+      ╚██████╔╝██║     ███████╗██║ ╚████║███████║██║     ███████╗██║╚██████╗███████╗██║  ██║██║
+      ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═══╝╚══════╝╚═╝     ╚══════╝╚═╝ ╚═════╝╚══════╝╚═╝  ╚═╝╚═╝
 
       0.0.1
 
-      usage: opensplicai [-h] {create-data,train,fine-tune,predict,variant} ...
+      usage: openspliceai [-h] {create-data,train,test,calibrate,transfer,predict,variant} ...
 
-      SpliceAI toolkit to retrain your own splice site predictor
+      OpenSpliceAI toolkit to help you retrain your own splice site predictor
 
       positional arguments:
-      {create-data,train,fine-tune,predict,variant}
-                              Subcommands: create-data, train, predict, variant
+      {create-data,train,test,calibrate,transfer,predict,variant}
+                              Subcommands: create-data, train, test, calibrate, predict, transfer, variant
          create-data         Create dataset for your genome for SpliceAI model training
          train               Train the SpliceAI model
-         fine-tune           Train the SpliceAI model
+         test                Test the SpliceAI model
+         calibrate           Calibrate the SpliceAI model
+         transfer            transfer a pre-trained SpliceAI model on new data.
          predict             Predict splice sites in a given sequence using the SpliceAI model
          variant             Label genetic variations with their predicted effects on splicing.
 

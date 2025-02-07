@@ -37,21 +37,81 @@
 
 
 
-Quick start guide
-====================================
+Quick Start Guide
+=================
 
+OpenSpliceAI offers three primary workflows:
 
-.. admonition:: Quick start guide
+1. **Predict**: Use pre-trained models to directly predict splice sites from DNA sequences.
+2. **Train from Scratch**: Build your own model by creating datasets and training from scratch.
+3. **Transfer Learning**: Adapt an existing (e.g., human-trained) model to a new species or dataset.
+
+The following sections provide a concise, step-by-step guide for each workflow.
+
+|
+
+Usage 1 – Predict
+-----------------
+
+.. admonition:: Quick Start: Predict with Pre-trained Models
     :class: note
 
-    * :ref:`quick-start_predict`
-    * :ref:`quick-start_variant`
+    - :ref:`quick-start_predict`
+    - :ref:`quick-start_variant`
+
+In this workflow, you use a pre-trained OpenSpliceAI model to generate splice site predictions from your FASTA (and optionally GFF) files. This is ideal for users who want to quickly obtain splice site annotations without the need to train a model.
+
+
+|
+
+Usage 2 – Train from Scratch
+----------------------------
+
+.. admonition:: Quick Start: Train Your Own Model
+    :class: note
+
+    - :ref:`quick-start_create_data`
+    - :ref:`quick-start_train`
+    - :ref:`quick-start_calibrate` (Optional)
+    - :ref:`quick-start_predict`
+    - :ref:`quick-start_variant`
+
+This workflow guides you through creating datasets from genomic sequences and annotations, training a SpliceAI model from scratch, optionally calibrating the model, and finally running predictions and variant analyses. It is best suited for users who want to build a custom model tailored to their data.
+
+
+|
+
+Usage 3 – Transfer Learning
+---------------------------
+
+.. admonition:: Quick Start: Transfer Learning Across Species
+    :class: note
+
+    - :ref:`quick-start_create_data`
+    - :ref:`quick-start_transfer`
+    - :ref:`quick-start_calibrate` (Optional)
+    - :ref:`quick-start_predict`
+    - :ref:`quick-start_variant`
+
+This workflow enables you to adapt a pre-trained model (such as a human-trained model) to your target species using transfer learning. It involves generating datasets, fine-tuning the model, and then performing predictions and variant annotation. This approach is recommended when working with species for which limited training data is available.
+
+
+.. |
+
+.. Additional Resources
+.. --------------------
+.. For further details on installation, advanced usage, and file format specifications, please refer to the respective sections in the OpenSpliceAI documentation.
 
 .. toctree::
     :hidden:
 
+    quickstart_create-data
+    quickstart_train
+    quickstart_transfer
+    quickstart_calibrate
     quickstart_predict
     quickstart_variant
+
 
 |
 |
