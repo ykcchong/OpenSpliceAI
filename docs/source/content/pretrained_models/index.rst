@@ -36,31 +36,35 @@
 |
 
 
+.. _pretrained_models_home:
 
 Released OpenSpliceAI models
 ====================================
 
+This page provides all released models trained with different flanking sequence lengths using OpenSpliceAI. We trained OpenSpliceAI with four flanking sequence configurations — 80 nt, 400 nt, 2000 nt, and 10000 nt — and strongly recommend using the 10000 nt model for optimal performance. The other configurations are available for experimental and research purposes. Browse the models below to choose the one that best meets your needs.
 
 .. admonition:: LiftOn examples
     :class: note
 
     * :ref:`human_mane_spliceai`
-    * :ref:`human_refseq_spliceai`
     * :ref:`mouse_spliceai`
     * :ref:`zebrafish_spliceai`
     * :ref:`bee_insect_spliceai`
     * :ref:`thale_cress_plant_spliceai`
+    
+    .. * :ref:`human_refseq_spliceai`
 
 
 .. toctree::
     :hidden:
 
     GRCh38_MANE
-    GRCh38_RefSeq
     mouse
     zebrafish
     bee_insect
     arabidopsis_plant
+
+    .. GRCh38_RefSeq
 
 |
 |
