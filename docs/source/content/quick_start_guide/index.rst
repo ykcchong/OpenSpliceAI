@@ -35,14 +35,14 @@
 
 |
 
-
+.. _quick-start_home:
 
 Quick Start Guide
 =================
 
 OpenSpliceAI offers three primary workflows:
 
-1. **Predict**: Use pre-trained models to directly predict splice sites from DNA sequences.
+1. **Predict**: Use pre-trained models to directly predict splice sites from DNA sequences. No training is required.
 2. **Train from Scratch**: Build your own model by creating datasets and training from scratch.
 3. **Transfer Learning**: Adapt an existing (e.g., human-trained) model to a new species or dataset.
 
