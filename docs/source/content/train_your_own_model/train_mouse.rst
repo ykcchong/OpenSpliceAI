@@ -1,3 +1,48 @@
+.. raw:: html
+
+    <script type="text/javascript">
+
+        let mutation_lvl_1_fuc = function(mutations) {
+            var dark = document.body.dataset.theme == 'dark';
+
+            if (document.body.dataset.theme == 'auto') {
+                dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            
+            document.getElementsByClassName('sidebar_ccb')[0].src = dark ? '../../_static/JHU_ccb-white.png' : "../../_static/JHU_ccb-dark.png";
+            document.getElementsByClassName('sidebar_wse')[0].src = dark ? '../../_static/JHU_wse-white.png' : "../../_static/JHU_wse-dark.png";
+
+
+
+            for (let i=0; i < document.getElementsByClassName('summary-title').length; i++) {
+                console.log(">> document.getElementsByClassName('summary-title')[i]: ", document.getElementsByClassName('summary-title')[i]);
+
+                if (dark) {
+                    document.getElementsByClassName('summary-title')[i].classList = "summary-title card-header bg-dark font-weight-bolder";
+                    document.getElementsByClassName('summary-content')[i].classList = "summary-content card-body bg-dark text-left docutils";
+                } else {
+                    document.getElementsByClassName('summary-title')[i].classList = "summary-title card-header bg-light font-weight-bolder";
+                    document.getElementsByClassName('summary-content')[i].classList = "summary-content card-body bg-light text-left docutils";
+                }
+            }
+
+        }
+        document.addEventListener("DOMContentLoaded", mutation_lvl_1_fuc);
+        var observer = new MutationObserver(mutation_lvl_1_fuc)
+        observer.observe(document.body, {attributes: true, attributeFilter: ['data-theme']});
+        console.log(document.body);
+    </script>
+
+|
+
+
+.. |download_icon| raw:: html
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   <i class="fa fa-download"></i>
+
+
 .. _train_your_own_model_mouse:
 
 Train Your Own Model – Mouse
@@ -13,10 +58,14 @@ Prerequisites
 Before you begin, make sure you have:
 
 - **Installed OpenSpliceAI:** Follow the instructions on the :ref:`Installation` page.
+
 - **Cloned the Repository:** Clone the OpenSpliceAI repository from the `LiftOn OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.
+
 - **Downloaded Input Files for Mouse:**
-  - **Reference Genome (FASTA):** For example, the mouse genome assembly (e.g., GRCm39) can be obtained as ``mouse_genome.fna``.
-  - **Annotation File (GFF):** A mouse gene annotation file (e.g., ``mouse_annotation.gff``) from Ensembl or NCBI.
+
+  - **Reference Genome (FASTA):** For example, the mouse genome assembly (e.g., GRCm39) can be obtained as `GCF_000001635.27_GRCm39_genomic.fna <https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/635/GCF_000001635.27_GRCm39/GCF_000001635.27_GRCm39_genomic.fna.gz>`_ |download_icon| 
+
+  - **Annotation File (GFF):** A mouse gene annotation file `GCF_000001635.27_GRCm39_genomic.gff <https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/635/GCF_000001635.27_GRCm39/GCF_000001635.27_GRCm39_genomic.gff.gz>`_ |download_icon| 
 
 |
 
@@ -106,6 +155,7 @@ Execute:
       --loss cross_entropy_loss
 
 This command:
+
 - Loads the best model checkpoint from your mouse training run.
 - Optimizes the temperature parameter for calibration.
 - Saves calibration outputs (e.g., temperature parameter, reliability curves) in the designated directory.
@@ -116,6 +166,7 @@ Step 4: Deploy Your Trained Mouse Model
 -----------------------------------------
 
 After training (and optional calibration), your mouse model is ready for use. You can now:
+
 - **Predict Splice Sites:** Use the ``predict`` subcommand to run inference on new mouse FASTA sequences.
 - **Analyze Variant Effects:** Use the ``variant`` subcommand to assess how specific mutations affect splicing in the mouse genome.
 
@@ -126,7 +177,6 @@ Conclusion
 
 By following these steps, you have successfully trained an OpenSpliceAI model on mouse data using species-specific genome and annotation files. This model can now be used to predict splice sites and analyze the impact of genetic variants in Mus musculus, thereby extending the utility of OpenSpliceAI to non-human genomics.
 
-For further details on advanced configurations and troubleshooting, please refer to the full OpenSpliceAI documentation.
 
 |
 |

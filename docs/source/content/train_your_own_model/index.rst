@@ -45,13 +45,13 @@ OpenSpliceAI offers a streamlined pipeline for training splice site prediction m
 The training workflow typically involves:
 
 - **Data Preprocessing:**  
-  Use the ``create-data`` subcommand to convert your reference genome and gene annotation files into HDF5-formatted training and test datasets.
+  Use the ``create-data`` subcommand to convert your reference genome and gene annotation files into HDF5-formatted training and test datasets (:ref:`quick-start_create_data`).
 
 - **Model Training:**  
-  Train your model from scratch using the ``train`` subcommand, which employs a deep residual CNN architecture with adaptive learning rate scheduling and early stopping for optimal performance.
+  Train your model from scratch using the ``train`` subcommand, which employs a deep residual CNN architecture with adaptive learning rate scheduling and early stopping for optimal performance (:ref:`quick-start_train`).
 
 - **(Optional) Model Calibration:**  
-  Fine-tune the output probabilities using the ``calibrate`` subcommand, ensuring that the predicted splice site probabilities accurately reflect true likelihoods.
+  Fine-tune the output probabilities using the ``calibrate`` subcommand, ensuring that the predicted splice site probabilities accurately reflect true likelihoods (:ref:`quick-start_calibrate`).
 
 For specific examples, please refer to the following OpenSpliceAI examples:
 
@@ -67,7 +67,6 @@ For specific examples, please refer to the following OpenSpliceAI examples:
     train_human_mane
     train_mouse
 
-These example pages provide detailed step-by-step instructions and commands for training models on different species. For further information, consult the individual pages.
 
 |
 |
