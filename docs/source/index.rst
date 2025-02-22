@@ -80,7 +80,7 @@
 
 | 
 
-OpenSpliceAI is an open‐source, efficient, and modular framework for splice site prediction. It is a reimplementation and extension of SpliceAI (Jaganathan et al., 2019) built on the modern PyTorch framework. OpenSpliceAI provides researchers with a user‐friendly suite of tools for studying transcript splicing—from creating training datasets and training models to predicting splice sites and assessing the impact of genetic variants.
+OpenSpliceAI is an open‐source, efficient, and modular framework for splice site prediction. It is a reimplementation and extension of SpliceAI (Jaganathan et al., 2019) built on the modern PyTorch framework. OpenSpliceAI provides researchers with a user‐friendly suite of tools for studying transcript splicing - from creating training datasets and training models to predicting splice sites and assessing the impact of genetic variants.
 
 |
 
@@ -196,7 +196,7 @@ Table of Contents
    content/pretrained_models/index
    content/openspliceai_vs_spliceai
    content/behind_scenes
-   content/Q&A
+   content/how_to_page
    content/changelog
    content/license
    content/contact

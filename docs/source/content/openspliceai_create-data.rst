@@ -2,6 +2,8 @@
 |
 
 
+.. _create-data_subcommand:
+
 create-data
 ===========
 
