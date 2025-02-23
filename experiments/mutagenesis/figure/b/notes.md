@@ -9,3 +9,12 @@ We visualize the PWM in a DNA logo of the reference sequence for both donor and 
 
 ## Keras Note
 Because Keras model takes a long time to run (on the order of weeks), distributed the job in parallel to 10 subprocesses on a cloud GPU compute server, Rockfish. Each was processed in batch for 10 sequences and the results were aggregated. 
+
+## Usage
+run_keras_mutagenesis.py -> SLURM script for running the keras mutagenesis
+    -> keras_mutagenesis.py -> actual script
+keras_job_visualize.py -> visualization for the keras results (which are stored in separate jobs)
+    -> vis.py -> also runs on this generate_dna_logo
+
+pytorch_mut.py -> pytorch mutagenesis module for running and visualization of pytorch results
+    -> vis.py -> visualization utils

@@ -86,7 +86,7 @@ def load_pytorch_models(model_path, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.p[th]')) # gets all PyTorch models from supplied directory
+        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
         if not model_files:
             logging.error(f"No PyTorch model files found in directory: {model_path}")
             exit()
@@ -550,13 +550,13 @@ def mutagenesis():
     
     '''
     
-    model_types = ['pytorch', 'keras']
+    # model_types = ['pytorch', 'keras']
+    model_types = ['pytorch']
     sites = ['acceptor']
-    scoring_position = 55
-    # flanking_sizes = [80, 400, 2000, 10000]
+    scoring_position = 55 # for both samples 
+
     flanking_sizes = [10000]
-    # sites = ['acceptor', 'donor']
-    sample_number = 5
+    sample_number = 4
     
     just_visualize = True
     orig_style = False   
@@ -565,7 +565,7 @@ def mutagenesis():
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
+            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/'
         else:
             print('not possible')
             exit(1)

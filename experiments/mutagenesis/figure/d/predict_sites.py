@@ -404,10 +404,10 @@ def mutagenesis():
             print('not possible')
             exit(1)
         
-        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/e/data/{sample}.fa'
+        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/d/data/{sample}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/e/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample}"
+        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/d/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging

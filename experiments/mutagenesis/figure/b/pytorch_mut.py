@@ -85,7 +85,7 @@ def load_pytorch_models(model_path, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.p[th]')) # gets all PyTorch models from supplied directory
+        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
         if not model_files:
             logging.error(f"No PyTorch model files found in directory: {model_path}")
             exit()
@@ -459,27 +459,26 @@ def mutagenesis():
     scoring_positions = {'donor': 198, 'acceptor': 201}
     # flanking_sizes = [80, 400, 2000, 10000]
     flanking_sizes = [10000]
-    exp_number = 7
     sample_number = 7
     debug = False
 
-    visualize = True
+    visualize = False
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
+            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/'
         else:
             print('not possible') 
             exit(1)
         
         scoring_position = scoring_positions[site]
         
-        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/b/.fa' #TODO
+        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/b/data/{site}_{sample_number}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/b/{model_type}_{flanking_size}_{site}"
+        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/b/{model_type}_{flanking_size}_{site}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
@@ -487,7 +486,7 @@ def mutagenesis():
         
         if visualize:
             df = pd.read_csv(f'{output_dir}/{site}_dna_logo.csv')
-            generate_dna_logo(df, site, f'{output_dir}/{site}_dna_logo.png', start=100, end=300)
+            generate_dna_logo(df, site, f'{output_dir}/{site}_dna_logo.png')
             continue
 
         # Load models (a list of models is passed)

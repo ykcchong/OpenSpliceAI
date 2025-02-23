@@ -6,7 +6,7 @@ import pandas as pd
 ############
 # FILES
 ############
-base = '/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/e/'
+base = '/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/d/'
 
 # Input BED paths for each tool
 donor_bed_osa = f'{base}/predict/pytorch/SpliceAI_5000_10000/donor_predictions.bed'
