@@ -1,0 +1,30 @@
+Traceback (most recent call last):
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/bin/openspliceai", line 5, in <module>
+    from openspliceai.openspliceai import main
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/openspliceai/openspliceai.py", line 7, in <module>
+    from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/openspliceai/create_data/verify_h5_file.py", line 5, in <module>
+    import matplotlib.pyplot as plt
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/pyplot.py", line 56, in <module>
+    import matplotlib.colorbar
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/colorbar.py", line 19, in <module>
+    from matplotlib import _api, cbook, collections, cm, colors, contour, ticker
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/contour.py", line 15, in <module>
+    from matplotlib.backend_bases import MouseButton
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/backend_bases.py", line 46, in <module>
+    from matplotlib import (
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/text.py", line 17, in <module>
+    from .patches import FancyArrowPatch, FancyBboxPatch, Rectangle
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/patches.py", line 1922, in <module>
+    class Arc(Ellipse):
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/artist.py", line 150, in __init_subclass__
+    cls._update_set_signature_and_docstring()
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/artist.py", line 178, in _update_set_signature_and_docstring
+    + kwdoc(cls))
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/artist.py", line 1856, in kwdoc
+    'Properties:\n' + '\n'.join(ai.pprint_setters(leadingspace=4)))
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/artist.py", line 1616, in pprint_setters
+    for prop in sorted(self.get_setters()):
+  File "/home/kchao10/miniconda3/envs/pytorch_cuda/lib/python3.9/site-packages/matplotlib/artist.py", line 1525, in get_setters
+    for name in dir(self.o):
+KeyboardInterrupt
