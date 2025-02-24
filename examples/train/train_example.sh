@@ -22,7 +22,7 @@ OUTPUT_FILE="$OUTPUT_DIR/output.log"
 ERROR_FILE="$OUTPUT_DIR/error.log"
 
 # Run the OpenSpliceAI fine-tuning command
-openspliceai train --flanking-size $FLANKING_SIZE \
+echo openspliceai train --flanking-size $FLANKING_SIZE \
     --train-dataset $TRAIN_DATASET \
     --test-dataset $TEST_DATASET \
     --output-dir $OUTPUT_DIR \

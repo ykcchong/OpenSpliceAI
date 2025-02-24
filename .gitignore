@@ -13,6 +13,7 @@
 !examples/predict/tp53.fa
 
 results/
+.vscode/
 
 models/prev/
 experiments/alan/
