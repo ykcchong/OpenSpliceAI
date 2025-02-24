@@ -1,4 +1,4 @@
-<img alt="My Logo" class="logo header-image only-dark align-center" src="https://khchao.com/images/logo_black.png" style="width:90%">
+<img alt="My Logo" class="logo header-image only-dark align-center" src="https://khchao.com/images/openspliceai_logo_black.png" style="width:90%">
 
 
 <a class="reference external image-reference" href="https://img.shields.io/badge/License-GPLv3-yellow.svg"><img alt="https://img.shields.io/badge/License-GPLv3-yellow.svg" src="https://img.shields.io/badge/License-GPLv3-yellow.svg"></a>
