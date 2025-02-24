@@ -1,1 +1,0 @@
-python 3_detect_paralogs_in_spliceai_keras.py --train_txt /home/kchao10/scr4_ssalzbe1/khchao/SpliceAI_train_code/Canonical/canonical_sequence.txt --output_dir ./3_detect_paralogs_in_spliceai_keras --min_identity 0.5 --min_coverage 0.3 --visualize
