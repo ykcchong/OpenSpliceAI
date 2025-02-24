@@ -27,6 +27,7 @@ setuptools.setup(
         'matplotlib>=3.8.3',
         'matplotlib-inline>=0.1.7',
     ],
+    include_package_data=True,
 	python_requires='>=3.9',
 	packages=setuptools.find_packages(),
 	entry_points={'console_scripts': ['openspliceai = openspliceai.openspliceai:main'], },
