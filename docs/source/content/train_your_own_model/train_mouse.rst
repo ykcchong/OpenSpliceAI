@@ -177,7 +177,6 @@ Conclusion
 
 By following these steps, you have successfully trained an OpenSpliceAI model on mouse data using species-specific genome and annotation files. This model can now be used to predict splice sites and analyze the impact of genetic variants in Mus musculus, thereby extending the utility of OpenSpliceAI to non-human genomics.
 
-
 |
 |
 |

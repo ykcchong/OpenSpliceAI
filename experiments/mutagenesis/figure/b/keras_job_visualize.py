@@ -49,11 +49,9 @@ def visualize(df, site, output_base):
 def mutagenesis():
         
     sites = ['donor', 'acceptor']
-    # flanking_sizes = [80, 400, 2000, 10000]
     flanking_sizes = [10000]
-    exp_number = 7
-    
-    base_dir = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/b/results/keras_job'
+
+    base_dir = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/b/results/keras_job'
     
     for flanking_size, site in itertools.product(flanking_sizes, sites):
         

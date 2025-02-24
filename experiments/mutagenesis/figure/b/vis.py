@@ -12,22 +12,6 @@ def mutate_base(base):
 def calculate_average_score_change(ref_scores, mut_scores):
     return ref_scores - np.mean(mut_scores, axis=0)
 
-# # Function to generate DNA logo
-# def generate_dna_logo(score_changes, output_file, start=140, end=260):
-#     order = ['A', 'C', 'G', 'T']
-    
-#     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
-#     # Ensure valid start and end range
-#     if start < 0 or end > len(data_df):
-#         raise ValueError("Invalid start or end range for the given data.")
-#     # Fill any missing values with 0, just in case
-#     data_df = data_df.fillna(0)
-#     # Slice the DataFrame to include only rows from start to end
-#     data_df = data_df.iloc[start:end]
-#     print(data_df)
-#     logo = logomaker.Logo(data_df, stack_order='small_on_top', color_scheme='classic')
-#     logo.ax.set_title('DNA Logo - Score Change by Base')
-#     plt.savefig(output_file)
 
 # Function to generate line plot for average score change
 def plot_average_score_change(average_score_change, output_file, start=0, end=400):
@@ -47,30 +31,30 @@ def plot_average_score_change(average_score_change, output_file, start=0, end=40
     plt.savefig(output_file)
     
 # Function to generate DNA logo with gene annotation
-def generate_dna_logo(score_changes, site, output_file, start=100, end=300):
+def generate_dna_logo(score_changes, site, output_file):
     
     data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
     
-    # Ensure valid start and end range
-    if start < 0 or end > len(data_df):
-        raise ValueError("Invalid start or end range for the given data.")
+    # # Ensure valid start and end range
+    # if start < 0 or end > len(data_df):
+    #     raise ValueError("Invalid start or end range for the given data.")
     
-    midpoint = len(data_df) // 2
     if site == 'donor':
-        midpoint -= 2
+        start, midpoint, end = 160, 198, 240
         exon_start, exon_stop = start, midpoint
     else:
-        midpoint += 1
+        start, midpoint, end = 160, 201, 240
         exon_start, exon_stop = midpoint, end
         
-    exon_start, exon_stop = exon_start-midpoint//2, exon_stop-midpoint//2
+    exon_start, exon_stop = exon_start-start, exon_stop-start
         
     # set parameters for drawing gene
     exon_start -= .5
     exon_stop += .5
     y = -.2
-    xs = np.arange(start-midpoint, end+midpoint, len(data_df) // 10)
+    xs = np.arange(end-start, len(data_df) // 10)
     ys = y*np.ones(len(xs))
+    
     
     # Fill any missing values with 0, just in case
     data_df = data_df.fillna(0)
@@ -84,21 +68,16 @@ def generate_dna_logo(score_changes, site, output_file, start=100, end=300):
                           figsize=(25,8))
     
     # style using Logo methods
-    
     logo.style_spines(visible=False)
-    logo.style_spines(spines=['left'], visible=True, bounds=[-0.5, 2.75])
+    logo.style_spines(spines=['left'], visible=True, bounds=[-.5, 3])
 
     # style using Axes methods
-    # Calculate the relative positions
-    relative_positions = np.arange(start, end) - midpoint
-    # logo.ax.set_xticks(range(len(relative_positions)))
-    logo.ax.set_xticklabels(relative_positions, rotation=45, fontsize=10) # font increased
     
     logo.ax.set_xlim([-.5, data_df.shape[0]+.5])
     logo.ax.set_xticks([])
-    logo.ax.set_ylim([-.5, 2.75])
-    # logo.ax.set_yticks([0, 2.75])
-    logo.ax.set_yticklabels(['0', '2.75'], fontsize=14) # font increased
+    logo.ax.set_ylim([-.5, 3])
+    logo.ax.set_yticks([0, 3])
+    # logo.ax.set_yticklabels(['0', '2.75'], fontsize=14) # font increased
     logo.ax.set_ylabel('             Score', labelpad=-1, fontsize=18) # font increased
     
 
@@ -106,17 +85,17 @@ def generate_dna_logo(score_changes, site, output_file, start=100, end=300):
     logo.ax.axhline(y, color='k', linewidth=1)
     logo.ax.plot(xs, ys, marker='4', linewidth=0, markersize=7, color='k')
     logo.ax.plot([exon_start, exon_stop],
-                    [y, y], color='k', linewidth=10, solid_capstyle='butt')
+                    [y, y], color='k', linewidth=14, solid_capstyle='butt')
 
     # annotate gene
     
     # logo.ax.text(2,2*y,f'${site.capitalize()}$',fontsize=16) # font increased
     if site == 'donor':
         logo.ax.plot(exon_stop, 1.8*y, '^k', markersize=12) # marker decreased
-        logo.ax.text(exon_stop, 2.5*y,f'{site.capitalize()}', verticalalignment='top', horizontalalignment='center', fontsize=12)
+        logo.ax.text(exon_stop, 2.5*y,f'{site.capitalize()}', verticalalignment='top', horizontalalignment='center', fontsize=16)
     else:
         logo.ax.plot(exon_start, 1.8*y, '^k', markersize=12) # marker decreased
-        logo.ax.text(exon_start, 2.5*y,f'{site.capitalize()}', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
+        logo.ax.text(exon_start, 2.5*y,f'{site.capitalize()}', verticalalignment='top', horizontalalignment='center', fontsize=16) # font increased
     
     # logo.ax.set_title(f'OpenSpliceAI - {site.capitalize()} Site Score Change by Base')
-    plt.savefig(output_file, bbox_inches='tight')
+    plt.savefig(output_file, bbox_inches='tight', dpi=300)

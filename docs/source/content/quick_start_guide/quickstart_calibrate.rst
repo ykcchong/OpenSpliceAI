@@ -33,9 +33,11 @@
         console.log(document.body);
     </script>
 
+
 |
 
 .. _quick-start_calibrate:
+
 
 Quick Start Guide: ``calibrate``
 =================================
@@ -105,6 +107,7 @@ Key Steps in Calibration
 
 - **Output Generation:**  
   An optimized temperature parameter is saved to a ``temperature.pt`` file, and calibration plots (e.g., reliability curves) are generated in the ``calibration_results/`` directory.
+
 
 |
 

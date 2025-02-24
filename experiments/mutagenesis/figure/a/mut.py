@@ -86,7 +86,7 @@ def load_pytorch_models(model_path, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.p[th]')) # gets all PyTorch models from supplied directory
+        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
         if not model_files:
             logging.error(f"No PyTorch model files found in directory: {model_path}")
             exit()
@@ -377,18 +377,7 @@ def plot_average_dna_logo(average_score_change, sequence, output_file, orig_styl
             nn_logo.ax.text(2,2*y,'$U2SURP$',fontsize=16) # font increased
             nn_logo.ax.text(exon_start, 2.5*y,'chr3:142,740,192', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
         elif 'samp5' in output_file:
-            data = []
-            complement = {'A': 'T', 'C': 'G', 'G': 'C', 'T': 'A'}
-            complement_sequence = ''.join([complement[base] for base in sequence])
-            for i, base in enumerate(complement_sequence):
-                row = {'A': 0, 'C': 0, 'G': 0, 'T': 0}
-                row[base] = average_score_change[i]  # Assign the score to the correct base
-                data.append(row)
-            # reverse data for reverse strand
-            data = data[::-1]
-            df = pd.DataFrame(data)
-            nn_logo = logomaker.Logo(df, figsize=(30, 3))
-            
+                        
             # style using Logo methods
             nn_logo.style_spines(visible=False)
             nn_logo.style_spines(spines=['left'], visible=True, bounds=[0, .75])
@@ -403,22 +392,22 @@ def plot_average_dna_logo(average_score_change, sequence, output_file, orig_styl
             nn_logo.ax.set_ylabel('             Score', labelpad=-1, fontsize=18) # font increased
 
             # set parameters for drawing gene
-            exon_start = 36-.5
-            exon_stop = 97+.5
+            exon_start = 36-.5 +19
+            exon_stop = 97+.5 +19
             y = -.2
             xs = np.arange(-3, len(df),10)
             ys = y*np.ones(len(xs))
 
             # draw gene
             nn_logo.ax.axhline(y, color='k', linewidth=1)
-            nn_logo.ax.plot(xs, ys, marker='3', linewidth=0, markersize=7, color='k')
+            nn_logo.ax.plot(xs, ys, marker='4', linewidth=0, markersize=7, color='k')
             nn_logo.ax.plot([exon_start, exon_stop],
                             [y, y], color='k', linewidth=10, solid_capstyle='butt')
 
             # annotate gene
-            nn_logo.ax.plot(exon_stop, 1.8*y, '^k', markersize=12) # marker decreased
+            nn_logo.ax.plot(exon_start, 1.8*y, '^k', markersize=12) # marker decreased
             nn_logo.ax.text(2,2*y,'$DST$',fontsize=16) # font increased
-            nn_logo.ax.text(exon_stop, 2.5*y,'chr6:56,735,289', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
+            nn_logo.ax.text(exon_start, 2.5*y,'chr6:56,735,289', verticalalignment='top', horizontalalignment='center', fontsize=12) # font increased
     else:
         nn_logo.style_spines(visible=False)
         nn_logo.style_spines(spines=['left', 'bottom'], visible=True)
@@ -561,30 +550,30 @@ def mutagenesis():
     
     '''
     
-    model_types = ['pytorch', 'keras']
-    # sites = ['acceptor']
-    scoring_position = 20
-    # flanking_sizes = [80, 400, 2000, 10000]
+    # model_types = ['pytorch', 'keras']
+    model_types = ['pytorch']
+    sites = ['acceptor']
+    scoring_position = 55 # for both samples 
+
     flanking_sizes = [10000]
-    sites = ['acceptor', 'donor']
-    sample_number = 6
+    sample_number = 4
     
-    just_visualize = False
+    just_visualize = True
     orig_style = False   
     
     for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
+            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/'
         else:
             print('not possible')
             exit(1)
             
-        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_3/data/{site}_{sample_number}.fa'
+        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/a/data/{site}_{sample_number}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/experiment_3/results/{model_type}_{flanking_size}_{site}_samp{sample_number}"
+        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/a/results/{model_type}_{flanking_size}_{site}_samp{sample_number}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging

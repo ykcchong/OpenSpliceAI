@@ -42,6 +42,7 @@ Quick Start Guide: ``transfer``
 
 This guide walks you through the essential steps for using the ``transfer`` subcommand to fine-tune your own OpenSpliceAI model. By leveraging a pre-trained model (for example, a human-trained model), you can convert HDF5 datasets - generated via the ``create-data`` subcommand - into a tailored deep learning model for splice site prediction.
 
+
 |
 
 Before You Begin
@@ -94,6 +95,7 @@ Execute the following command to initiate transfer learning:
       --early-stopping \
       --project-name new_species_transfer \
       --output-dir ./transfer_out/
+
 
 This command will:
 

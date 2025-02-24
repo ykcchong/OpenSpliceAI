@@ -66,6 +66,7 @@ Before you begin, ensure that you have:
   - **Reference Genome (FASTA):** e.g., `GCF_000001405.40_GRCh38.p14_genomic.fna <https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz>`_ |download_icon|
 
   - **Annotation File (GFF):** e.g., `MANE.GRCh38.v1.3.refseq_genomic.gff <https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.3/MANE.GRCh38.v1.3.refseq_genomic.gff.gz>`_ |download_icon|
+
 |
 
 Step 1: Create Training and Test Datasets

@@ -7,12 +7,11 @@ import logging
 import platform
 import os, glob
 import torch
-# from spliceaitoolkit.predict.spliceai import SpliceAI
 from openspliceai.train_base.spliceai import SpliceAI
-from vis import mutate_base, calculate_average_score_change, generate_dna_logo, plot_average_score_change
 from spliceaitoolkit.constants import *
+import logomaker
+import matplotlib.pyplot as plt
 
-import sys
 import itertools
 from keras import backend as K
     
@@ -85,7 +84,7 @@ def load_pytorch_models(model_path, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
+        model_files = glob.glob(os.path.join(model_path, '*.p[th]')) # gets all PyTorch models from supplied directory
         if not model_files:
             logging.error(f"No PyTorch model files found in directory: {model_path}")
             exit()
@@ -199,7 +198,7 @@ def load_models(model_path, model_type, CL):
         exit()
 
 ##############################################
-## PREDICT FUNCTIONS
+## PREDICTIONS
 ##############################################
 
 def one_hot_encode(seq):
@@ -229,9 +228,7 @@ def one_hot_encode(seq):
     return IN_MAP[X0 % 5]
 
 def predict_keras(models, flanking_size, seq, strand='+'):
-    # Prepare the sequence with padding
-    # pad_size = [flanking_size // 2, flanking_size // 2]
-    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    '''No padding'''
     x = seq
 
     # One-hot encode the sequence
@@ -255,11 +252,10 @@ def predict_keras(models, flanking_size, seq, strand='+'):
     return acceptor_scores, donor_scores
 
 def predict_pytorch(models, flanking_size, seq, strand='+', device='cuda'):
-    # Prepare the sequence with padding
-    # pad_size = [flanking_size // 2, flanking_size // 2]
-    # x = 'N' * pad_size[0] + seq + 'N' * pad_size[1]
+    '''No padding'''
+    
     x = seq
-
+        
     # One-hot encode the sequence
     x = one_hot_encode(x)[None, :]
 
@@ -299,201 +295,199 @@ def predict(models, model_type, flanking_size, seq, strand='+', device='cuda'):
         return predict_pytorch(models, flanking_size, seq, strand, device)
     else:
         logging.error("Invalid model type")
-        exit()    
+        exit()
+        
+##############################################
+## UTILS: ONE-HOT ENCODING, MUTATION, LOGOS ##
+##############################################
+
+# Function to mutate a base to the three other bases
+def mutate_base(base):
+    bases = ['A', 'C', 'G', 'T']
+    return [b for b in bases if b != base]
+
+# Function to calculate average score change
+def calculate_average_score_change(ref_scores, mut_scores):
+    return ref_scores - np.mean(mut_scores, axis=0)
+
+##############################################
+###### PLOTTING FUNCTIONS ####################
+##############################################
+
+# Function to generate DNA logo
+def generate_dna_logo(score_changes, output_file):
     
+    data_df = pd.DataFrame(score_changes, columns=['A', 'C', 'G', 'T']).astype(float)
+    # Fill any missing values with 0, just in case
+    data_df = data_df.fillna(0)
+    logo = logomaker.Logo(data_df)
+    logo.ax.set_title('DNA Logo - Score Change by Base')
+    plt.savefig(output_file, bbox_inches='tight', dpi=300)
+    plt.show()
+
+# Function to generate line plot for average score change
+def generate_dot_plot(score_change, output_file):
+    
+    # counts
+    counts = score_change.sum(axis=1).tolist()
+    
+    # Create a dot plot for the counts
+    plt.figure(figsize=(30, 6))
+    plt.plot(range(len(counts)), counts, 'o', markersize=2)
+    plt.xlabel('Position in Sequence')
+    plt.ylabel('Count of Score Changes > 0.5')
+    plt.title('Dot Plot of Score Changes by Position')
+    
+    # Label the dots where the y value is 3 or more
+    putative_splice_sites = []
+    significance_threshold = 3
+    for i, count in enumerate(counts):
+        if count >= significance_threshold:
+            putative_splice_sites.append(i)
+    
+    splice_sites = []
+    cryptic_splice_sites = []
+    for loc in putative_splice_sites:
+        if loc + 1 in putative_splice_sites:
+            splice_sites.append(loc)
+        elif loc - 1 not in splice_sites:
+            cryptic_splice_sites.append(loc)
+            
+    print('putative splice sites:', putative_splice_sites)
+    print('splice sites:', splice_sites)
+    print('cryptic splice sites:', cryptic_splice_sites)
+    for i in splice_sites:
+        plt.text(i, counts[i], str(i), fontsize=8, ha='center', va='bottom', color='green')
+    for i in cryptic_splice_sites:
+        plt.text(i, counts[i], str(i), fontsize=8, ha='center', va='bottom', color='red')
+        
+    # Save the plot to the output file
+    plt.savefig(output_file, bbox_inches='tight', dpi=100)
+    plt.show()
+
 ##############################################
 ## MUTAGENESIS EXPERIMENT
 ##############################################
 
 # Main function for mutagenesis experiment
-def exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, max_seq_length=400, debug=False):
-    '''
-    Mutate every base in 400nt window around donor/acceptor site and measure the score change at the donor/acceptor site.
-    '''
-    # Load fasta file
-    sequences = Fasta(fasta_file)
+def exp_3(fasta_file, models, model_type, flanking_size, output_dir, device):
     
-    # Initialize DataFrames to store cumulative sums and counts
-    cumulative_acceptor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
-    cumulative_donor_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
+    # Load fasta file and sequence
+    fasta = Fasta(fasta_file)
+    sequence = str(fasta[0])
+    offset = flanking_size // 2
+    seq_length = len(sequence) - flanking_size
+    
+    # Crop sequence 
+    if flanking_size != 10000:
+        difference = 5000 - offset
+        sequence = sequence[difference:-difference]    
+    
+    # # Initialize DataFrames to store cumulative sums and counts
+    # acceptor_df = pd.DataFrame(0, index=range(seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
+    # donor_df = pd.DataFrame(0, index=range(seq_length), columns=['ref', 'A', 'C', 'G', 'T'], dtype='float64')
+    # print(acceptor_df)
+    
+    # Initialize DataFrames to store score changes for each base
+    acc_change_df = pd.DataFrame(0, index=range(seq_length), columns=['A', 'C', 'G', 'T'], dtype='int16')
+    don_change_df = pd.DataFrame(0, index=range(seq_length), columns=['A', 'C', 'G', 'T'], dtype='int16')
 
-    count_df = pd.DataFrame(0, index=range(max_seq_length), columns=['ref', 'A', 'C', 'G', 'T'])  # Store counts for averaging
-
-    # Iterate over each transcript
-    all_sequences = list(sequences.keys())[:100] # TODO: locked to 100 sequences for testing
-    for i in range(len(all_sequences)):
-        seq_id = all_sequences[i]
-        sequence = str(sequences[seq_id])
+    # Iterate over each base in the transcript
+    for raw_pos in tqdm(range(seq_length)):
         
-        # Crop sequence 
-        crop = (10000 - flanking_size) // 2
-        if crop > 0:
-            sequence = sequence[crop:-crop]
-        seq_length = len(sequence) - flanking_size
+        # Move positioning
+        pos = raw_pos + offset
+        ref_base = sequence[pos]
+        mutations = mutate_base(ref_base)
+
+        # Get reference sequence scores
+        ref_sequence = sequence[:pos] + ref_base + sequence[pos + 1:]
+        assert(sequence == ref_sequence)
+        ref_acceptor_scores, ref_donor_scores = predict(models, model_type, flanking_size, ref_sequence, device=device)
+        assert(len(ref_acceptor_scores) == len(ref_donor_scores) == seq_length)
         
-        if debug:
-            print(f"***** Processing sequence {i}/{len(all_sequences)}: {seq_id}, len {seq_length} *****", file=sys.stderr)
+        # # Extract the reference scores 
+        # '''EXTRACTION: SCORES ABOVE THRESHOLD 0.5'''
+        # ref_acceptor_locs = np.where(ref_acceptor_scores > 0.5)[0]
+        # ref_donor_locs = np.where(ref_donor_scores > 0.5)[0]
 
-        # Iterate over each base in the transcript
-        for raw_pos in tqdm(range(seq_length)):
+        # Mutate the base and get scores for each mutation
+        for mut_base in mutations:
+            mut_sequence = sequence[:pos] + mut_base + sequence[pos + 1:]
+            assert(sequence != mut_sequence)
+            mut_acceptor_scores, mut_donor_scores = predict(models, model_type, flanking_size, mut_sequence, device=device)
+            assert(len(mut_acceptor_scores) == len(mut_donor_scores) == seq_length)
             
-            pos = raw_pos + (flanking_size // 2) 
-                        
-            ref_base = sequence[pos]
-            mutations = mutate_base(ref_base)
+            # calculate the entire score differences 
+            acc_score_diff = ref_acceptor_scores - mut_acceptor_scores
+            don_score_diff = ref_donor_scores - mut_donor_scores
+            
+            # get the count of |score diffs| > 0.5
+            acc_change_df.loc[raw_pos, mut_base] = len([x for x in acc_score_diff if abs(x) > 0.5])
+            don_change_df.loc[raw_pos, mut_base] = len([x for x in don_score_diff if abs(x) > 0.5])
 
-            # Create placeholder arrays to store scores, with an extra row for 'ref'
-            acceptor_scores = np.zeros(5)  # for ref, A, C, G, T
-            donor_scores = np.zeros(5)  # for ref, A, C, G, T
-            
-            # Get reference sequence scores
-            ref_sequence = sequence[:pos] + ref_base + sequence[pos + 1:]
-            ref_acceptor_scores, ref_donor_scores = predict(models, model_type, flanking_size, ref_sequence, device=device)
-            
-            # Extract the reference scores
-            ref_acceptor_score = ref_acceptor_scores[scoring_position]
-            ref_donor_score = ref_donor_scores[scoring_position]
-            
-            if debug:
-                acceptor_max_position = np.argmax(acceptor_scores)
-                donor_max_position = np.argmax(donor_scores)
-                print(f'mutating {pos} -- acceptor_max_position: {acceptor_max_position}, donor_max_position: {donor_max_position}', file=sys.stderr)
-            
-            acceptor_scores[0] = ref_acceptor_score
-            donor_scores[0] = ref_donor_score
+        # release memory if possible
+        if model_type == 'keras':
+            K.clear_session()  # clear the session after each prediction
 
-            # Store the reference score in the corresponding base column as well
-            base_order = ['A', 'C', 'G', 'T']
-            if ref_base in base_order:
-                acceptor_scores[base_order.index(ref_base) + 1] = acceptor_scores[0]
-                donor_scores[base_order.index(ref_base) + 1] = donor_scores[0]
+    print(acc_change_df)
 
-            # Mutate the base and get scores for each mutation
-            for i, mut_base in enumerate(mutations):
-                mut_sequence = sequence[:pos] + mut_base + sequence[pos + 1:]
-                
-                # Predict the scores for the mutated sequence
-                mut_acceptor_scores, mut_donor_scores = predict(models, model_type, flanking_size, mut_sequence, device=device)
-                mut_acceptor_score = mut_acceptor_scores[scoring_position]
-                mut_donor_score = mut_donor_scores[scoring_position]
-                    
-                acceptor_scores[base_order.index(mut_base) + 1] = mut_acceptor_score
-                donor_scores[base_order.index(mut_base) + 1] = mut_donor_score
-                
-            if debug:
-                if site == 'acceptor':
-                    print(f"Position: {pos}, Acceptor Scores: {' '.join(map(str, acceptor_scores))}", file=sys.stderr)
-                else:
-                    print(f"Position: {pos}, Donor Scores: {' '.join(map(str, donor_scores))}", file=sys.stderr)
-            
-            # Update cumulative sums and counts
-            cumulative_acceptor_df.loc[raw_pos, ['ref', 'A', 'C', 'G', 'T']] += acceptor_scores
-            cumulative_donor_df.loc[raw_pos, ['ref', 'A', 'C', 'G', 'T']] += donor_scores
-
-            count_df.loc[raw_pos, ['ref', 'A', 'C', 'G', 'T']] += 1
-
-            # release memory if possible
-            if model_type == 'keras':
-                K.clear_session()  # clear the session after each prediction
+    # get the dna_logo per mutation
+    acc_change_df.to_csv(f'{output_dir}/acceptor_score_change.csv', index=False)
+    generate_dna_logo(acc_change_df, f'{output_dir}/acceptor_dna_logo.png')
     
-    if debug:          
-        print("***** Finished processing all sequences *****", file=sys.stderr)
-        print(cumulative_acceptor_df, file=sys.stderr)
-        print(count_df, file=sys.stderr)
-    
-    # Calculate the rolling average across all sequences
-    acceptor_avg_df = cumulative_acceptor_df / count_df
-    donor_avg_df = cumulative_donor_df / count_df
-
-    ### GENERATE PLOTS ###
-
-    # Generate DNA logos for acceptor and donor score changes
-    acceptor_score_change_df = acceptor_avg_df.apply(
-            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
-            axis=1
-        )
-    donor_score_change_df = donor_avg_df.apply(
-            lambda row: pd.Series({i: row['ref'] - row[i] for i in ['A', 'C', 'G', 'T']}),
-            axis=1
-        )
-
-    if site == 'acceptor':
-        acceptor_score_change_df.to_csv(f'{output_dir}/acceptor_dna_logo.csv', index=False)
-        generate_dna_logo(acceptor_score_change_df, site, f'{output_dir}/acceptor_dna_logo.png')
-    else:
-        donor_score_change_df.to_csv(f'{output_dir}/donor_dna_logo.csv', index=False)
-        generate_dna_logo(donor_score_change_df, site, f'{output_dir}/donor_dna_logo.png')
-
-    # Calculate average score change for each base and plot
-    acceptor_score_change = acceptor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
-    donor_score_change = donor_avg_df.apply(lambda row: row['ref'] - np.mean([row['A'], row['C'], row['G'], row['T']]), axis=1)
-
-    if site == 'acceptor':
-        acceptor_score_change.to_csv(f'{output_dir}/acceptor_average_score_change.csv', index=False)
-        plot_average_score_change(acceptor_score_change, f'{output_dir}/acceptor_average_score_change.png')
-    else:
-        donor_score_change.to_csv(f'{output_dir}/donor_average_score_change.csv', index=False)
-        plot_average_score_change(donor_score_change, f'{output_dir}/donor_average_score_change.png')
-
-    ### WRITE SCORES TO FILE ###
-
-    # Add prefixes to differentiate between acceptor and donor columns
-    acceptor_combined_df = pd.concat([acceptor_avg_df, acceptor_score_change_df.add_suffix('_change')], axis=1)
-    acceptor_combined_df = acceptor_combined_df.add_prefix('acceptor_')
-
-    donor_combined_df = pd.concat([donor_avg_df, donor_score_change_df.add_suffix('_change')], axis=1)
-    donor_combined_df = donor_combined_df.add_prefix('donor_')
-
-    # Concatenate acceptor and donor DataFrames
-    combined_df = pd.concat([acceptor_combined_df, donor_combined_df], axis=1)
-
-    # Save everything to a single CSV file
-    combined_df.to_csv(f'{output_dir}/scores.csv', index=False)
-
+    don_change_df.to_csv(f'{output_dir}/donor_score_change.csv', index=False)
+    generate_dna_logo(don_change_df, f'{output_dir}/donor_dna_logo.png')
 
 def mutagenesis():
-        
-    model_types = ['pytorch']
-    # model_types = ['keras', 'pytorch']
-    sites = ['donor', 'acceptor']
-    scoring_positions = {'donor': 198, 'acceptor': 201}
-    # flanking_sizes = [80, 400, 2000, 10000]
-    flanking_sizes = [10000]
-    sample_number = 7
-    debug = False
-
-    visualize = False
     
-    for model_type, flanking_size, site in itertools.product(model_types, flanking_sizes, sites):
+    model_types = ['pytorch']
+    flanking_sizes = [10000]
+    
+    exp_number = 5
+    sample_name = 'tp53_grch38'
+    
+    just_visualize = True
+    
+    for model_type, flanking_size in itertools.product(model_types, flanking_sizes):
         if model_type == "keras":
             model_path = None
         elif model_type == "pytorch":
-            model_path = f'/ccb/cybertron2/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/'
+            model_path = f'/ccb/cybertron/smao10/openspliceai/models/spliceai-mane/{flanking_size}nt/model_{flanking_size}nt_rs14.pth'
         else:
-            print('not possible') 
+            print('not possible')
             exit(1)
-        
-        scoring_position = scoring_positions[site]
-        
-        fasta_file = f'/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/b/data/{site}_{sample_number}.fa'
+            
+        fasta_file = f'/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/d/data/{sample_name}.fa'
         
         # Initialize params
-        output_dir = f"/ccb/cybertron2/smao10/openspliceai/experiments/mutagenesis/figure/b/{model_type}_{flanking_size}_{site}"
+        output_dir = f"/ccb/cybertron/smao10/openspliceai/experiments/mutagenesis/figure/d/results/exp_{exp_number}/{model_type}_{flanking_size}_{sample_name}"
         os.makedirs(output_dir, exist_ok=True)
         
         # Initialize logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        
-        if visualize:
-            df = pd.read_csv(f'{output_dir}/{site}_dna_logo.csv')
-            generate_dna_logo(df, site, f'{output_dir}/{site}_dna_logo.png')
-            continue
 
+        if just_visualize:
+            score_change_files = [f'{output_dir}/acceptor_score_change.csv', f'{output_dir}/donor_score_change.csv']
+            fasta = Fasta(fasta_file)
+            sequence = str(fasta[0])
+            
+            for f in score_change_files:
+                if os.path.exists(f):
+                    df = pd.read_csv(f)
+                    print(df)
+                    output = f.replace('.csv', '.png')
+                    print(output)
+                    #generate_dna_logo(df, output)
+                    generate_dot_plot(df, output.replace('.png', '_dot.png'))
+            
+            continue
+            
         # Load models (a list of models is passed)
         models, device = load_models(model_path, model_type, flanking_size)
-        
+
         # Run the mutagenesis experiment
-        exp_2(fasta_file, models, model_type, flanking_size, output_dir, device, scoring_position, site, debug=debug)
+        exp_3(fasta_file, models, model_type, flanking_size, output_dir, device)
 
 if __name__ == '__main__':
     
