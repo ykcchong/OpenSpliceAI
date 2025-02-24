@@ -3,112 +3,173 @@
 
 .. _Q&A:
 
-Q & A ...
-==========
+Q & A
+=====
 
-.. dropdown:: Q: What is LiftOn?
+.. dropdown:: Q: What is OpenSpliceAI?
     :animate: fade-in-slide-down
     :container: + shadow
     :title: bg-dark font-weight-bolder howtoclass
     :body: bg-dark text-left
 
-    LiftOn is a homology-based lift-over annotation tool designed to map annotations in GFF or GTF between assemblies.
-
-    LiftOn is built upon the impressive tools, `Liftoff <https://github.com/agshumate/Liftoff>`_ (developed by `Dr. Alaina Shumate <https://scholar.google.com/citations?user=N3tXk7QAAAAJ&hl=en>`_) and `miniprot <https://github.com/lh3/miniprot>`_ (`Dr. Heng Li <http://liheng.org>`_). 
+    OpenSpliceAI is an open‐source, trainable deep learning framework for splice site prediction. It is a PyTorch‐based reimplementation and extension of the original SpliceAI model (Jaganathan et al., 2019). OpenSpliceAI replicates the core architecture of SpliceAI—a deep residual convolutional neural network—but enhances it with improved computational efficiency, modular design, and flexible training options. This framework supports training from scratch, transfer learning across species, model calibration, and variant effect analysis, making it a versatile tool for both human and non‐human genomic studies.
 
 |
 
-
-.. dropdown:: Q: Why do we need LiftOn?
+.. dropdown:: Q: Why do we need OpenSpliceAI?
     :animate: fade-in-slide-down
     :container: + shadow
     :title: bg-light font-weight-bolder
     :body: bg-light text-left
 
-    Rather than repeatedly annotating novel genome assemblies, a more efficient strategy involves transferring genes from well-annotated organisms of the same or closely related species.
-
-    `Liftoff <https://github.com/agshumate/Liftoff>`_, being entirely DNA-based, utilizes minimap2 to align gene loci DNA sequences to the genome and convert gene coordinates to the new assembly. However, when a newly assembled genome deviates significantly from the reference DNA sequence, the alignment may produce transcripts with incorrect protein-coding sequences or erroneous splice sites, posing challenges in annotation, particularly for more distantly related species.
-
-    `miniprot <https://github.com/lh3/miniprot>`_, on the other hand, is exclusively protein-based. This approach has limitations. (1) It cannot capture untranslated regions (UTRs), (2) may miss small exons in cases of long introns, (3) is susceptible to aligning proteins to pseudogenes due to the disregard of intronic sequences, and (4) may combine coding sequences (CDSs) from distinct genes when arranged in tandem along a genome. (5) Additionally, it solely applies to protein-coding transcripts, excluding non-coding genes or other features.
-
-    To overcome these limitations, we created LiftOn, which combines the advantages of both DNA- and protein-based approaches and applies a two-step :ref:`protein-maximization (PM) algorithm <protein-maximization_algorithm>` leading to enhanced protein-coding gene annotation.
+    While SpliceAI set a high standard for splice site prediction, its reliance on outdated TensorFlow/Keras frameworks and human-specific training data limits its broader applicability. OpenSpliceAI addresses these limitations by:
     
-|
-
-
-.. dropdown:: Q: How much does LiftOn improve over Liftoff and miniprot?
-    :animate: fade-in-slide-down
-    :container: + shadow
-    :title: bg-light font-weight-bolder
-    :body: bg-light text-left
-
-    Here is one example of improvement over human annotation lift-over from GRCh38 to T2T-CHM13. 
-
+    - **Utilizing PyTorch:** This modern framework offers better GPU efficiency, lower memory overhead, and seamless integration with contemporary machine learning workflows.
+    - **Supporting Retraining and Transfer Learning:** Users can easily retrain models on species-specific datasets, reducing biases inherent in human-centric models.
+    - **Improving Efficiency:** Enhanced data preprocessing, parallelized prediction, and optimized memory management allow for large-scale analyses on standard hardware.
     
-    .. _figure-qa-scatter-plots:
-
-    .. figure::  ../_images/human_refseq/combined_scatter_plots.png
-        :align:   center
-        :scale:   21 %
-
-    Each dot represents a protein-coding transcript. If it is above the x=y line, it indicates that the LiftOn annotation possesses a higher protein sequence identity score and corresponds to a longer protein that aligns with the proteins in the reference annotation.
-
-    In the LiftOn versus Liftoff comparison (Figure above, left), 2,075 transcripts exhibit higher protein sequence identity, with 460 achieving 100% identity. Similarly, the LiftOn versus miniprot comparison (Figure above, right) discloses better matches for 30,276 protein-coding transcripts, improving 22,616 to identical status relative to the reference. 
-
-    In summary, LiftOn effectively corrects quite a few protein-coding transcripts during human lift-over. The improvement is even more significant when it comes to more distant species!
-
-    Check out the :ref:`Same species lift-over section <same_species-section>`, :ref:`Closely related species lift-over section <close_species-section>`, and :ref:`Distantly related species lift-over section  <distant_species-section>` for more details.
-
-
-| 
-
-
-
-.. dropdown:: Q: How do we interpret LiftOn output?
-    :animate: fade-in-slide-down
-    :container: + shadow
-    :title: bg-light font-weight-bolder
-    :body: bg-light text-left
-
-    Check out the :ref:`Output files section <output_files>`.
-
-
-| 
-
-.. dropdown:: Q: Can you explain the new protein-maximization (PM) algorithm in LiftOn?
-    :animate: fade-in-slide-down
-    :container: + shadow
-    :title: bg-light font-weight-bolder
-    :body: bg-light text-left
-
-    Check out the :ref:`Protein-maximization algorithm section <protein-maximization_algorithm>`.
+    In essence, OpenSpliceAI provides researchers with a flexible, efficient, and extensible platform for splice site prediction across diverse species.
 
 |
 
-.. dropdown:: Q: How to you evaluate the lift-over annotation?
+.. dropdown:: Q: I want to use OpenSpliceAI to predict splice sites. What should I do?
     :animate: fade-in-slide-down
     :container: + shadow
     :title: bg-light font-weight-bolder
     :body: bg-light text-left
 
-    Check out the :ref:`DNA & protein transcript sequence identity score calculation section <lifton_sequence_identity>`.
-
-
-| 
-
-.. dropdown:: Q: How does LiftOn report mutated genes?
-    :animate: fade-in-slide-down
-    :container: + shadow
-    :title: bg-light font-weight-bolder
-    :body: bg-light text-left
-
-    LiftOn compares reference and target transcripts, similar to `Liftofftools <https://github.com/agshumate/LiftoffTools>`_, generating a mutation report for mapped protein-coding transcripts. 
+    To predict splice sites using OpenSpliceAI:
     
-    Transcripts are considered "**identical**" if their target and reference gene DNA sequences match entirely. For mutated sequences, LiftOn categorizes changes as "**synonymous**", "**non-synonymous**", "**in-frame insertion**", "**in-frame deletion**", "**frameshift**", "**stop codon gain**", "**stop codon loss**", and "**start codon loss**".
-
-    Check out the :ref:`Mutation report section <mutation-reporting>`.
+    1. **Obtain a Pre-trained Model:** You can use one of the available pre-trained models (e.g., OpenSpliceAI-MANE) provided by the project.
+    2. **Prepare Your Input Files:** Provide a FASTA file containing your DNA sequences. If you wish to restrict predictions to protein-coding genes, include a GFF annotation file.
+    3. **Run the Predict Subcommand:** Use the `predict` subcommand to process your input. The tool will one-hot encode your sequences, perform window-based predictions, and output BED files listing the coordinates and scores for predicted donor and acceptor sites.
+    
+    For detailed instructions, refer to the :ref:`quick-start_predict` page.
 
 |
+
+.. dropdown:: Q: I have a variant of interest. How can I use OpenSpliceAI to predict its effect on splicing?
+    :animate: fade-in-slide-down
+    :container: + shadow
+    :title: bg-light font-weight-bolder
+    :body: bg-light text-left
+
+    OpenSpliceAI offers the `variant` subcommand for evaluating the impact of genetic variants on splicing. To use it:
+    
+    1. **Prepare Your Files:** Ensure you have a VCF file containing the variants, a reference genome in FASTA format, and a gene annotation file.
+    2. **Run the Variant Subcommand:** The tool compares splice site predictions between the wild-type (reference) sequence and the mutant sequence for each variant.
+    3. **Delta Score Calculation:** For each variant, delta scores are computed for donor gain, donor loss, acceptor gain, and acceptor loss by assessing the maximum change in predicted splice site probability within a ±50 nt window.
+    4. **Output:** The annotated VCF file will include these delta scores and the relative positions of the most significant changes.
+    
+    This process allows you to quantify how a variant may disrupt normal splicing patterns. See the :ref:`quick-start_variant` page for a step-by-step guide.
+
+|
+
+.. dropdown:: Q: How is OpenSpliceAI trained?
+    :animate: fade-in-slide-down
+    :container: + shadow
+    :title: bg-light font-weight-bolder
+    :body: bg-light text-left
+
+    OpenSpliceAI training is a multi-step process that mirrors the original SpliceAI methodology while adding modern enhancements:
+    
+    - **Data Preprocessing:** The `create-data` subcommand converts genomic sequences (FASTA) and annotations (GFF/GTF) into one-hot encoded tensors stored in HDF5 format. Only protein-coding genes are typically included.
+    - **Model Training:** The `train` subcommand uses these datasets to train a deep residual convolutional neural network with adaptive learning techniques. OpenSpliceAI employs the AdamW optimizer with adaptive schedulers (MultiStepLR or CosineAnnealingWarmRestarts) and supports early stopping.
+    - **Loss Functions:** Training can be performed using the standard categorical cross-entropy loss or an alternative focal loss, which emphasizes harder-to-classify examples.
+    
+    These methods ensure that the resulting models are both accurate and computationally efficient. More details are available in the online methods section of the documentation.
+
+|
+
+.. dropdown:: Q: How much resource do I need to train an OpenSpliceAI model myself?
+    :animate: fade-in-slide-down
+    :container: + shadow
+    :title: bg-light font-weight-bolder
+    :body: bg-light text-left
+
+    The hardware requirements for training OpenSpliceAI depend on your dataset size and chosen model parameters (such as flanking sequence length). In our study:
+    
+    - **CPU Resources:** Data preprocessing was performed on a 24-core Intel Xeon processor.
+    - **GPU Resources:** Training was executed on a single Nvidia A100 GPU with 40 GB of memory. This allowed us to efficiently train models on the human MANE dataset and several non-human species.
+    
+    In general, for training on human-scale datasets, a modern GPU (e.g., Nvidia RTX series or better) with at least 16–24 GB of memory is recommended. Training on smaller species may require less GPU memory. Additionally, efficient data batching and optimized code in OpenSpliceAI help reduce the overall computational burden.
+
+|
+
+.. dropdown:: Q: What's the difference between scratch-training and transfer-learning? And what are the pros and cons?
+    :animate: fade-in-slide-down
+    :container: + shadow
+    :title: bg-light font-weight-bolder
+    :body: bg-light text-left
+
+    **Scratch-training** involves training a model from random initialization using species-specific datasets. This approach:
+    
+    - **Pros:**
+      - Can yield optimal performance when ample high-quality data are available.
+      - Allows the model to fully adapt to the unique characteristics of the target species.
+    
+    - **Cons:**
+      - Requires a longer training time.
+      - Demands more computational resources.
+      - May suffer from instability if the dataset is limited.
+    
+    **Transfer-learning** leverages a pre-trained model (typically trained on human data) and fine-tunes it on a new dataset. This approach:
+    
+    - **Pros:**
+      - Significantly reduces training time and resource requirements.
+      - Often yields more stable and accurate results, especially for species with limited data.
+      - Benefits from the already learned general splicing features.
+    
+    - **Cons:**
+      - May not fully capture species-specific splicing nuances if the source and target domains are too dissimilar.
+      - The fine-tuning process requires careful selection of layers to unfreeze to avoid overfitting.
+    
+    The choice between scratch-training and transfer-learning depends on the availability of training data and the degree of similarity between the source and target species.
+
+|
+
+.. dropdown:: Q: How do we interpret OpenSpliceAI output?
+    :animate: fade-in-slide-down
+    :container: + shadow
+    :title: bg-light font-weight-bolder
+    :body: bg-light text-left
+
+    The primary outputs of OpenSpliceAI are generated by the `predict` and `variant` subcommands:
+    
+    - **Predict Output:**  
+      The `predict` subcommand produces BED files that list the predicted donor and acceptor sites along with their probability scores. These scores represent the likelihood that a specific nucleotide is a splice site. Higher scores indicate greater confidence in the prediction.
+    
+    - **Variant Output:**  
+      The `variant` subcommand annotates a VCF file with “delta” scores and delta positions for each variant. These scores quantify the change in splice site strength between the wild-type and mutated sequences. For example, a delta score for acceptor gain reflects the maximum increase in the acceptor site probability within a 101-nt window around the variant.
+    
+    In both cases, the outputs are designed to be directly interpretable and can be further analyzed or integrated into downstream genomic pipelines.
+
+|
+
+.. dropdown:: Q: How do you evaluate the OpenSpliceAI prediction?
+    :animate: fade-in-slide-down
+    :container: + shadow
+    :title: bg-light font-weight-bolder
+    :body: bg-light text-left
+
+    Evaluation of OpenSpliceAI predictions involves several complementary metrics:
+    
+    - **Top-k Accuracy:**  
+      This metric compares the top k predicted splice sites (for both donor and acceptor channels) with the ground truth annotations. For example, Top-1 accuracy considers the highest-scoring prediction, while Top-2 accuracy doubles the number of sites evaluated.
+    
+    - **Standard Classification Metrics:**  
+      Accuracy, precision, recall, and F1-score are calculated based on the predicted class for each nucleotide position (donor, acceptor, or non-splice).
+    
+    - **Area Under the Precision-Recall Curve (AUPRC):**  
+      AUPRC provides a summary of prediction quality, especially useful when dealing with imbalanced data where splice sites are rare.
+    
+    - **Calibration Metrics:**  
+      Negative log-likelihood (NLL) and expected calibration error (ECE) assess how well the predicted probabilities match the observed outcomes.
+    
+    - **In Silico Mutagenesis (ISM) Studies:**  
+      By systematically mutating positions in a sequence and observing changes in predicted splice site strength, ISM analyses provide insights into the model’s sensitivity and the biological relevance of its predictions.
+    
+    These evaluation methods, combined with benchmarking against SpliceAI-Keras, demonstrate that OpenSpliceAI not only achieves high predictive accuracy but also offers reliable and well-calibrated probability estimates.
 
 
 |

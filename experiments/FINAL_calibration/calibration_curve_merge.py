@@ -40,7 +40,7 @@ for species in ["MANE", "mouse", "honeybee", "arabidopsis", "zebrafish"]:
     }
 
     # Create a figure with three subplots
-    fig, axs = plt.subplots(1, 3, figsize=(18, 7), sharex=True, sharey=True)
+    fig, axs = plt.subplots(1, 3, figsize=(14, 5.5), sharex=True, sharey=True)
 
     # Loop over classes
     for i, class_name in enumerate(classes):
@@ -122,5 +122,8 @@ for species in ["MANE", "mouse", "honeybee", "arabidopsis", "zebrafish"]:
     # # Adjust layout and legend
     plt.tight_layout(rect=[0, 0.12, 1, 1])  # Adjust rect to leave space for the legend
     # Save the plot
-    plt.savefig(os.path.join(output_dir, 'calibration_curve_comparison_subplots.png'), dpi=300)
+
+    plot_filename = os.path.join(output_dir, f'calibration_curve_comparison_{species}.png')
+    print(f"Saving plot to {plot_filename}")
+    plt.savefig(plot_filename, dpi=300)
     plt.close()

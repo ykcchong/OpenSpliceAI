@@ -3,17 +3,14 @@
 # short example with chr19 -> tests naming with short header lines, splitting fasta entry, prediction by gene extraction without annotation file, hdf file usage
 
 SETUP="/ccb/cybertron/smao10/openspliceai/setup.py"
-RESULT_DIR="./results/predict/SpliceAI_5000_400"
-
-# Run the setup script
-python "$SETUP" install
-if [ -d "$RESULT_DIR" ]; then
-    rm -rf "$RESULT_DIR"
-fi
+RESULT_DIR="./results/predict/test1/SpliceAI_5000_400"
 mkdir -p $RESULT_DIR
 
-MODEL_PATH="./models/spliceai-mane/400nt/model_400nt_rs40.pt"
-OUTPUT_PATH="./results/predict"
+# Run the setup script
+pip install .
+
+MODEL_PATH="./models/spliceai-mane/400nt/model_400nt_rs14.pt"
+OUTPUT_PATH="./results/predict/test1"
 DATA_PATH="./data/toy/human/chr19.fa"
 FLANKING_SIZE=400
 THRESHOLD=0.9

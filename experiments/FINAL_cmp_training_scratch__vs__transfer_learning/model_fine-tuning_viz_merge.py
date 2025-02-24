@@ -77,104 +77,14 @@ def average_metrics_over_seeds(base_path, specie, condition, metrics):
     return (averaged_scratch, std_scratch), (averaged_finetune, std_finetune)
 
 
-# def plot_comparison(data_dict, std_dict, metrics, specie):
-#     n_metrics = len(metrics)
-#     n_cols = 5
-#     n_rows = (n_metrics + n_cols - 1) // n_cols
-
-#     fig, axes = plt.subplots(n_rows, n_cols, figsize=(25, 5 * n_rows))
-#     fig.suptitle(f'Splice site prediction metrics for {specie.capitalize()}', fontsize=16)
-
-#     # Define a contrasting color palette
-#     colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3',
-#               '#ff7f00', '#a65628', '#f781bf', '#999999']
-
-#     # Define the adjust_lightness function
-#     def adjust_lightness(color, amount=1.0):
-#         import matplotlib.colors as mc
-#         import colorsys
-
-#         try:
-#             c = mc.cnames[color]
-#         except KeyError:
-#             c = color
-#         rgb = mc.to_rgb(c)
-#         h, l, s = colorsys.rgb_to_hls(*rgb)
-#         l = max(0, min(1, l * amount))
-#         rgb_new = colorsys.hls_to_rgb(h, l, s)
-#         return rgb_new
-
-#     for i, metric in enumerate(metrics):
-#         row = i // n_cols
-#         col = i % n_cols
-#         ax = axes[row, col] if n_rows > 1 else axes[col]
-
-#         plotted_anything = False  # Track if any plots are made for this metric
-
-#         for (condition, (scratch_data, finetune_data)), (condition_std, (scratch_std, finetune_std)), color in zip(data_dict.items(), std_dict.items(), colors):
-#             # Check if the metric exists in both scratch_data and finetune_data
-#             if metric not in scratch_data or metric not in finetune_data:
-#                 print(f"Metric '{metric}' not found for condition '{condition}'. Skipping...")
-#                 continue
-
-#             # Only calculate epochs when metric exists
-#             epochs = range(1, len(scratch_data[metric]) + 1)
-
-#             # Adjust colors for fills
-#             fill_color_scratch = adjust_lightness(color, amount=1.2)  # Lighten color
-#             fill_color_finetune = adjust_lightness(color, amount=0.8)  # Darken color
-
-#             # Plot scratch data with std
-#             ax.plot(epochs, scratch_data[metric], color=color, linestyle='--', label=f'Training from scratch {condition}')
-#             ax.fill_between(epochs,
-#                             scratch_data[metric] - scratch_std[metric],
-#                             scratch_data[metric] + scratch_std[metric],
-#                             color=fill_color_scratch, alpha=0.3)
-
-#             # Plot finetune data with std
-#             ax.plot(epochs, finetune_data[metric], color=color, linestyle='-', label=f'Transfer learning {condition}')
-#             ax.fill_between(epochs,
-#                             finetune_data[metric] - finetune_std[metric],
-#                             finetune_data[metric] + finetune_std[metric],
-#                             color=fill_color_finetune, alpha=0.3)
-
-#             plotted_anything = True
-
-#         # Add labels and legend only if any data was plotted
-#         if plotted_anything:
-#             ax.set_title(metric)
-#             ax.set_xlabel('Epoch')
-#             ax.set_ylabel('Value')
-#             ax.legend(loc='best', fontsize='x-small', ncol=2)
-#             ax.set_ylim(0, 1)  # Assuming metrics are between 0 and 1
-
-#             # Set x-ticks to show fewer epoch numbers
-#             max_epoch = len(epochs)
-#             ax.set_xticks(np.linspace(1, max_epoch, 5, dtype=int))
-#             ax.tick_params(axis='x', rotation=0)
-#         else:
-#             # If nothing was plotted, hide the subplot
-#             ax.set_visible(False)
-
-#     # Remove any unused subplots
-#     for i in range(n_metrics, n_rows * n_cols):
-#         row = i // n_cols
-#         col = i % n_cols
-#         fig.delaxes(axes[row, col] if n_rows > 1 else axes[col])
-
-#     plt.tight_layout()
-#     plt.savefig(f'viz/{specie}_all_conditions_comparison.png', dpi=300, bbox_inches='tight')
-#     plt.close()
-
-
-def plot_comparison(data_dict, std_dict, metrics, metrics_name, specie):
+def plot_comparison(data_dict, std_dict, metrics, metrics_name, specie, specie_title):
     import matplotlib.colors as mc
     n_metrics = len(metrics)
-    n_cols = 3
+    n_cols = 2
     n_rows = (n_metrics + n_cols - 1) // n_cols
 
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows))
-    fig.suptitle(f'Splice Site Prediction Metrics for {specie.capitalize()}', fontsize=22, y=0.95)
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(8, 5 * n_rows))
+    fig.suptitle(f'Splice Site Prediction Metrics for {specie_title}', fontsize=22, y=0.95)
 
     # scratch_colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3',
     #                   '#ff7f00', '#a65628', '#f781bf', '#999999']
@@ -245,116 +155,80 @@ def plot_comparison(data_dict, std_dict, metrics, metrics_name, specie):
     # Adjust legend
     handles, labels = ax.get_legend_handles_labels()
     # Create a single legend for all subplots at the bottom
-    fig.legend(handles, labels, loc='lower center', fontsize='large', ncol=4, bbox_to_anchor=(0.5, -0.05))
+    # fig.legend(handles, labels, loc='lower center', fontsize='large', ncol=4, bbox_to_anchor=(0.5, -0.05))
 
     plt.tight_layout(rect=[0, 0.03, 1, 0.93])
-    plt.savefig(f'viz/{specie}_all_conditions_comparison.png', dpi=300, bbox_inches='tight')
+    plt.savefig(f'viz/{specie}_all_conditions_comparison_selected.png', dpi=300, bbox_inches='tight')
     plt.close()
 
 
-# def plot_comparison(data_dict, std_dict, metrics, metrics_name, specie):
-#     import matplotlib.colors as mc
-#     n_metrics = len(metrics)
-#     n_cols = 3
-#     n_rows = (n_metrics + n_cols - 1) // n_cols
+def calculate_auc_over_epochs(metric_data):
+    """
+    Calculate the AUC using the trapezoidal rule for each metric data sequence.
+    """
+    return np.trapz(metric_data, dx=1)  # dx=1 assumes uniform spacing (epochs 1, 2, 3, ...)
 
-#     fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5 * n_rows))
-#     fig.suptitle(f'Splice Site Prediction Metrics for {specie.capitalize()}', fontsize=20)
 
-#     # scratch_colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3',
-#     #                   '#ff7f00', '#a65628', '#f781bf', '#999999']
-#     scratch_colors = ['#ed6d6d', '#7fadd1', '#8dcc8b', '#bd8dc4',
-#                     '#ffad5c', '#c69375', '#faaed6', '#bdbdbd']
-#     finetune_colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3',
-#                        '#ff7f00', '#a65628', '#f781bf', '#999999']
-    
-#     # Define line styles and markers
-#     scratch_style = {'linestyle': '--', 'marker': 'o'}
-#     finetune_style = {'linestyle': '-', 'marker': 's'}
+def compute_average_auc(data_dict, metrics):
+    """
+    Compute the average AUC for scratch and finetune data across different conditions (flanking sequence sizes).
+    """
+    auc_results = {}
+    for metric in metrics:
+        scratch_aucs = []
+        finetune_aucs = []
+        
+        for condition, (scratch_data, finetune_data) in data_dict.items():
+            # Check if the metric exists for both scratch and finetune data
+            if metric in scratch_data and metric in finetune_data:
+                # Calculate AUC for scratch and finetune
+                auc_scratch = calculate_auc_over_epochs(scratch_data[metric])
+                auc_finetune = calculate_auc_over_epochs(finetune_data[metric])
+                
+                # Append AUCs for each condition
+                scratch_aucs.append(auc_scratch)
+                finetune_aucs.append(auc_finetune)
 
-#     for i, metric in enumerate(metrics):
-#         metric_name = metrics_name[i]
-#         row = i // n_cols
-#         col = i % n_cols
-#         ax = axes[row, col] if n_rows > 1 else axes[col]
+        # Calculate average AUC across conditions for the metric
+        avg_scratch_auc = np.mean(scratch_aucs) if scratch_aucs else None
+        avg_finetune_auc = np.mean(finetune_aucs) if finetune_aucs else None
+        auc_improvement = avg_finetune_auc - avg_scratch_auc if avg_scratch_auc is not None and avg_finetune_auc is not None else None
+        
+        auc_results[metric] = {
+            "average_scratch_auc": avg_scratch_auc,
+            "average_finetune_auc": avg_finetune_auc,
+            "average_auc_improvement": auc_improvement
+        }
 
-#         plotted_anything = False  # Track if any plots are made for this metric
-
-#         for idx, ((condition, (scratch_data, finetune_data)), (condition_std, (scratch_std, finetune_std))) in enumerate(zip(data_dict.items(), std_dict.items())):
-#             # Assign colors
-#             scratch_color = scratch_colors[idx % len(scratch_colors)]
-#             finetune_color = finetune_colors[idx % len(finetune_colors)]
-
-#             # Check if the metric exists
-#             if metric not in scratch_data or metric not in finetune_data:
-#                 print(f"Metric '{metric}' not found for condition '{condition}'. Skipping...")
-#                 continue
-
-#             # Only calculate epochs when metric exists
-#             epochs = range(1, len(scratch_data[metric]) + 1)
-
-#             # Plot scratch data with error bars
-#             ax.errorbar(epochs, scratch_data[metric],
-#                         yerr=scratch_std[metric],
-#                         color=scratch_color,
-#                         label=f'Scratch {condition}',
-#                         **scratch_style, markersize=4, linewidth=1)
-
-#             # Plot finetune data with error bars
-#             ax.errorbar(epochs, finetune_data[metric],
-#                         yerr=finetune_std[metric],
-#                         color=finetune_color,
-#                         label=f'Fine-tune {condition}',
-#                         **finetune_style, markersize=4, linewidth=1)
-
-#             plotted_anything = True
-
-#         # Add labels and legend only if any data was plotted
-#         if plotted_anything:
-#             ax.set_title(metric_name, fontsize=16)
-#             ax.set_xlabel('Epoch', fontsize=14)
-#             ax.set_ylabel('Value', fontsize=14)
-#             ax.set_ylim(0.3, 1)  # Assuming metrics are between 0 and 1
-#             ax.tick_params(axis='both', which='major', labelsize=12)
-
-#             # Set x-ticks to show fewer epoch numbers
-#             max_epoch = len(epochs)
-#             ax.set_xticks(np.linspace(1, max_epoch, min(5, max_epoch), dtype=int))
-#             ax.tick_params(axis='x', rotation=0)
-#         else:
-#             # If nothing was plotted, hide the subplot
-#             ax.set_visible(False)
-
-#     # Adjust legend
-#     handles, labels = ax.get_legend_handles_labels()
-#     # Create a single legend for all subplots
-#     fig.legend(handles, labels, loc='upper center', fontsize='large', ncol=4)
-
-#     plt.tight_layout(rect=[0, 0, 1, 0.95])
-#     plt.savefig(f'viz/{specie}_all_conditions_comparison.png', dpi=300, bbox_inches='tight')
-#     plt.close()
-
+    return auc_results
 
 
 def main():
     base_path = '/home/kchao10/data_ssalzbe1/khchao/OpenSpliceAI/results'
     conditions = ['80', '400', '2000', '10000']
-    # species_ls = ['arabidopsis', 'mouse', 'bee', 'zebrafish']
-    species_ls = ['arabidopsis']
+    species_ls = ['arabidopsis', 'mouse', 'honeybee', 'zebrafish']
+    species_titles = [r'$\mathit{Arabidopsis}$', "Mouse", "Honeybee", "Zebrafish"]
+
+    # species_ls = ['honeybee']
+    # species_titles = ["Honeybee"]
     # species_ls = ['mouse', 'honeybee', 'zebrafish', 'arabidopsis']
 
     # metrics = ['acceptor_topk', 'acceptor_accuracy', 'acceptor_precision',
     #            'acceptor_recall', 'acceptor_f1', 'acceptor_auprc', 
     #            'donor_topk', 'donor_accuracy', 'donor_precision', 'donor_recall', 'donor_f1', 'donor_auprc', 'accuracy']
 
-    metrics = ['acceptor_topk', 'acceptor_f1', 'acceptor_auprc', 
-               'donor_topk', 'donor_f1', 'donor_auprc']
+    # metrics = ['acceptor_topk', 'acceptor_f1', 'acceptor_auprc', 
+    #            'donor_topk', 'donor_f1', 'donor_auprc']
 
-    metrics_name = ['Acceptor Top-1', 'Acceptor F1', 'Acceptor AUPRC', 
-               'Donor Top-1', 'Donor F1', 'Donor AUPRC']
+    # metrics_name = ['Acceptor Top-1', 'Acceptor F1', 'Acceptor AUPRC', 
+    #            'Donor Top-1', 'Donor F1', 'Donor AUPRC']
+
+    metrics = ['acceptor_topk', 'donor_topk']
+
+    metrics_name = ['Acceptor Top-1', 'Donor Top-1']
 
     os.makedirs('viz', exist_ok=True)
-    for species in species_ls:
+    for idx, species in enumerate(species_ls):
         data_dict = {}
         std_dict = {}
         combined_df = pd.DataFrame()
@@ -379,11 +253,27 @@ def main():
             print(f'Finished processing {species} condition {condition}.')
 
         # Plot comparison for all conditions
-        plot_comparison(data_dict, std_dict, metrics, metrics_name, species)
+        plot_comparison(data_dict, std_dict, metrics, metrics_name, species, species_titles[idx])
 
         # Save combined DataFrame
         combined_df.to_csv(f'viz/{species}_all_conditions_comparison.csv', index=False)
 
+
+        # After running main and creating data_dict with all conditions
+        for idx, species in enumerate(species_ls):
+            # Get average AUC values across different flanking sizes
+            avg_auc_results = compute_average_auc(data_dict, metrics)
+            
+            # Print average AUC results
+            print(f"Average AUC across different flanking sizes for {species}")
+            for metric, auc_data in avg_auc_results.items():
+                if "_topk" not in metric:
+                    continue
+                print(f"  Metric: {metric}")
+                print(f"    Average Scratch AUC: {auc_data['average_scratch_auc']:.4f}")
+                print(f"    Average Fine-tune AUC: {auc_data['average_finetune_auc']:.4f}")
+                print(f"    Average AUC Improvement: {auc_data['average_auc_improvement']:.4f}")
+            print("======================")
     print("Comparison complete. Results saved in CSV files and PNG files for each species.")
 
 if __name__ == "__main__":

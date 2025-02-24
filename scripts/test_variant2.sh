@@ -1,18 +1,14 @@
 #!/bin/bash
 
 SETUP="/ccb/cybertron/smao10/openspliceai/setup.py"
-RESULT_DIR="./results/variant/pytorch"
+RESULT_DIR="./results/variant/test2/pytorch"
 
 # Run the setup script
-python "$SETUP" install
-if [ -d "$RESULT_DIR" ]; then
-    rm -rf "$RESULT_DIR"
-fi
-mkdir -p $RESULT_DIR
+pip install .
 
 REF_GENOME_PATH="/ccb/cybertron/smao10/openspliceai/data/ref_genome/homo_sapiens/GRCh37/hg19.fa"
 ANNOTATION_PATH="grch37" # NOTE: this is a custom annotation file
-MODEL_PATH="./models/spliceai-mane/400nt/model_400nt_rs40.pt"
+MODEL_PATH="./models/spliceai-mane/400nt/model_400nt_rs14.pt"
 INPUT_PATH="./data/vcf/input.vcf"
 OUTPUT_PATH="$RESULT_DIR/output.vcf"
 FLANKING_SIZE=400

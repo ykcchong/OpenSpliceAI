@@ -4,7 +4,7 @@
 Contact
 =======
 
-Please use the issue tracker on GitHub for all bug reports. That will help us keep up to date with things.
+Please use the `issue tracker on GitHub <https://github.com/Kuanhao-Chao/OpenSpliceAI/issues>`_ for all bug reports. That will help us keep up to date with things <https://github.com/Kuanhao-Chao/OpenSpliceAI/issues>.
 
 If you have any new ideas that can improve OpenSpliceAI, feel free to contact me <kuanhao.chao@gmail.com>
 

@@ -480,6 +480,7 @@ def load_pytorch_models(model_path, device, SL, CL):
         # W: Convolution window size in each residual unit
         # AR: Atrous rate in each residual unit
         L = 32
+
         W = np.asarray([11, 11, 11, 11])
         AR = np.asarray([1, 1, 1, 1])
         N_GPUS = 2
@@ -565,6 +566,7 @@ def load_pytorch_models(model_path, device, SL, CL):
         exit()
         
     return loaded_models, params # NOTE: returns the last params, assuming all models have the same hyperparameters
+
 
 
 ################
@@ -866,7 +868,6 @@ def generate_bed(predict_file, NAME, LEN, output_dir, threshold=1e-6, batch_ypre
 #################
 
 def predict_and_write(models, dataset_path, device, batch_size, NAME, LEN, output_dir, threshold=1e-6, debug=False):
-    
     # define batch_size
     print(f'\t[INFO] Batch size: {batch_size}')
     if debug:

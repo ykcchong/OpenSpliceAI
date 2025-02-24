@@ -8,7 +8,7 @@ from openspliceai.create_data import create_datafile, create_dataset, verify_h5_
 from openspliceai.train import train
 # from openspliceai.test import test
 from openspliceai.calibrate import calibrate
-from openspliceai.fine_tune import fine_tune
+from openspliceai.transfer import transfer
 from openspliceai.predict import predict
 from openspliceai.variant import variant
 
@@ -33,6 +33,7 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--min-coverage', type=float, default=0.5, help='Minimum minimap2 alignment coverage for paralog removal between training and testing dataset')
     parser_create_data.add_argument('--write-fasta', action='store_true', default=False, help='Flag to write out sequences into fasta files')
 
+
 def parse_args_train(subparsers):
     parser_train = subparsers.add_parser('train', help='Train the SpliceAI model')
     parser_train.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
@@ -40,8 +41,8 @@ def parse_args_train(subparsers):
     parser_train.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
     parser_train.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
     parser_train.add_argument('--output-dir', '-o', type=str, required=True, help='Output directory to save the data')
-    parser_train.add_argument('--project-name', '-p', type=str, required=True, help="Project name for the fine-tuning experiment")
-    parser_train.add_argument('--exp-num', '-e', type=str, default=0, help="Experiment number")
+    parser_train.add_argument('--project-name', '-p', type=str, required=True, help="Project name for the train experiment")
+    parser_train.add_argument('--exp-num', '-e', type=str, default="0", help="Experiment number")
     parser_train.add_argument('--flanking-size', '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
     parser_train.add_argument('--random-seed', '-r', type=int, default=42, help="Random seed for reproducibility")
     parser_train.add_argument('--train-dataset', '-train', type=str, required=True, help="Path to the training dataset")
@@ -81,23 +82,23 @@ def parse_args_calibrate(subparsers):
     parser_calibrate.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for fine-tuning")
 
 
-def parse_args_fine_tune(subparsers):
-    parser_fine_tune = subparsers.add_parser('fine-tune', help='Fine-tune a pre-trained SpliceAI model on new data.')
-    parser_fine_tune.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
-    parser_fine_tune.add_argument('--scheduler', '-s', type=str, default="MultiStepLR", choices=["MultiStepLR", "CosineAnnealingWarmRestarts"], help="Learning rate scheduler")
-    parser_fine_tune.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
-    parser_fine_tune.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
-    parser_fine_tune.add_argument("--output-dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
-    parser_fine_tune.add_argument("--project-name", '-p', type=str, required=True, help="Project name for the fine-tuning experiment")
-    parser_fine_tune.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
-    parser_fine_tune.add_argument("--flanking-size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
-    parser_fine_tune.add_argument("--random-seed", '-r', type=int, default=42, help="Random seed for reproducibility")
-    parser_fine_tune.add_argument("--pretrained-model", '-m', type=str, required=True, help="Path to the pre-trained model")
-    parser_fine_tune.add_argument("--train-dataset", '-train', type=str, required=True, help="Path to the training dataset")
-    parser_fine_tune.add_argument("--test-dataset", '-test', type=str, required=True, help="Path to the testing dataset")
-    parser_fine_tune.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for fine-tuning")
-    parser_fine_tune.add_argument("--unfreeze-all", '-A', action='store_true', default=True, help='Unfreeze all layers for fine-tuning')
-    parser_fine_tune.add_argument("--unfreeze", '-u', type=int, default=1, help="Number of layers to unfreeze for fine-tuning")
+def parse_args_transfer(subparsers):
+    parser_transfer = subparsers.add_parser('transfer', help='transfer a pre-trained SpliceAI model on new data.')
+    parser_transfer.add_argument('--epochs', '-n', type=int, default=10, help='Number of epochs for training')
+    parser_transfer.add_argument('--scheduler', '-s', type=str, default="MultiStepLR", choices=["MultiStepLR", "CosineAnnealingWarmRestarts"], help="Learning rate scheduler")
+    parser_transfer.add_argument('--early-stopping', '-E', action='store_true', default=False, help='Enable early stopping')
+    parser_transfer.add_argument("--patience", '-P', type=int, default=2, help="Number of epochs to wait before early stopping")
+    parser_transfer.add_argument("--output-dir", '-o', type=str, required=True, help="Output directory for model checkpoints and logs")
+    parser_transfer.add_argument("--project-name", '-p', type=str, required=True, help="Project name for the fine-tuning experiment")
+    parser_transfer.add_argument("--exp-num", '-e', type=int, default=0, help="Experiment number")
+    parser_transfer.add_argument("--flanking-size", '-f', type=int, default=80, choices=[80, 400, 2000, 10000], help="Flanking sequence size")
+    parser_transfer.add_argument("--random-seed", '-r', type=int, default=42, help="Random seed for reproducibility")
+    parser_transfer.add_argument("--pretrained-model", '-m', type=str, required=True, help="Path to the pre-trained model")
+    parser_transfer.add_argument("--train-dataset", '-train', type=str, required=True, help="Path to the training dataset")
+    parser_transfer.add_argument("--test-dataset", '-test', type=str, required=True, help="Path to the testing dataset")
+    parser_transfer.add_argument("--loss", '-l', type=str, default='cross_entropy_loss', choices=["cross_entropy_loss", "focal_loss"], help="Loss function for fine-tuning")
+    parser_transfer.add_argument("--unfreeze-all", '-A', action='store_true', default=True, help='Unfreeze all layers for fine-tuning')
+    parser_transfer.add_argument("--unfreeze", '-u', type=int, default=1, help="Number of layers to unfreeze for fine-tuning")
 
 
 def parse_args_predict(subparsers):
@@ -115,6 +116,7 @@ def parse_args_predict(subparsers):
     parser_predict.add_argument('--flush-threshold', type=int, default=500, help='Maximum number of predictions before flushing to file')
     parser_predict.add_argument('--split-threshold', type=int, default=1500000, help='Maximum length of FASTA entry before splitting')
     parser_predict.add_argument('--chunk-size', type=int, default=100, help='Chunk size for loading HDF5 dataset')
+
 
 def parse_args_variant(subparsers):
     parser_variant = subparsers.add_parser('variant', help='Label genetic variations with their predicted effects on splicing.')
@@ -140,12 +142,12 @@ def parse_args_variant(subparsers):
 def parse_args(arglist):
     parser = argparse.ArgumentParser(description='OpenSpliceAI toolkit to help you retrain your own splice site predictor')
     # Create a parent subparser to house the common subcommands.
-    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, test, calibrate, predict, fine-tune, variant')
+    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, test, calibrate, predict, transfer, variant')
     parse_args_create_data(subparsers)
     parse_args_train(subparsers)
     parse_args_test(subparsers)
     parse_args_calibrate(subparsers)
-    parse_args_fine_tune(subparsers)
+    parse_args_transfer(subparsers)
     parse_args_predict(subparsers)
     parse_args_variant(subparsers)
     if arglist is not None:
@@ -185,8 +187,8 @@ Deep learning framework to train your own SpliceAI model
         test.test(args)
     elif args.command == 'calibrate':
         calibrate.calibrate(args)
-    elif args.command == 'fine-tune':
-        fine_tune.fine_tune(args)
+    elif args.command == 'transfer':
+        transfer.transfer(args)
     elif args.command == 'predict':
         predict.predict_cli(args)
     elif args.command == 'variant':

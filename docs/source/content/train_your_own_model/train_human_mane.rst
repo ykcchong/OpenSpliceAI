@@ -1,3 +1,48 @@
+.. raw:: html
+
+    <script type="text/javascript">
+
+        let mutation_lvl_1_fuc = function(mutations) {
+            var dark = document.body.dataset.theme == 'dark';
+
+            if (document.body.dataset.theme == 'auto') {
+                dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            
+            document.getElementsByClassName('sidebar_ccb')[0].src = dark ? '../../_static/JHU_ccb-white.png' : "../../_static/JHU_ccb-dark.png";
+            document.getElementsByClassName('sidebar_wse')[0].src = dark ? '../../_static/JHU_wse-white.png' : "../../_static/JHU_wse-dark.png";
+
+
+
+            for (let i=0; i < document.getElementsByClassName('summary-title').length; i++) {
+                console.log(">> document.getElementsByClassName('summary-title')[i]: ", document.getElementsByClassName('summary-title')[i]);
+
+                if (dark) {
+                    document.getElementsByClassName('summary-title')[i].classList = "summary-title card-header bg-dark font-weight-bolder";
+                    document.getElementsByClassName('summary-content')[i].classList = "summary-content card-body bg-dark text-left docutils";
+                } else {
+                    document.getElementsByClassName('summary-title')[i].classList = "summary-title card-header bg-light font-weight-bolder";
+                    document.getElementsByClassName('summary-content')[i].classList = "summary-content card-body bg-light text-left docutils";
+                }
+            }
+
+        }
+        document.addEventListener("DOMContentLoaded", mutation_lvl_1_fuc);
+        var observer = new MutationObserver(mutation_lvl_1_fuc)
+        observer.observe(document.body, {attributes: true, attributeFilter: ['data-theme']});
+        console.log(document.body);
+    </script>
+
+|
+
+
+.. |download_icon| raw:: html
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   <i class="fa fa-download"></i>
+
+
 .. _train_your_own_model_mane:
 
 Train Your Own Model – Human (MANE)
@@ -13,10 +58,14 @@ Prerequisites
 Before you begin, ensure that you have:
 
 - Installed OpenSpliceAI and its dependencies (see the :ref:`Installation` page).
-- Cloned the OpenSpliceAI repository from the `LiftOn OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.
+
+- Cloned the OpenSpliceAI repository from the `OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.
+
 - Downloaded the necessary input files:
-  - **Reference Genome (FASTA):** e.g., ``GCF_000001405.40_GRCh38.p14_genomic.fna``
-  - **Annotation File (GFF):** e.g., ``MANE.GRCh38.v1.3.refseq_genomic.gff`` (download from the MANE website or via FTP)
+
+  - **Reference Genome (FASTA):** e.g., `GCF_000001405.40_GRCh38.p14_genomic.fna <https://ftp.ncbi.nlm.nih.gov/genomes/all/GCF/000/001/405/GCF_000001405.40_GRCh38.p14/GCF_000001405.40_GRCh38.p14_genomic.fna.gz>`_ |download_icon|
+
+  - **Annotation File (GFF):** e.g., `MANE.GRCh38.v1.3.refseq_genomic.gff <https://ftp.ncbi.nlm.nih.gov/refseq/MANE/MANE_human/release_1.3/MANE.GRCh38.v1.3.refseq_genomic.gff.gz>`_ |download_icon|
 
 |
 
@@ -130,7 +179,6 @@ Conclusion
 
 By following these steps, you have successfully trained your own OpenSpliceAI model using the Human MANE annotation. This model can now be applied to predict splice sites and analyze the effects of genomic variants, offering a powerful tool for investigating gene regulation in human genomics.
 
-For additional details and advanced configurations, please refer to the complete OpenSpliceAI documentation.
 
 |
 |

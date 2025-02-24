@@ -4,6 +4,11 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from scipy.stats import ttest_rel, wilcoxon
+
+def cohens_d(x, y):
+    diff = np.array(x) - np.array(y)
+    return np.mean(diff) / np.std(diff, ddof=1)
 
 def calculate_improvement(metrics, flanking_sizes):
     """Calculate the percentage improvement as flanking size increases."""
@@ -78,14 +83,14 @@ def collect_metrics_for_target(random_seeds, species, experiment, target, flanki
     metrics_across = {
         'donor_topk': [],
         'donor_auprc': [],
-        'donor_auroc': [],
+        # 'donor_auroc': [],
         'donor_accuracy': [],
         'donor_precision': [],
         'donor_recall': [],
         'donor_f1': [],
         'acceptor_topk': [],
         'acceptor_auprc': [],
-        'acceptor_auroc': [],
+        # 'acceptor_auroc': [],
         'acceptor_accuracy': [],
         'acceptor_precision': [],
         'acceptor_recall': [],
@@ -137,17 +142,17 @@ def collect_metrics(random_seeds, species, experiment, flanking_sizes, opensplic
 
 def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, flanking_sizes, species, experiment):
     key_mappings = {
-        'donor_topk': 'Donor Top-K',
+        'donor_topk': 'Donor Top-1',
         'donor_auprc': 'Donor AUPRC',
         # 'donor_auroc': 'Donor AUROC',
-        # 'donor_accuracy': 'Donor Accuracy',
+        'donor_accuracy': 'Donor Accuracy',
         'donor_precision': 'Donor Precision',
         'donor_recall': 'Donor Recall',
         'donor_f1': 'Donor F1',
-        'acceptor_topk': 'Acceptor Top-K',
+        'acceptor_topk': 'Acceptor Top-1',
         'acceptor_auprc': 'Acceptor AUPRC',
         # 'acceptor_auroc': 'Acceptor AUROC',
-        # 'acceptor_accuracy': 'Acceptor Accuracy',
+        'acceptor_accuracy': 'Acceptor Accuracy',
         'acceptor_precision': 'Acceptor Precision',
         'acceptor_recall': 'Acceptor Recall',
         'acceptor_f1': 'Acceptor F1'
@@ -163,9 +168,9 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, fla
         openspliceai_label = f'OpenSpliceAI (Honeybee)'
         title = f"Splice site prediction metrics for Honeybee"
     elif species == "arabidopsis":
-        spliceai_keras_label = f'SpliceAI-Keras (Thale Cress)'
-        openspliceai_label = f'OpenSpliceAI (Thale Cress)'
-        title = f"Splice site prediction metrics for Thale Cress"
+        spliceai_keras_label = r"SpliceAI-Keras ($\mathit{Arabidopsis}$)"
+        openspliceai_label = r"OpenSpliceAI ($\mathit{Arabidopsis}$)"
+        title = r"Splice site prediction metrics for $\mathit{Arabidopsis}$"
     elif species == "zebrafish":
         spliceai_keras_label = f'SpliceAI-Keras (Zebrafish)'
         openspliceai_label = f'OpenSpliceAI (Zebrafish)'
@@ -177,9 +182,122 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, fla
 
     metrics_keys = list(key_mappings.keys())
     n_metrics = len(metrics_keys)
-    n_cols = 5
-    n_rows = math.ceil(n_metrics / n_cols)
-    fig, axs = plt.subplots(n_rows, n_cols, figsize=(18, 4 * n_rows), sharey=False)
+    n_rows = 4  # Multiply by 2 for donor and acceptor rows
+    n_cols = n_metrics // n_rows
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), sharey=False)
+    # n_cols = 5
+    # n_rows = math.ceil(n_metrics / n_cols)
+    # fig, axs = plt.subplots(n_rows, n_cols, figsize=(18, 4 * n_rows), sharey=False)
+    fig.suptitle(title, fontsize=24)
+    plt.tight_layout(pad=3.0)
+    plt.subplots_adjust(hspace=0.5)
+    axs = axs.flatten()
+    for i, key in enumerate(metrics_keys):
+        ax = axs[i]
+        
+        # Generate letter labels starting with "A"
+        label = chr(65 + i)  # 65 is ASCII for "A"
+        
+        # Add the label at a position relative to the axis (0,0 is bottom left; 1,1 is top right)
+        ax.text(
+            -0.2, 1.15, label,
+            transform=ax.transAxes,  # Use axis coordinate system
+            fontsize=20, fontweight='bold',
+            verticalalignment='top', horizontalalignment='left'
+        )
+        
+        # ... rest of your plotting code for this axis ...
+        values_keras = []
+        std_dev_keras = []
+        values_pytorch = []
+        std_dev_pytorch = []
+
+        for flanking_size in flanking_sizes:
+            keras_samples = [
+                value for idx, value, fs in metrics_keras[key] if fs == flanking_size
+            ]
+            pytorch_samples = [
+                value for idx, value, fs in metrics_pytorch[key] if fs == flanking_size
+            ]
+
+            values_keras.append(np.mean(keras_samples) if keras_samples else np.nan)
+            std_dev_keras.append(np.std(keras_samples) if keras_samples else np.nan)
+            values_pytorch.append(np.mean(pytorch_samples) if pytorch_samples else np.nan)
+            std_dev_pytorch.append(np.std(pytorch_samples) if pytorch_samples else np.nan)
+
+        x_ticks = np.arange(len(flanking_sizes))
+
+        ax.errorbar(
+            x_ticks, values_keras, yerr=std_dev_keras, fmt='-o', capsize=5,
+            label=spliceai_keras_label
+        )
+        ax.errorbar(
+            x_ticks, values_pytorch, yerr=std_dev_pytorch, fmt='-X', capsize=5,
+            label=openspliceai_label
+        )
+        ax.set_ylim(0, 1)
+        ax.set_xticks(x_ticks)
+        ax.set_xticklabels(flanking_sizes)
+        ax.set_xlabel('Flanking Size')
+        ax.set_ylabel(key_mappings[key])
+        ax.set_title(key_mappings[key], fontweight='bold')
+        ax.grid(True)
+        ax.legend()
+
+    # Remove any unused subplots
+    for j in range(i + 1, len(axs)):
+        fig.delaxes(axs[j])
+
+    plt.savefig(f"{output_dir}/combined_metrics_{species}_selected_all.png", dpi=300)
+
+
+def plot_metrics_with_error_bars_selected(output_dir, metrics_keras, metrics_pytorch, flanking_sizes, species, experiment):
+    key_mappings = {
+        # 'donor_topk': 'Donor Top-1',
+        # 'donor_auprc': 'Donor AUPRC',
+        # 'donor_auroc': 'Donor AUROC',
+        # 'donor_accuracy': 'Donor Accuracy',
+        # 'donor_precision': 'Donor Precision',
+        # 'donor_recall': 'Donor Recall',
+        'donor_f1': 'Donor F1',
+        # 'acceptor_topk': 'Acceptor Top-1',
+        # 'acceptor_auprc': 'Acceptor AUPRC',
+        # 'acceptor_auroc': 'Acceptor AUROC',
+        # 'acceptor_accuracy': 'Acceptor Accuracy',
+        # 'acceptor_precision': 'Acceptor Precision',
+        # 'acceptor_recall': 'Acceptor Recall',
+        'acceptor_f1': 'Acceptor F1'
+    }
+
+    if species == "MANE":
+        spliceai_keras_label = f'SpliceAI-Keras (Human-MANE)'
+        openspliceai_label = f'OpenSpliceAI (Human-MANE)'
+        title = f"Splice site prediction metrics for Human-MANE"
+    elif species == "honeybee":
+        spliceai_keras_label = f'SpliceAI-Keras (Honeybee)'
+        openspliceai_label = f'OpenSpliceAI (Honeybee)'
+        title = f"Splice site prediction metrics for Honeybee"
+    elif species == "arabidopsis":
+        spliceai_keras_label = r"SpliceAI-Keras ($\mathit{Arabidopsis}$)"
+        openspliceai_label = r"OpenSpliceAI ($\mathit{Arabidopsis}$)"
+        title = r"Splice site prediction metrics for $\mathit{Arabidopsis}$"
+    elif species == "zebrafish":
+        spliceai_keras_label = f'SpliceAI-Keras (Zebrafish)'
+        openspliceai_label = f'OpenSpliceAI (Zebrafish)'
+        title = f"Splice site prediction metrics for Zebrafish"
+    elif species == "mouse":
+        spliceai_keras_label = f'SpliceAI-Keras (Mouse)'
+        openspliceai_label = f'OpenSpliceAI (Mouse)'
+        title = f"Splice site prediction metrics for Mouse"
+
+    metrics_keys = list(key_mappings.keys())
+    n_metrics = len(metrics_keys)
+    n_cols = n_metrics 
+    n_rows = 1  # Multiply by 2 for donor and acceptor rows
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 4 * n_rows), sharey=False)
+    # n_cols = 5
+    # n_rows = math.ceil(n_metrics / n_cols)
+    # fig, axs = plt.subplots(n_rows, n_cols, figsize=(18, 4 * n_rows), sharey=False)
     fig.suptitle(title, fontsize=24)
     plt.tight_layout(pad=3.0)
     plt.subplots_adjust(hspace=0.5)
@@ -227,7 +345,9 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras, metrics_pytorch, fla
     for j in range(i + 1, len(axs)):
         fig.delaxes(axs[j])
 
-    plt.savefig(f"{output_dir}/combined_metrics_{species}_selected.png", dpi=300)
+    plt.savefig(f"{output_dir}/combined_metrics_{species}_selected_f1.png", dpi=300)
+
+
 
 
 def main():
@@ -249,27 +369,112 @@ def main():
     metrics_keras, metrics_pytorch = collect_metrics(
         random_seeds, args.species, args.experiment, flanking_sizes, args.openspliceai_model_type
     )
+    
+    
+    ##############################################
+    # For each metric [Merge each flanking size]
+    ##############################################
+    # Initialize lists for combined metrics across all flanking sizes
+    combined_keras_values = []
+    combined_openspliceai_values = []
+    percentage_improvements = []
+    for metric in metrics_keras.keys():
+        if "auprc" not in metric:
+            continue
+        for flanking_size in flanking_sizes:
+            # Collect values for the current metric and flanking size for both models
+            keras_values = [value for idx, value, fs in metrics_keras[metric] if fs == flanking_size]
+            openspliceai_values = [value for idx, value, fs in metrics_pytorch[metric] if fs == flanking_size]
 
-    print("Metrics across SpliceAI-Keras:", metrics_keras)
-    print("Metrics across OpenSpliceAI:", metrics_pytorch)
+            # Add these values to the combined lists
+            combined_keras_values.extend(keras_values)
+            combined_openspliceai_values.extend(openspliceai_values)
 
-    # Calculate performance improvement for both Keras and PyTorch models
-    improvement_keras = calculate_improvement(metrics_keras, flanking_sizes)
-    improvement_pytorch = calculate_improvement(metrics_pytorch, flanking_sizes)
+            # Calculate the mean for each model
+            mean_keras = np.mean(keras_values) if keras_values else np.nan
+            mean_openspliceai = np.mean(openspliceai_values) if openspliceai_values else np.nan
 
-    # Log the improvements
-    print("** Performance improvement for SpliceAI-Keras:")
-    for metric, improvements in improvement_keras.items():
-        print(f"\t {metric} improvements:", improvements)
+            # Calculate percentage improvement
+            if mean_keras != 0:
+                improvement = ((mean_openspliceai - mean_keras) / mean_keras) * 100
+                percentage_improvements.append(improvement)
+            else:
+                print(f"Mean for SpliceAI-Keras is zero for metric {metric} at flanking size {flanking_size}, skipping.")
 
-    print("** Performance improvement for OpenSpliceAI:")
-    for metric, improvements in improvement_pytorch.items():
-        print(f"\t {metric} improvements:", improvements)
+    print("len(combined_keras_values): ", len(combined_keras_values))   
+    print("len(combined_openspliceai_values): ", len(combined_openspliceai_values))
+    print("len(percentage_improvements): ", len(percentage_improvements))
 
-    # plot_metrics_with_error_bars(
-    #     args.output_dir, metrics_keras, metrics_pytorch, flanking_sizes, 
-    #     args.species, args.experiment
-    # )
+    # # Ensure both lists are the same length
+    # assert len(combined_keras_values) == len(combined_openspliceai_values), "Lists must be of equal length"
+
+    # print("=====================================")
+    # # Calculate overall average percentage improvement
+    # overall_average_improvement = np.mean(percentage_improvements) if percentage_improvements else np.nan
+    # print(f"Overall average percentage improvement across all flanking sizes: {overall_average_improvement}%")
+
+    # # Paired t-test
+    # t_stat, p_value_ttest = ttest_rel(combined_openspliceai_values, combined_keras_values)
+    # print(f"Paired t-test results on combined data: t-statistic = {t_stat}, p-value = {p_value_ttest}")
+
+    # # Wilcoxon Signed-Rank Test (if non-parametric test is preferred)
+    # statistic, p_value_wilcoxon = wilcoxon(combined_openspliceai_values, combined_keras_values)
+    # print(f"Wilcoxon test results on combined data: statistic = {statistic}, p-value = {p_value_wilcoxon}")
+    # print("=====================================")
+
+
+    # ##############################################
+    # # For each metric and flanking size [Separate each flanking size]
+    # ##############################################
+    # for metric in metrics_keras.keys():
+    #     if "auprc" not in metric:
+    #         continue
+    #     for flanking_size in flanking_sizes:
+    #         keras_values = [value for idx, value, fs in metrics_keras[metric] if fs == flanking_size]
+    #         openspliceai_values = [value for idx, value, fs in metrics_pytorch[metric] if fs == flanking_size]
+
+    #         # Ensure both lists are aligned by random seed
+    #         keras_values_sorted = [x for _, x in sorted(zip(random_seeds, keras_values))]
+    #         openspliceai_values_sorted = [x for _, x in sorted(zip(random_seeds, openspliceai_values))]
+
+    #         print(f"\t{flanking_size}; {metric}: Length of openspliceai_values_sorted: {len(openspliceai_values_sorted)}")
+    #         print(f"\t{flanking_size}; {metric}: Length of keras_values_sorted: {len(keras_values_sorted)}")
+
+    #         # Perform statistical tests
+    #         t_stat, p_value = ttest_rel(openspliceai_values_sorted, keras_values_sorted)
+    #         print(f"{metric} at flanking size {flanking_size}: t-statistic = {t_stat}, p-value = {p_value}")
+
+    #         # Calculate effect size
+    #         effect_size = cohens_d(openspliceai_values_sorted, keras_values_sorted)
+    #         print(f"{metric} at flanking size {flanking_size}: Cohen's d = {effect_size}")
+
+    #         # Calculate percentage improvement
+    #         mean_keras = np.mean(keras_values_sorted)
+    #         mean_openspliceai = np.mean(openspliceai_values_sorted)
+    #         percentage_improvement = ((mean_openspliceai - mean_keras) / mean_keras) * 100 if mean_keras != 0 else np.nan
+    #         print(f"{metric} at flanking size {flanking_size}: Percentage improvement = {percentage_improvement}%")
+    #         print("=====================================\n")
+
+    # print("Metrics across SpliceAI-Keras:", metrics_keras)
+    # print("Metrics across OpenSpliceAI:", metrics_pytorch)
+
+    # # Calculate performance improvement for both Keras and PyTorch models
+    # improvement_keras = calculate_improvement(metrics_keras, flanking_sizes)
+    # improvement_pytorch = calculate_improvement(metrics_pytorch, flanking_sizes)
+
+    # # Log the improvements
+    # print("** Performance improvement for SpliceAI-Keras:")
+    # for metric, improvements in improvement_keras.items():
+    #     print(f"\t {metric} improvements:", improvements)
+
+    # print("** Performance improvement for OpenSpliceAI:")
+    # for metric, improvements in improvement_pytorch.items():
+    #     print(f"\t {metric} improvements:", improvements)
+
+    plot_metrics_with_error_bars_selected(
+        args.output_dir, metrics_keras, metrics_pytorch, flanking_sizes, 
+        args.species, args.experiment
+    )
 
 if __name__ == "__main__":
     main()

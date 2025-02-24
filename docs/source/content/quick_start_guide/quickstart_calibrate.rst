@@ -1,51 +1,125 @@
+.. raw:: html
+
+    <script type="text/javascript">
+
+        let mutation_lvl_1_fuc = function(mutations) {
+            var dark = document.body.dataset.theme == 'dark';
+
+            if (document.body.dataset.theme == 'auto') {
+                dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            }
+            
+            document.getElementsByClassName('sidebar_ccb')[0].src = dark ? '../../_static/JHU_ccb-white.png' : "../../_static/JHU_ccb-dark.png";
+            document.getElementsByClassName('sidebar_wse')[0].src = dark ? '../../_static/JHU_wse-white.png' : "../../_static/JHU_wse-dark.png";
+
+
+
+            for (let i=0; i < document.getElementsByClassName('summary-title').length; i++) {
+                console.log(">> document.getElementsByClassName('summary-title')[i]: ", document.getElementsByClassName('summary-title')[i]);
+
+                if (dark) {
+                    document.getElementsByClassName('summary-title')[i].classList = "summary-title card-header bg-dark font-weight-bolder";
+                    document.getElementsByClassName('summary-content')[i].classList = "summary-content card-body bg-dark text-left docutils";
+                } else {
+                    document.getElementsByClassName('summary-title')[i].classList = "summary-title card-header bg-light font-weight-bolder";
+                    document.getElementsByClassName('summary-content')[i].classList = "summary-content card-body bg-light text-left docutils";
+                }
+            }
+
+        }
+        document.addEventListener("DOMContentLoaded", mutation_lvl_1_fuc);
+        var observer = new MutationObserver(mutation_lvl_1_fuc)
+        observer.observe(document.body, {attributes: true, attributeFilter: ['data-theme']});
+        console.log(document.body);
+    </script>
+
 
 |
 
 .. _quick-start_calibrate:
 
-Quick Start Guide: calibrate
-============================
 
-This page provides a brief guide for using OpenSpliceAI's ``calibrate`` subcommand to adjust a trained model's probability outputs via temperature scaling.
+Quick Start Guide: ``calibrate``
+=================================
+
+This guide provides a brief walkthrough for using the ``calibrate`` subcommand in OpenSpliceAI to adjust your trained model’s probability outputs via temperature scaling.
+
+.. admonition:: Note
+   :class: important
+
+   Calibration is an optional step that can further enhance the reliability of model predictions. Our research demonstrates that OpenSpliceAI’s output probabilities generally reflect real-world likelihoods. Nevertheless, running this calibration step can serve as a useful double-check, generating reliability curves and score distribution plots for your review.
 
 |
+
+
+.. |download_icon| raw:: html
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   <i class="fa fa-download"></i>
+
 
 Before You Begin
 ----------------
 
-- **Trained Model**: A PyTorch model checkpoint (e.g., ``model_best.pt``) from :ref:`train_subcommand` or :ref:`transfer_subcommand`.
-- **Test/Validation Dataset**: An HDF5 file (e.g., ``dataset_test.h5``) containing sequences and labels not used in training.
+Ensure you have the following prerequisites:
+
+- **Pre-trained Model:**  
+  Obtain a pre-trained OpenSpliceAI model in ``.pt`` format (for example, 
+  `model_10000nt_rs10.pt <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/models/spliceai-mane/10000nt/model_10000nt_rs10.pt>`_ |download_icon|) from either the :ref:`train_subcommand` or :ref:`transfer_subcommand`.
+
+- **Test/Validation Dataset:**  
+  Prepare an HDF5 file generated from a test set (e.g., ``dataset_test.h5``) containing sequences and labels that were not used during training.
 
 |
 
-Super-Quick Start
------------------
+Quick Start
+-----------
 
-1. **Model Checkpoint**: ``model_best.pt``
-2. **Test Dataset**: ``dataset_test.h5``
+1. **Testing Dataset:**  
+   Download the test dataset:  
+   `dataset_test.h5 <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/create-data/results/dataset_test.h5>`_ |download_icon|
 
-Run:
+2. **Pre-trained Model:**  
+   Download the pre-trained model from the `OpenSpliceAI GitHub repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_. For example:  
+   `model_10000nt_rs10.pt <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/models/spliceai-mane/10000nt/model_10000nt_rs10.pt>`_ |download_icon|
+
+Run the following command to start the calibration process:
 
 .. code-block:: bash
 
    openspliceai calibrate \
-      --pretrained-model model_best.pt \
+      --pretrained-model model_10000nt_rs10.pt \
       --test-dataset dataset_test.h5 \
-      --flanking-size 400 \
+      --flanking-size 10000 \
       --output-dir ./calibration_results/
 
-Key steps:
-- Loads the model and introduces a temperature parameter :math:`T`.
-- Optimizes :math:`T` to improve calibration (reducing misalignment between predicted probabilities and observed outcomes).
-- Outputs a ``temperature.pt`` file and calibration plots (e.g., reliability curves) in ``calibration_results/``.
+|
+
+Key Steps in Calibration
+-------------------------
+
+- **Model Loading:**  
+  The pre-trained model is loaded and a temperature parameter (:math:`T`) is introduced.
+
+- **Temperature Optimization:**  
+  The parameter :math:`T` is optimized to better align the predicted probabilities with observed outcomes, thus improving calibration.
+
+- **Output Generation:**  
+  An optimized temperature parameter is saved to a ``temperature.pt`` file, and calibration plots (e.g., reliability curves) are generated in the ``calibration_results/`` directory.
+
 
 |
 
 Next Steps
 ----------
 
-- **Predict**: Use the newly calibrated model to generate more reliable probability estimates with :ref:`predict_subcommand`.
-- **Advanced Options**: Adjust arguments like ``--temperature-file`` to load or save existing temperature parameters.
+- **Explore Calibration Options:**  
+  For more details on available arguments and further customization, refer to the :ref:`calibrate_subcommand` documentation.
+
+- **Prediction:**  
+  Apply your newly calibrated model to generate more reliable probability estimates by following the :ref:`predict_subcommand` guide.
+
 
 |
 |

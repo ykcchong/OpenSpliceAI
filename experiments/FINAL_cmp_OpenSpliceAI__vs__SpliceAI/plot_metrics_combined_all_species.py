@@ -117,20 +117,22 @@ def collect_metrics(random_seeds, species, experiment, flanking_sizes, opensplic
 def plot_metrics_with_error_bars(output_dir, metrics_keras_dict, metrics_pytorch_dict, flanking_sizes, species_list, experiment):
     key_mappings = {
         'donor_topk': 'Donor Top-K',
-        'donor_auprc': 'Donor AUPRC',
-        'donor_precision': 'Donor Precision',
-        'donor_recall': 'Donor Recall',
+        # 'donor_auprc': 'Donor AUPRC',
+        # 'donor_precision': 'Donor Precision',
+        # 'donor_recall': 'Donor Recall',
         'donor_f1': 'Donor F1',
         'acceptor_topk': 'Acceptor Top-K',
-        'acceptor_auprc': 'Acceptor AUPRC',
-        'acceptor_precision': 'Acceptor Precision',
-        'acceptor_recall': 'Acceptor Recall',
+        # 'acceptor_auprc': 'Acceptor AUPRC',
+        # 'acceptor_precision': 'Acceptor Precision',
+        # 'acceptor_recall': 'Acceptor Recall',
         'acceptor_f1': 'Acceptor F1'
     }
 
     # Group metrics into donor and acceptor
-    donor_metrics_keys = ['donor_topk', 'donor_auprc', 'donor_precision', 'donor_recall', 'donor_f1']
-    acceptor_metrics_keys = ['acceptor_topk', 'acceptor_auprc', 'acceptor_precision', 'acceptor_recall', 'acceptor_f1']
+    # donor_metrics_keys = ['donor_topk', 'donor_auprc', 'donor_precision', 'donor_recall', 'donor_f1']
+    # acceptor_metrics_keys = ['acceptor_topk', 'acceptor_auprc', 'acceptor_precision', 'acceptor_recall', 'acceptor_f1']
+    donor_metrics_keys = ['donor_topk', 'donor_f1']
+    acceptor_metrics_keys = ['acceptor_topk', 'acceptor_f1']
 
     n_metrics = len(donor_metrics_keys)  # Assuming donor and acceptor have the same number of metrics
     n_species = len(species_list)
@@ -253,7 +255,8 @@ def plot_metrics_with_error_bars(output_dir, metrics_keras_dict, metrics_pytorch
         for ax in axs.flatten()[n_rows * n_cols:]:
             fig.delaxes(ax)
 
-    plt.savefig(f"{output_dir}/combined_metrics_all_species_selected.png", dpi=300)
+    # plt.savefig(f"{output_dir}/combined_metrics_all_species_selected.png", dpi=300)
+    plt.savefig(f"{output_dir}/combined_metrics_all_species_selected_topk_f1.png", dpi=300)
     plt.close(fig)
 
 
