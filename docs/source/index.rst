@@ -57,14 +57,14 @@
 .. image:: https://static.pepy.tech/personalized-badge/openspliceai?period=total&units=abbreviation&left_color=grey&right_color=blue&left_text=PyPi%20downloads
     :target: https://pepy.tech/project/openspliceai
 
-.. image:: https://img.shields.io/github/downloads/Kuanhao-Chao/lifton/total.svg?style=social&logo=github&label=Download
+.. image:: https://img.shields.io/github/downloads/Kuanhao-Chao/OpenSpliceAI/total.svg?style=social&logo=github&label=Download
     :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
 .. image:: https://img.shields.io/badge/platform-macOS_/Linux-green.svg
     :target: https://github.com/Kuanhao-Chao/OpenSpliceAI/releases
 
-.. image:: https://colab.research.google.com/assets/colab-badge.svg
-    :target: https://colab.research.google.com/github/Kuanhao-Chao/lifton/blob/main/notebook/lifton_example.ipynb
+.. .. image:: https://colab.research.google.com/assets/colab-badge.svg
+..     :target: https://colab.research.google.com/github/Kuanhao-Chao/lifton/blob/main/notebook/lifton_example.ipynb
 
 
 
@@ -84,20 +84,24 @@ OpenSpliceAI is an open‐source, efficient, and modular framework for splice si
 
 |
 
+
+.. |OSAI_MANE_10000| raw:: html
+
+   <b>OSAI<sub>MANE</sub>-10000nt</b>
+
+
+
 Key Features
 ------------
 
-- **Modern and Retrainable Framework:**  
-  Built on Python 3.7 and PyTorch, OpenSpliceAI overcomes the limitations of older TensorFlow/Keras implementations. Its modular design enables easy retraining on species-specific data with just a few commands.
+- **Modern, Retrainable Framework:** Built on Python 3 and PyTorch, OpenSpliceAI improves the limitations of older TensorFlow/Keras implementations. Its modular design enables fast and efficient prediction, as well as easy retraining on species-specific data with just a few commands.
 
-- **Up-to-Date and Cross-Species Models:**  
-  In addition to a new human model retrained on the latest GRCh38 human genome and MANE annotations, OpenSpliceAI comes with pre-trained models for mouse, thale cress (Arabidopsis), honey bee, and zebrafish—empowering researchers to study splicing across diverse species.
+- **Updated and Cross-Species Models:** OpenSpliceAI includes a pre-trained human model, |OSAI_MANE_10000|, updated from GRCh37 to GRCh38 using the latest MANE annotations, along with models for mouse, thale cress (*Arabidopsis*), honey bee, and zebrafish. This versatility empowers researchers to study splicing across diverse species.
 
-- **Variant Effect Prediction:**  
-  OpenSpliceAI not only predicts splice sites but also assesses the impact of genetic variants (SNPs and INDELs) on splicing. Its variant subcommand calculates “delta” scores that quantify changes in splice site strength due to mutations.
+- **Variant Impact Prediction:** OpenSpliceAI not only predicts splice sites but also assesses the impact of genetic variants (SNPs and INDELs) on splicing. Its ``variant`` subcommand calculates “delta” scores that quantify changes in splice site strength and predicts cryptic splice sites.
 
-- **Efficiency and Scalability:**  
-  With improved processing speeds, lower memory usage, and efficient GPU utilization, OpenSpliceAI can handle large genomic regions and whole-genome predictions on a single high-end GPU.
+- **Efficiency and Scalability:** Optimized for improved processing speeds, lower memory usage, and efficient GPU utilization, OpenSpliceAI can handle large genomic regions and whole-genome predictions on a single GPU.
+
 
 |
 
@@ -105,10 +109,10 @@ Who Should Use OpenSpliceAI?
 -----------------------------
 
 - **Human Genomics Researchers:**  
-  Use the newly retrained OpenSpliceAI-MANE model for highly accurate splice site predictions based on the latest human annotations.
+  Use the newly retrained OpenSpliceAI model, |OSAI_MANE_10000|,  for highly accurate splice site predictions based on the latest human annotations.
 
 - **Comparative and Non-Human Genomics:**  
-  Whether you’re studying mouse, zebrafish, honey bee, or thale cress, OpenSpliceAI offers models pre-trained on multiple species—and the ability to train your own models—ensuring broad applicability.
+  Whether you’re studying mouse, zebrafish, honey bee, or thale cress, OpenSpliceAI offers models pre-trained on multiple species — and the ability to train your own models — ensuring broad applicability.
 
 - **Variant Analysts:**  
   If you need to predict how genetic variants affect splicing, OpenSpliceAI’s variant subcommand provides detailed delta scores and positional information to assess functional impacts.
@@ -118,47 +122,31 @@ Who Should Use OpenSpliceAI?
 What OpenSpliceAI Does
 ----------------------
 
-- **Data Preprocessing (create-data):**  
+- **Data Preprocessing** (:ref:`create-data_subcommand`):  
   Converts genome FASTA and annotation (GFF/GTF) files into one-hot encoded datasets (HDF5 format) for training and testing.
 
-- **Model Training (train):**  
+- **Model Training** (:ref:`train_subcommand`):
   Trains deep residual convolutional neural networks on the preprocessed datasets. OpenSpliceAI supports training from scratch and employs adaptive learning rate schedulers and early stopping.
 
-- **Transfer Learning (transfer):**  
+- **Transfer Learning** (:ref:`transfer_subcommand`):
   Fine-tunes a pre-trained human model for other species, reducing training time and improving performance on species with limited data.
 
-- **Model Calibration (calibrate):**  
+- **Model Calibration** (:ref:`calibrate_subcommand`):
   Adjusts model output probabilities to better reflect true splice site likelihoods, enhancing prediction accuracy.
 
-- **Prediction (predict):**  
+- **Prediction** (:ref:`predict_subcommand`): 
   Uses trained models to generate splice site predictions from FASTA sequences, outputting BED files with donor and acceptor site coordinates.
 
-- **Variant Analysis (variant):**  
+- **Variant Analysis** (:ref:`variant_subcommand`):
   Annotates VCF files with delta scores and positions to evaluate the impact of genetic variants on splicing.
 
 |
 
-Why OpenSpliceAI?
------------------
-
-1. **Easy-to-Retrain Framework:**  
-   By leveraging PyTorch, OpenSpliceAI simplifies the retraining process and overcomes compatibility issues associated with older frameworks. Two simple commands allow you to retrain the model on any species of interest.
-
-2. **Updated Human Model:**  
-   The pre-trained human model has been updated from GRCh37 to GRCh38 using the latest MANE annotations, ensuring you work with the most current and precise genomic data.
-
-3. **Cross-Species Versatility:**  
-   With models pre-trained on multiple species—including human, mouse, thale cress, honey bee, and zebrafish—OpenSpliceAI caters to a broad range of genomic research applications.
-
-4. **Variant Impact Prediction:**  
-   OpenSpliceAI can analyze the effects of genetic variants on splicing, providing detailed “delta” scores that highlight changes in splice site strength due to mutations.
-
-|
 
 Cite Us
 -------
 
-If you find OpenSpliceAI useful in your research, please consider citing our work:
+If you use OpenSpliceAI in your research, please cite our work as well as the original SpliceAI paper:
 
 .. raw:: html
     
@@ -177,6 +165,15 @@ If you have questions, encounter issues, or would like to request a new feature,
 https://github.com/Kuanhao-Chao/OpenSpliceAI/issues
 
 OpenSpliceAI was developed by Kuan-Hao Chao, Alan Mao, and collaborators at Johns Hopkins University. For further details on usage, methods, and performance, please refer to the full documentation and online methods sections.
+
+|
+
+Next Steps
+----------
+
+Check out the :ref:`Installation Guide <installation>` to get started with OpenSpliceAI. For a quick overview of the main commands and subcommands, see the :ref:`quick-start_home`. 
+
+|
 
 Table of Contents
 -----------------
