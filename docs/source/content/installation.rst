@@ -125,11 +125,6 @@ Detailed Installation for PyTorch and mappy
   
   - For GPU acceleration, ensure your NVIDIA drivers and CUDA toolkit are installed.
   - Visit the `PyTorch official site <https://pytorch.org/get-started/locally/>`_ to select the appropriate command for your operating system.
-  - Example (using conda for CUDA 12.1):
-
-    .. code-block:: bash
-
-       conda install pytorch torchvision cudatoolkit=12.1 -c pytorch
 
 **mappy:**
 
