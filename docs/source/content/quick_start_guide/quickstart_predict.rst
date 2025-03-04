@@ -46,7 +46,7 @@ This page provides a streamlined guide for using OpenSpliceAI to **predict splic
 Before You Begin
 ----------------
 
-- **Clone the Repository**: Make sure you have cloned the `LiftOn OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.  
+- **Clone the Repository**: Make sure you have cloned the `OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.  
 - **Check Example Scripts**: We provide an example script, `test/lifton_chr22_example.sh <https://github.com/Kuanhao-Chao/LiftOn/tree/main/test/lifton_chr22_example.sh>`_, which demonstrates a sample pipeline using OpenSpliceAI.
 
 Super-Quick Start (One-Liner)
