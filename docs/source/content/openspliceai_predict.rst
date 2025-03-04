@@ -7,7 +7,7 @@
 predict
 =======
 
-The ``predict`` subcommand uses a trained OpenSpliceAI model to identify potential splice sites in user-provided DNA sequences. It accepts either a standalone FASTA file or a combination of FASTA and GFF (annotation) files to determine genomic coordinates for protein-coding genes. This command outputs **BED files** for donor and acceptor sites, optionally storing intermediate predictions in HDF5 or PyTorch format for later analysis.
+The ``predict`` subcommand uses a trained OpenSpliceAI model to identify potential splice sites in user-provided DNA sequences. It accepts either a standalone FASTA file or both a FASTA and GFF (annotation) file to determine genomic coordinates for protein-coding genes. This command outputs **BED files** for donor and acceptor sites, optionally storing intermediate predictions in HDF5 or PyTorch format for later analysis.
 
 |
 
@@ -17,7 +17,7 @@ Overview
 Once an OpenSpliceAI model is trained (via the :ref:`train_subcommand` or :ref:`transfer_subcommand`), the ``predict`` subcommand:
 
 - **Loads** a reference genome in FASTA and, optionally, a GFF file to focus on specific gene regions.
-- **Splits** large sequences into manageable chunks (``split_fasta_threshold``).
+- **Splits** large sequences into manageable chunks (``--split_fasta_threshold``).
 - **One-hot encodes** the sequence data with flanking regions (size determined by ``--flanking-size``).
 - **Runs** inference on each chunk in a batch-wise manner (with a batch size derived from the flanking size).
 - **Generates** final BED files, separating donor and acceptor sites exceeding a user-defined score threshold.
@@ -34,11 +34,11 @@ Input Files
 
 2. **GFF File** (Optional)
 
-   A GFF3 annotation file. If supplied, the tool extracts protein-coding gene regions from the FASTA for more targeted predictions.
+   A GFF3 annotation file. If supplied, the tool extracts protein-coding gene regions from the FASTA for more targeted prediction.
 
-3. **Trained Model Checkpoint**
+3. **Trained Model Checkpoint(s)**
 
-   A PyTorch checkpoint (``.pt``) file from a trained OpenSpliceAI model.
+   A PyTorch checkpoint (``.pt``) file (state dictionary) from a trained OpenSpliceAI model, or a directory containing multiple of these files (for ensemble prediction, where it will return the average across all models).
 
 |
 
@@ -46,13 +46,18 @@ Output Files
 ------------
 
 - **Donor and Acceptor BED Files**:  
-  Two BED files listing genomic (or absolute) coordinates and scores for donor and acceptor sites.  
+  Two BED files listing genomic coordinates (if GFF supplied, else absolute coordinates) and scores for splice sites.  
   - ``acceptor_predictions.bed``
   - ``donor_predictions.bed``
 
 - **Intermediate Files** (depending on parameters):
-  - **HDF5 / PyTorch Files**: One-hot-encoded sequences and/or raw predictions, if ``--predict-all`` or certain thresholds are met.
-  - **Split FASTA**: If any sequence in the input FASTA exceeds the ``--split-threshold``, a split version of the FASTA is created with overlapping regions to avoid missing predictions at chunk boundaries.
+  - **HDF5 Files**: One-hot-encoded sequences and/or raw predictions.
+   - ``datafile.h5``: Raw extracted sequences
+   - ``dataset.h5``: Batched input for prediction
+   - ``predict.h5``: Raw predictions from the model (if ``--predict-all``)
+  - **Extracted FASTA**: Refined versions of the input FASTA are created with overlapping regions to avoid missing predictions at chunk boundaries.
+   - ``[name]_genes.fa``: FASTA file containing only gene regions (if GFF provided)
+   - ``[name]_split.fa``: Split FASTA file (if any sequence in the input FASTA exceeds the ``--split-threshold``)
 
 |
 
@@ -95,7 +100,7 @@ Usage
 Examples
 --------
 
-Example: Predicting Splice Sites for Human Genes
+Example: Predicting splice sites for human genes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
@@ -106,7 +111,6 @@ Example: Predicting Splice Sites for Human Genes
       --annotation-file GRCh38.gff \
       --flanking-size 400 \
       --threshold 0.6 \
-      --predict-all \
       --output-dir ./prediction_output/
 
 This command:
@@ -114,35 +118,63 @@ This command:
 1. **Extracts** gene regions from ``GRCh38.fa`` using coordinates in ``GRCh38.gff``.
 2. **Splits** large sequences exceeding the default threshold into manageable chunks.
 3. **One-hot encodes** each chunk with a 400-nt flanking region.
-4. **Loads** the specified model, runs inference in standard (``--predict-all``) mode, storing raw predictions in an HDF5 file.
+4. **Loads** the specified model, runs inference in turbo mode, and outputs predictions directly to BED files.
 5. **Writes** donor and acceptor sites with probability > 0.6 into two BED files.
 
 |
 
+Example: Predicting all splice sites in sample
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. code-block:: bash
+
+   openspliceai predict \
+      --model /path/to/model.pt \
+      --input-sequence sample.fa \
+      --flanking-size 10000 \
+      --predict-all \
+      --output-dir ./prediction_output/
+
+This command:
+
+1. **Processes** the entire ``sample.fa`` file.
+2. **Splits** sequences longer than the default threshold into smaller chunks.
+3. **One-hot encodes** each chunk with a 10,000-nt flanking region.
+4. **Loads** the specified model and runs inference.
+5. **Writes** all raw predictions to the output directory in HDF5 format.
+6. **Generates** BED files for all predictions (technically, all predictions > 1e-6).
+
+
+
 Processing Pipeline
 -------------------
 
-1. **Sequence Extraction & Splitting**
+#. **Sequence Extraction & Splitting**
+
    - If a GFF file is provided, the subcommand creates a new FASTA containing only gene features (type = "gene").  
    - Large sequences (exceeding ``--split-threshold``) are split into overlapping fragments to avoid missing predictions at boundaries.
 
-2. **One-Hot Encoding**
-   - Each sequence is padded with :math:`\frac{\text{flanking-size}}{2}` on both ends using 'N's.
-   - Overlapping windows of length 5,000 + ``flanking_size`` are created, ensuring every base is covered.
+#. **One-Hot Encoding**
+
+   - Each sequence is padded with :math:`\frac{\text{flanking-size}}{2}` on both ends using 'N's.  
+   - Overlapping windows of length 5,000 + ``flanking_size`` are created, ensuring every base is covered.  
    - Sequences are grouped into chunks of size ``--chunk-size`` to manage memory usage.
 
-3. **Model Loading**
-   - The specified PyTorch model checkpoint is loaded onto the best available device (GPU if available, otherwise CPU).
-   - If multiple models or an ensemble directory is provided, predictions are averaged across all valid checkpoints.
+#. **Model Loading**
 
-4. **Batch Prediction**
-   - A DataLoader object feeds chunked, one-hot-encoded sequences to the model in batches, with the batch size set based on the flanking size.
+   - The specified PyTorch model checkpoint is loaded onto the best available device (GPU if available, otherwise CPU).  
+   - If multiple models or an ensemble directory is provided, predictions are averaged across all valid checkpoints (must be saved as a ``.pt`` file).
+
+#. **Batch Prediction**
+
+   - A DataLoader object feeds chunked, one-hot-encoded sequences to the model in batches, with the batch size set based on the flanking size.  
    - Predictions are aggregated either:
      - **Standard Mode** (``--predict-all``): Full predictions are stored in an HDF5 (or PyTorch) file before BED conversion.
      - **Turbo Mode** (default): Predictions are converted on-the-fly to BED entries without storing them fully.
 
-5. **BED File Generation**
-   - For each base in the sequence, the tool outputs donor or acceptor entries to two separate BED files if they exceed ``--threshold``.
+#. **BED File Generation**
+
+   - For each base in the sequence, the tool outputs donor or acceptor entries to two separate BED files if they exceed ``--threshold``.  
    - Coordinates are derived from:
      - **GFF** (if provided), yielding genomic coordinates.
      - **FASTA** headers, if no GFF is present (coordinates are then relative to the start of the FASTA entry).
@@ -152,10 +184,19 @@ Processing Pipeline
 
 |
 
+Workflow
+~~~~~~~~
+
+.. image:: ../_images/workflow/predict_workflow.png
+   :alt: Predict Workflow
+   :align: center
+
+|
+
 Conclusion
 ----------
 
-The ``predict`` subcommand is the final step of the OpenSpliceAI pipeline, transforming raw DNA sequences (FASTA) and a trained model into interpretable splice site predictions. Its flexibility—handling large sequences, multiple flanking sizes, and memory-optimized “turbo” mode—makes it suitable for diverse genomic prediction tasks. Refer to the official documentation for further details on advanced parameters and memory-management best practices.
+The ``predict`` subcommand is the final step of the OpenSpliceAI pipeline, taking raw DNA sequences (FASTA) and a trained model and giving interpretable splice site predictions quickly and at big scales. 
 
 |
 |
