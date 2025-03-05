@@ -57,29 +57,28 @@ Before You Begin
 Super-Quick Start
 -----------------
 
-1. **Variants**: ``input_variants.vcf``
-2. **Reference FASTA**: ``GRCh38.fa``
-3. **Annotation File**: ``grch38.txt``
+1. **Variants**: ``input.vcf``
+2. **Reference FASTA**: ``hg19.fa``
+3. **Annotation File**: ``grch37.txt``
 4. **Model**: Directory containing PyTorch checkpoints (e.g., ``/models/pytorch/``)
 
 Run:
 
 .. code-block:: bash
 
-   openspliceai variant \
-      --vcf input_variants.vcf \
-      --ref-fasta GRCh38.fa \
-      --annotation-file grch38.txt \
-      --model /models/pytorch/ \
-      --model-type pytorch \
-      --dist-var 50 \
-      --flanking-size 400 \
-      --output-vcf annotated_variants.vcf
+    openspliceai variant \
+      -R data/ref_genome/homo_sapiens/GRCh37/hg19.fa \
+      -A examples/data/grch37.txt \
+      -m models/spliceai-mane/400nt/ \
+      -f 400 \
+      -t pytorch \
+      -I data/vcf/input.vcf \
+      -O examples/variant/output.vcf
 
 This command:
 - **Loads** the VCF variants and checks them against the reference genome.
 - **Predicts** donor/acceptor scores for both wild-type and mutant sequences within ±50 nt.
-- **Outputs** an annotated VCF (``annotated_variants.vcf``) with delta scores and positions for donor/acceptor gain or loss.
+- **Outputs** an annotated VCF (``output.vcf``) with delta scores and positions for donor/acceptor gain or loss.
 
 |
 

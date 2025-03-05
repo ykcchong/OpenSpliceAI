@@ -2,15 +2,16 @@
 *.log
 *.h5
 *.png
+!/docs/source/*
 *.txt
 !requirements.txt
 *delta
 *.bed
 *.fa
 *.fai
+*.db
 !test/example.fa
-!examples/predict/chr22.fa
-!examples/predict/tp53.fa
+!/examples/*
 
 logo/logo.pdf
 logo/logo.pptx
@@ -20,16 +21,14 @@ results/
 .vscode/
 
 models/prev/
-experiments/alan/
 
 scripts/JOB_train*
 openspliceai/*create_dataset/
 openspliceai/*create_dataset_spliceAI/
 openspliceai/*spliceAI_pytorch_model/
 experiments/non-coding_eval/
-data/
+/data/
 wandb/
-results/
 paper/
 tmp/
 scripts/arabadop/

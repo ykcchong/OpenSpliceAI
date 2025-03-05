@@ -24,18 +24,18 @@ def variant(args):
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
     # Error handling for required arguments
-    if None in [args.I, args.O, args.R, args.A, args.model, args.flanking_size]:
+    if None in [args.input_vcf, args.output_vcf, args.ref_genome, args.annotation, args.model, args.flanking_size]:
         logging.error('Usage: spliceai [-h] [-m [model]] [-f [flanking_size]] [-I [input]] [-O [output]] -R reference -A annotation '
                       '[-D [distance]] [-M [mask]]')
         exit(1)
 
     # Define arguments
-    ref_genome = args.R
-    annotation = args.A
-    input_vcf = args.I
-    output_vcf = args.O
-    distance = args.D
-    mask = args.M
+    ref_genome = args.ref_genome
+    annotation = args.annotation
+    input_vcf = args.input_vcf
+    output_vcf = args.output_vcf
+    distance = args.distance
+    mask = args.mask
     model = args.model
     flanking_size = args.flanking_size
     model_type = args.model_type
