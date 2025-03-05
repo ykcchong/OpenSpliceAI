@@ -35,9 +35,9 @@
 
 |
 
+.. _train_your_own_model:
 
-
-Steps & Commands to Train OpenSpliceAI Models
+Train your own OpenSpliceAI Models
 =============================================
 
 OpenSpliceAI offers a streamlined pipeline for training splice site prediction models on different species. Whether you aim to build a model using the Human MANE annotations or train a model for mouse, our framework provides a modular, efficient, and reproducible process.

@@ -44,36 +44,30 @@ This page provides a concise guide for using OpenSpliceAI's ``create-data`` subc
 
 |
 
-Before You Begin
-----------------
-
-- **Install OpenSpliceAI**: Ensure you have installed OpenSpliceAI and its dependencies as described in the :ref:`Installation` page.
-- **Acquire Reference Files**: You need a reference genome in FASTA format and a corresponding annotation (GFF/GTF) file.
-
-|
-
-
 .. |download_icon| raw:: html
 
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
    <i class="fa fa-download"></i>
 
+Before You Begin
+----------------
+
+- **Install OpenSpliceAI**: Ensure you have installed OpenSpliceAI and its dependencies as described in the :ref:`Installation` page.
+- **Acquire Reference Files**: You need a reference genome in FASTA format and a corresponding annotation (GFF/GTF) file.
+- **Check Example Scripts**: We provide an example script `examples/create-data/create-data_example.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/create-data/create-data_example.sh>`_ |download_icon|
+
+|
+
+
+
 
 One-liner Start
 -----------------
 
-1. **Reference Genome (FASTA):**
-   
-   - Example: 
-     
-     `GCF_000001405.40_GRCh38.p14_genomic_10_sample.fna <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/human/GCF_000001405.40_GRCh38.p14_genomic_10_sample.fna>`_ |download_icon|
+1. **Reference Genome (FASTA):** `GCF_000001405.40_GRCh38.p14_genomic_10_sample.fna <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/human/GCF_000001405.40_GRCh38.p14_genomic_10_sample.fna>`_ |download_icon|
 
-2. **Reference Annotation (GFF/GTF):**
-   
-   - Example: 
-     
-     `MANE.GRCh38.v1.3.refseq_genomic_10_sample.gff <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/human/MANE.GRCh38.v1.3.refseq_genomic_10_sample.gff>`_ |download_icon|
+2. **Reference Annotation (GFF/GTF):** `MANE.GRCh38.v1.3.refseq_genomic_10_sample.gff <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/human/MANE.GRCh38.v1.3.refseq_genomic_10_sample.gff>`_ |download_icon|
 
 To create training and testing HDF5 files:
 

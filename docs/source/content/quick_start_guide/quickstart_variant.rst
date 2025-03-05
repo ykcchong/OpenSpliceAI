@@ -44,23 +44,38 @@ This page summarizes how to use OpenSpliceAI's ``variant`` subcommand to assess 
 
 |
 
+.. |download_icon| raw:: html
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   <i class="fa fa-download"></i>
+
+
 Before You Begin
 ----------------
 
-- **VCF File**: A variant call format file containing SNPs or small INDELs.
-- **Reference Genome (FASTA)**: Must match the reference used in the VCF.
-- **Annotation File**: Gene annotations to filter variants by genomic region.
-- **Trained Model**: One or more OpenSpliceAI model checkpoints (PyTorch or Keras).
+- **Install OpenSpliceAI**: Ensure you have installed OpenSpliceAI and its dependencies as described in the :ref:`Installation` page.
+  
+- **Check Example Scripts**: We provide an example script `examples/variant/variant.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/variant/variant.sh>`_ |download_icon|
+
+- **Prepare you input files**:
+    - **VCF File**: A variant call format file containing SNPs or small INDELs.
+    - **Reference Genome (FASTA)**: Must match the reference used in the VCF.
+    - **Annotation File**: Gene annotations to filter variants by genomic region.
+    - **Trained Model**: One or more OpenSpliceAI model checkpoints (PyTorch or Keras).
 
 |
 
-Super-Quick Start
+One-liner Start
 -----------------
 
-1. **Variants**: ``input.vcf``
-2. **Reference FASTA**: ``hg19.fa``
-3. **Annotation File**: ``grch37.txt``
-4. **Model**: Directory containing PyTorch checkpoints (e.g., ``/models/pytorch/``)
+1. **Variants**: ``input.vcf`` |download_icon|
+2. **Reference FASTA**: ``hg19.fa`` |download_icon|
+3. **Annotation File**: ``grch37.txt`` |download_icon|
+
+3. **A pre-trained OpenSpliceAI model or directory of models**: 
+    - `GitHub (models/spliceai-mane/10000nt/) <https://github.com/Kuanhao-Chao/OpenSpliceAI/tree/main/models/spliceai-mane/10000nt/>`_ |download_icon| or
+    -  `FTP site (OSAI-MANE/10000nt/) <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/OSAI-MANE/10000nt/>`_ |download_icon|
 
 Run:
 
@@ -76,6 +91,7 @@ Run:
       -O examples/variant/output.vcf
 
 This command:
+
 - **Loads** the VCF variants and checks them against the reference genome.
 - **Predicts** donor/acceptor scores for both wild-type and mutant sequences within ±50 nt.
 - **Outputs** an annotated VCF (``output.vcf``) with delta scores and positions for donor/acceptor gain or loss.
@@ -88,6 +104,16 @@ Next Steps
 - **Review**: Inspect the appended INFO fields in the VCF for delta scores and their positions.
 - **Further Analysis**: Filter or rank variants by largest delta scores to prioritize functional splicing impacts.
 
+.. admonition:: Congratulations
+   :class: important
+
+   Congratulations! You have gone through all subcommands of OpenSpliceAI. 
+
+   - Check out all the released models at :ref:`pretrained_models_home` or 
+   - Follow the steps in :ref:`train_your_own_model` to train your own OpenSpliceAI models.
+   - Have more questions? Check out :ref:`Q&A` or :ref:`contact_us` for help.
+
+
 |
 |
 |
@@ -95,12 +121,12 @@ Next Steps
 |
 
 
-.. image:: ../_images/jhu-logo-dark.png
+.. image:: ../../_images/jhu-logo-dark.png
    :alt: My Logo
    :class: logo, header-image only-light
    :align: center
 
-.. image:: ../_images/jhu-logo-white.png
+.. image:: ../../_images/jhu-logo-white.png
    :alt: My Logo
    :class: logo, header-image only-dark
    :align: center

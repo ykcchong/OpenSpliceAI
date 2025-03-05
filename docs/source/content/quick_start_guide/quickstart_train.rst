@@ -52,6 +52,7 @@ Before You Begin
 
 - **Dataset Preparation**: Ensure you have created the training and testing datasets using the ``create-data`` subcommand. Check the :ref:`quick-start_create_data` guide for details. You need two files as inputsw: ``dataset_train.h5`` and ``dataset_test.h5``.
 
+- **Check Example Scripts**: We provide an example script `examples/train/train_example.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/train/train_example.sh>`_ |download_icon|
 
 |
 

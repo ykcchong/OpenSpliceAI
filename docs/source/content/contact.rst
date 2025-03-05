@@ -1,6 +1,8 @@
 
 |
 
+.. _contact_us:
+
 Contact
 =======
 

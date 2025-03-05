@@ -71,6 +71,8 @@ Ensure you have the following prerequisites:
 - **Test/Validation Dataset:**  
   Prepare an HDF5 file generated from a test set (e.g., ``dataset_test.h5``) containing sequences and labels that were not used during training.
 
+- **Check Example Scripts**: We provide an example script `examples/calibrate/calibrate_example.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/calibrate/calibrate_example.sh>`_ |download_icon|
+
 |
 
 Quick Start

@@ -72,32 +72,32 @@ Usage
                                  PRETRAINED_MODEL --train-dataset TRAIN_DATASET --test-dataset TEST_DATASET [--loss {cross_entropy_loss,focal_loss}]
 
    optional arguments:
-   -h, --help            show this help message and exit
-   --epochs EPOCHS, -n EPOCHS
-                           Number of epochs for training
-   --early-stopping, -E  Enable early stopping
-   --patience PATIENCE, -P PATIENCE
-                           Number of epochs to wait before early stopping
-   --output-dir OUTPUT_DIR, -o OUTPUT_DIR
-                           Output directory for model checkpoints and logs
-   --project-name PROJECT_NAME, -p PROJECT_NAME
-                           Project name for the fine-tuning experiment
-   --exp-num EXP_NUM, -e EXP_NUM
-                           Experiment number
-   --flanking-size {80,400,2000,10000}, -f {80,400,2000,10000}
-                           Flanking sequence size
-   --random-seed RANDOM_SEED, -r RANDOM_SEED
-                           Random seed for reproducibility
-   --temperature-file TEMPERATURE_FILE, -T TEMPERATURE_FILE
-                           Path to the temperature file
-   --pretrained-model PRETRAINED_MODEL, -m PRETRAINED_MODEL
-                           Path to the pre-trained model
-   --train-dataset TRAIN_DATASET, -train TRAIN_DATASET
-                           Path to the training dataset
-   --test-dataset TEST_DATASET, -test TEST_DATASET
-                           Path to the testing dataset
-   --loss {cross_entropy_loss,focal_loss}, -l {cross_entropy_loss,focal_loss}
-                           Loss function for fine-tuning
+         -h, --help            show this help message and exit
+         --epochs EPOCHS, -n EPOCHS
+                                 Number of epochs for training
+         --early-stopping, -E  Enable early stopping
+         --patience PATIENCE, -P PATIENCE
+                                 Number of epochs to wait before early stopping
+         --output-dir OUTPUT_DIR, -o OUTPUT_DIR
+                                 Output directory for model checkpoints and logs
+         --project-name PROJECT_NAME, -p PROJECT_NAME
+                                 Project name for the fine-tuning experiment
+         --exp-num EXP_NUM, -e EXP_NUM
+                                 Experiment number
+         --flanking-size {80,400,2000,10000}, -f {80,400,2000,10000}
+                                 Flanking sequence size
+         --random-seed RANDOM_SEED, -r RANDOM_SEED
+                                 Random seed for reproducibility
+         --temperature-file TEMPERATURE_FILE, -T TEMPERATURE_FILE
+                                 Path to the temperature file
+         --pretrained-model PRETRAINED_MODEL, -m PRETRAINED_MODEL
+                                 Path to the pre-trained model
+         --train-dataset TRAIN_DATASET, -train TRAIN_DATASET
+                                 Path to the training dataset
+         --test-dataset TEST_DATASET, -test TEST_DATASET
+                                 Path to the testing dataset
+         --loss {cross_entropy_loss,focal_loss}, -l {cross_entropy_loss,focal_loss}
+                                 Loss function for fine-tuning
 
 |
 

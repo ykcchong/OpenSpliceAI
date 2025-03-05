@@ -71,29 +71,29 @@ Usage
                               [--flush-threshold FLUSH_THRESHOLD] [--split-threshold SPLIT_THRESHOLD] [--chunk-size CHUNK_SIZE]
 
    optional arguments:
-   -h, --help            show this help message and exit
-   --model MODEL, -m MODEL
-                           Path to a PyTorch SpliceAI model file or "SpliceAI" for the default model
-   --output-dir OUTPUT_DIR, -o OUTPUT_DIR
-                           Output directory to save the data
-   --flanking-size FLANKING_SIZE, -f FLANKING_SIZE
-                           Sum of flanking sequence lengths on each side of input (i.e. 40+40)
-   --input-sequence INPUT_SEQUENCE, -i INPUT_SEQUENCE
-                           Path to FASTA file of the input sequence
-   --annotation-file ANNOTATION_FILE, -a ANNOTATION_FILE
-                           Path to GFF file of coordinates for genes
-   --threshold THRESHOLD, -t THRESHOLD
-                           Threshold to determine acceptor and donor sites
-   --predict-all, -p     Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)
-   --debug, -D           Run in debug mode (debug statements are printed to stderr)
-   --hdf-threshold HDF_THRESHOLD
-                           Maximum size before reading sequence into an HDF file for storage
-   --flush-threshold FLUSH_THRESHOLD
-                           Maximum number of predictions before flushing to file
-   --split-threshold SPLIT_THRESHOLD
-                           Maximum length of FASTA entry before splitting
-   --chunk-size CHUNK_SIZE
-                           Chunk size for loading HDF5 dataset
+         -h, --help            show this help message and exit
+         --model MODEL, -m MODEL
+                                 Path to a PyTorch SpliceAI model file or "SpliceAI" for the default model
+         --output-dir OUTPUT_DIR, -o OUTPUT_DIR
+                                 Output directory to save the data
+         --flanking-size FLANKING_SIZE, -f FLANKING_SIZE
+                                 Sum of flanking sequence lengths on each side of input (i.e. 40+40)
+         --input-sequence INPUT_SEQUENCE, -i INPUT_SEQUENCE
+                                 Path to FASTA file of the input sequence
+         --annotation-file ANNOTATION_FILE, -a ANNOTATION_FILE
+                                 Path to GFF file of coordinates for genes
+         --threshold THRESHOLD, -t THRESHOLD
+                                 Threshold to determine acceptor and donor sites
+         --predict-all, -p     Writes all collected predictions to an intermediate file (Warning: on full genomes, will consume much space.)
+         --debug, -D           Run in debug mode (debug statements are printed to stderr)
+         --hdf-threshold HDF_THRESHOLD
+                                 Maximum size before reading sequence into an HDF file for storage
+         --flush-threshold FLUSH_THRESHOLD
+                                 Maximum number of predictions before flushing to file
+         --split-threshold SPLIT_THRESHOLD
+                                 Maximum length of FASTA entry before splitting
+         --chunk-size CHUNK_SIZE
+                                 Chunk size for loading HDF5 dataset
 
 |
 

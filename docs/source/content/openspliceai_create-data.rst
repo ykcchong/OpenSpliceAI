@@ -77,33 +77,33 @@ Usage
                                  [--verify-h5] [--remove-paralogs] [--min-identity MIN_IDENTITY] [--min-coverage MIN_COVERAGE] [--write-fasta]
 
    optional arguments:
-   -h, --help            show this help message and exit
-   --annotation-gff ANNOTATION_GFF
-                           Path to the GFF file
-   --genome-fasta GENOME_FASTA
-                           Path to the FASTA file
-   --output-dir OUTPUT_DIR
-                           Output directory to save the data
-   --parse-type {canonical,all_isoforms}
-                           Type of transcript processing
-   --biotype {protein-coding,non-coding}
-                           Biotype of transcript processing
-   --chr-split {train-test,test}
-                           Whether to obtain testing or both training and testing groups
-   --split-method {random,human}
-                           Chromosome split method for training and testing dataset
-   --split-ratio SPLIT_RATIO
-                           Ratio of training and testing dataset
-   --canonical-only      Flag to obtain only canonical splice site pairs
-   --flanking-size FLANKING_SIZE
-                           Sum of flanking sequence lengths on each side of input (i.e. 40+40)
-   --verify-h5           Verify the generated HDF5 file(s)
-   --remove-paralogs     Remove paralogous sequences between training and testing dataset
-   --min-identity MIN_IDENTITY
-                           Minimum minimap2 alignment identity for paralog removal between training and testing dataset
-   --min-coverage MIN_COVERAGE
-                           Minimum minimap2 alignment coverage for paralog removal between training and testing dataset
-   --write-fasta         Flag to write out sequences into fasta files
+         -h, --help            show this help message and exit
+         --annotation-gff ANNOTATION_GFF
+                                 Path to the GFF file
+         --genome-fasta GENOME_FASTA
+                                 Path to the FASTA file
+         --output-dir OUTPUT_DIR
+                                 Output directory to save the data
+         --parse-type {canonical,all_isoforms}
+                                 Type of transcript processing
+         --biotype {protein-coding,non-coding}
+                                 Biotype of transcript processing
+         --chr-split {train-test,test}
+                                 Whether to obtain testing or both training and testing groups
+         --split-method {random,human}
+                                 Chromosome split method for training and testing dataset
+         --split-ratio SPLIT_RATIO
+                                 Ratio of training and testing dataset
+         --canonical-only      Flag to obtain only canonical splice site pairs
+         --flanking-size FLANKING_SIZE
+                                 Sum of flanking sequence lengths on each side of input (i.e. 40+40)
+         --verify-h5           Verify the generated HDF5 file(s)
+         --remove-paralogs     Remove paralogous sequences between training and testing dataset
+         --min-identity MIN_IDENTITY
+                                 Minimum minimap2 alignment identity for paralog removal between training and testing dataset
+         --min-coverage MIN_COVERAGE
+                                 Minimum minimap2 alignment coverage for paralog removal between training and testing dataset
+         --write-fasta         Flag to write out sequences into fasta files
 
 
 |

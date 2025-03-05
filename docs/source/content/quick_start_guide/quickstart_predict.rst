@@ -46,14 +46,6 @@ This guide provides a brief walkthrough for using the ``predict`` subcommand in 
 
 |
 
-Before You Begin
-----------------
-
-- **Clone the Repository**: Make sure you have cloned the `OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.  
-- **Check Example Scripts**: We provide an example script, `examples/predict/predict_cmd.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/predict/predict_cmd.sh>`_, which demonstrates a sample pipeline using OpenSpliceAI.
-
-|
-
 .. |download_icon| raw:: html
 
    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -61,28 +53,42 @@ Before You Begin
    <i class="fa fa-download"></i>
 
 
+Before You Begin
+----------------
+
+- **Install OpenSpliceAI**: Ensure you have installed OpenSpliceAI and its dependencies as described in the :ref:`Installation` page.
+- **Check Example Scripts**: We provide an example script `examples/predict/predict_cmd.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/predict/predict_cmd.sh>`_ |download_icon|
+
+|
+
+
 One-liner Start
 -----------------
 
 OpenSpliceAI can predict splice sites from DNA sequences with a default **10,000 nt** flanking region. You need:
 
-1. **A reference genome (FASTA)** : `examples/data/chr22.fa <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/chr22.fa>`_ |download_icon|
+1. **A reference genome (FASTA)** : `chr22.fa <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/data/chr22.fa>`_ |download_icon|
 
-2. **A pre-trained OpenSpliceAI model or directory of models**: `GitHub (models/spliceai-mane/10000nt/) <https://github.com/Kuanhao-Chao/OpenSpliceAI/tree/main/models/spliceai-mane/10000nt/>`_ or `FTP site (OSAI-MANE/10000nt/) <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/OSAI-MANE/10000nt/>`_ |download_icon|
+2. **A reference annotation (GTF)** : `chr22.gff <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/data/chr22.gff>`_ |download_icon|
+
+  
+3. **A pre-trained OpenSpliceAI model or directory of models**: 
+    - `GitHub (models/spliceai-mane/10000nt/) <https://github.com/Kuanhao-Chao/OpenSpliceAI/tree/main/models/spliceai-mane/10000nt/>`_ |download_icon| or
+    -  `FTP site (OSAI-MANE/10000nt/) <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/OSAI-MANE/10000nt/>`_ |download_icon|
 
 Run the following commands (adapt or replace filenames as needed):
 
-.. code-block:: bash
+.. code-block:: python
 
     openspliceai predict \
-        -m models/spliceai-mane/10000nt/ \
-        -o examples/predict/results \
+        -m 10000nt/ \
+        -o results \
         -f 10000 \
-        -i examples/data/chr22.fa \
-        -a examples/data/chr22.gff \
+        -i chr22.fa \
+        -a chr22.gff \
         -t 0.9
 
-This command will generate prediction results in the specified output directory (``examples/predict/results``). The predictions will be based on the input FASTA file (``examples/data/chr22.fa``) and the annotation file (``examples/data/chr22.gff``). The results will include a GFF file with predicted splice sites and their scores.
+This command will generate prediction results in the specified output directory (``results/``). The predictions will be based on the input FASTA file (``chr22.fa``) and the annotation file (``chr22.gff``). The results will include a GFF file with predicted splice sites and their scores.
 
 .. Try OpenSpliceAI on Google Colab
 .. --------------------------------

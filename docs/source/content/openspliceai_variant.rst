@@ -134,25 +134,25 @@ Usage
                               [--model-type {keras,pytorch}] [--precision PRECISION]
 
    optional arguments:
-      -h, --help            show this help message and exit
-      -R, --ref-genome reference
-                              path to the reference genome fasta file
-      -A, --annotation annotation
-                              "grch37" (GENCODE V24lift37 canonical annotation file in package), "grch38" (GENCODE V24 canonical annotation file in package), or path to a similar custom gene annotation file
-      -I, --input-vcf [input]
-                              path to the input VCF file, defaults to standard in
-      -O, --output-vcf [output]
-                              path to the output VCF file, defaults to standard out
-      -D, --distance [distance]
-                              maximum distance between the variant and gained/lost splice site, defaults to 50
-      -M, --mask [mask]     mask scores representing annotated acceptor/donor gain and unannotated acceptor/donor loss, defaults to 0
-      --model, -m MODEL     Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model
-      --flanking-size, -f FLANKING_SIZE
-                              Sum of flanking sequence lengths on each side of input (i.e. 40+40)
-      --model-type, -t {keras,pytorch}
-                              Type of model file (keras or pytorch)
-      --precision, -p PRECISION
-                              Number of decimal places to round the output scores
+         -h, --help            show this help message and exit
+         -R, --ref-genome reference
+                                 path to the reference genome fasta file
+         -A, --annotation annotation
+                                 "grch37" (GENCODE V24lift37 canonical annotation file in package), "grch38" (GENCODE V24 canonical annotation file in package), or path to a similar custom gene annotation file
+         -I, --input-vcf [input]
+                                 path to the input VCF file, defaults to standard in
+         -O, --output-vcf [output]
+                                 path to the output VCF file, defaults to standard out
+         -D, --distance [distance]
+                                 maximum distance between the variant and gained/lost splice site, defaults to 50
+         -M, --mask [mask]     mask scores representing annotated acceptor/donor gain and unannotated acceptor/donor loss, defaults to 0
+         --model, -m MODEL     Path to a SpliceAI model file, or path to a directory of SpliceAI models, or "SpliceAI" for the default model
+         --flanking-size, -f FLANKING_SIZE
+                                 Sum of flanking sequence lengths on each side of input (i.e. 40+40)
+         --model-type, -t {keras,pytorch}
+                                 Type of model file (keras or pytorch)
+         --precision, -p PRECISION
+                                 Number of decimal places to round the output scores
 
 |
 

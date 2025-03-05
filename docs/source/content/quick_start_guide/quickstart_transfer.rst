@@ -45,6 +45,12 @@ This guide walks you through the essential steps for using the ``transfer`` subc
 
 |
 
+.. |download_icon| raw:: html
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+   <i class="fa fa-download"></i>
+
+
 Before You Begin
 ----------------
 
@@ -57,10 +63,7 @@ Before You Begin
 - **Dataset Preparation:**  
   Generate the training and testing datasets for your species of interest using the ``create-data`` subcommand. See the :ref:`quick-start_create_data` guide for details. You will need ``dataset_train.h5`` and  ``dataset_test.h5``.
 
-.. |download_icon| raw:: html
-
-   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-   <i class="fa fa-download"></i>
+- **Check Example Scripts**: We provide an example script `examples/transfer/transfer_example.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/transfer/transfer_example.sh>`_ |download_icon|
 
 
 |
