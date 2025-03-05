@@ -1,3 +1,4 @@
+setup.py
 import setuptools
 from pathlib import Path
 
@@ -26,6 +27,8 @@ setuptools.setup(
         'biopython>=1.83',
         'matplotlib>=3.8.3',
         'matplotlib-inline>=0.1.7',
+        'psutil>=5.9.2',
+        'mappy>=2.28'
     ],
     include_package_data=True,
 	python_requires='>=3.9',

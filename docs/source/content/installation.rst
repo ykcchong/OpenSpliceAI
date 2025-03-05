@@ -65,6 +65,7 @@ This command installs third‐party libraries including:
    * biopython >= 1.83
    * matplotlib >= 3.8.3
    * matplotlib-inline >= 0.1.7
+   * psutil >= 5.9.2
 
 
 .. admonition:: Version Warning

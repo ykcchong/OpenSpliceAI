@@ -41,7 +41,10 @@
 Quick Start Guide: ``predict``
 ==============================
 
-This page provides a streamlined guide for using OpenSpliceAI to **predict splice sites** from DNA sequences. If you haven't done so already, please see the :ref:`Installation` page for details on installing and configuring OpenSpliceAI.
+
+This guide provides a brief walkthrough for using the ``predict`` subcommand in OpenSpliceAI to **predict splice sites** from DNA sequences. If you haven't done so already, please see the :ref:`Installation` page for details on installing and configuring OpenSpliceAI.
+
+|
 
 Before You Begin
 ----------------
@@ -49,16 +52,23 @@ Before You Begin
 - **Clone the Repository**: Make sure you have cloned the `OpenSpliceAI repository <https://github.com/Kuanhao-Chao/OpenSpliceAI>`_.  
 - **Check Example Scripts**: We provide an example script, `examples/predict/predict_cmd.sh <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/predict/predict_cmd.sh>`_, which demonstrates a sample pipeline using OpenSpliceAI.
 
-Super-Quick Start
+|
+
+.. |download_icon| raw:: html
+
+   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+   <i class="fa fa-download"></i>
+
+
+One-liner Start
 -----------------
 
 OpenSpliceAI can predict splice sites from DNA sequences with a default **10,000 nt** flanking region. You need:
 
-1. **A reference genome (FASTA)**  
-Example: `examples/data/chr22.fa <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/chr22.fa>`_
+1. **A reference genome (FASTA)** : `examples/data/chr22.fa <https://github.com/Kuanhao-Chao/OpenSpliceAI/blob/main/examples/data/chr22.fa>`_ |download_icon|
 
-2. **A pre-trained OpenSpliceAI model or directory of models**  
-Example: `models/spliceai-mane/10000nt/ <https://github.com/Kuanhao-Chao/OpenSpliceAI/tree/main/models/spliceai-mane/10000nt/>`_
+2. **A pre-trained OpenSpliceAI model or directory of models**: `GitHub (models/spliceai-mane/10000nt/) <https://github.com/Kuanhao-Chao/OpenSpliceAI/tree/main/models/spliceai-mane/10000nt/>`_ or `FTP site (OSAI-MANE/10000nt/) <ftp://ftp.ccb.jhu.edu/pub/data/OpenSpliceAI/OSAI-MANE/10000nt/>`_ |download_icon|
 
 Run the following commands (adapt or replace filenames as needed):
 
@@ -84,15 +94,17 @@ This command will generate prediction results in the specified output directory 
 
 .. Click the badge above to open the notebook and run OpenSpliceAI interactively.
 
-Summary
--------
+|
 
-Congratulations! You have successfully run OpenSpliceAI to predict splice sites. For a deeper dive into analysis options and the behind the scenes, please check:
+Next Steps
+-----------------
 
-.. seealso::
+- **Explore ``predict`` Options:**  
+  Dive into the :ref:`predict_subcommand` documentation to learn more about the available options for predicting splice sites.
 
-   * :ref:`_quick-start_variant`
-   * :ref:`_predict_subcommand`
+- **Begin Variant Prediction:**
+  Check out the :ref:`quick-start_variant` guide to predict the impact of genomic variants on splice sites.
+
 
 We hope this quick start guide helps you get up and running with OpenSpliceAI. Happy predicting!
 
