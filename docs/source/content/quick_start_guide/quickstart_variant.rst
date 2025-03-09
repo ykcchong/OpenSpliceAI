@@ -72,7 +72,7 @@ Run:
       -m models/spliceai-mane/400nt/ \
       -f 400 \
       -t pytorch \
-      -I data/vcf/input.vcf \
+      -I data/input.vcf \
       -O examples/variant/output.vcf
 
 This command:

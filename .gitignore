@@ -2,7 +2,7 @@
 *.log
 *.h5
 *.png
-!/docs/source/*
+!/docs/source/_images/*
 *.txt
 !requirements.txt
 *delta

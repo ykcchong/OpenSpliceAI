@@ -187,7 +187,7 @@ Processing Pipeline
 Workflow
 ~~~~~~~~
 
-.. image:: ../_images/workflow/predict_workflow.png
+.. image:: ../_images/predict_workflow.png
    :alt: Predict Workflow
    :align: center
 

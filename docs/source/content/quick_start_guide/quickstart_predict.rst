@@ -68,8 +68,8 @@ Run the following commands (adapt or replace filenames as needed):
         -m models/spliceai-mane/10000nt/ \
         -o examples/predict/results \
         -f 10000 \
-        -i examples/data/chr22.fa \
-        -a examples/data/chr22.gff \
+        -i data/chr22.fa \
+        -a data/chr22.gff \
         -t 0.9
 
 This command will generate prediction results in the specified output directory (``examples/predict/results``). The predictions will be based on the input FASTA file (``examples/data/chr22.fa``) and the annotation file (``examples/data/chr22.gff``). The results will include a GFF file with predicted splice sites and their scores.
