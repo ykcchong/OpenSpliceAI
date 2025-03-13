@@ -67,8 +67,8 @@ Run:
 .. code-block:: bash
 
     openspliceai variant \
-      -R data/ref_genome/homo_sapiens/GRCh37/hg19.fa \
-      -A examples/data/grch37.txt \
+      -R data/hg19.fa \
+      -A data/grch37.txt \
       -m models/spliceai-mane/400nt/ \
       -f 400 \
       -t pytorch \
