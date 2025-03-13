@@ -84,8 +84,8 @@ Run the following commands (adapt or replace filenames as needed):
         -m 10000nt/ \
         -o results \
         -f 10000 \
-        -i chr22.fa \
-        -a chr22.gff \
+        -i data/chr22.fa \
+        -a data/chr22.gff \
         -t 0.9
 
 This command will generate prediction results in the specified output directory (``results/``). The predictions will be based on the input FASTA file (``chr22.fa``) and the annotation file (``chr22.gff``). The results will include a GFF file with predicted splice sites and their scores.

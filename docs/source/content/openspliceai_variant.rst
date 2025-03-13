@@ -244,7 +244,7 @@ Processing Pipeline
 
 Workflow
 ~~~~~~~~
-.. image:: ../_images/workflow/variant_workflow.png
+.. image:: ../_images/variant_workflow.png
    :alt: Variant Workflow
    :align: center
 
