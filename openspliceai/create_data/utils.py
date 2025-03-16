@@ -48,19 +48,22 @@ def print_motif_counts(donor_motif_counts, acceptor_motif_counts):
 ###################################################
 # create_datafile.py functions
 ###################################################
-def get_chromosome_lengths(db):
-    """Extract all unique chromosomes and their lengths from the GFF database."""
-    chromosomes = {}
-    for feature in db.all_features():
-        if feature.seqid not in chromosomes:
-            chromosomes[feature.seqid] = feature.end
-        else:
-            chromosomes[feature.seqid] = max(chromosomes[feature.seqid], feature.end)
-    return chromosomes
+def get_chromosome_lengths(seq_dict):
+    # """Extract all unique chromosomes and their lengths from the GFF database."""
+    # chromosomes = {}
+    # for feature in db.all_features():
+    #     if feature.seqid not in chromosomes:
+    #         chromosomes[feature.seqid] = feature.end
+    #     else:
+    #         chromosomes[feature.seqid] = max(chromosomes[feature.seqid], feature.end)
+    # Update the chromosome length processing logic.
+    chrom_lengths = {chrom: len(record.seq) for chrom, record in seq_dict.items()}
+    return chrom_lengths
 
 
-def split_chromosomes(db, method='random', split_ratio=0.8):
-    chromosome_lengths = get_chromosome_lengths(db)
+
+def split_chromosomes(seq_dict, method='random', split_ratio=0.8):
+    chromosome_lengths = get_chromosome_lengths(seq_dict)
     """Split chromosomes into training and testing groups."""
     if method == 'random':
         total_length = sum(chromosome_lengths.values())

@@ -37,6 +37,9 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test
         elif biotype =="non-coding":
             if gene.attributes["gene_biotype"][0] != "lncRNA" and gene.attributes["gene_biotype"][0] != "ncRNA":
                 continue
+        elif biotype =="all":
+            if gene.attributes["gene_biotype"][0] != "protein_coding" and gene.attributes["gene_biotype"][0] != "lncRNA" and gene.attributes["gene_biotype"][0] != "ncRNA":
+                continue
         else:
             continue
         chrom_dict[gene.seqid] += 1
@@ -132,9 +135,9 @@ def create_datafile(args):
     os.makedirs(args.output_dir, exist_ok=True)
     db = utils.create_or_load_db(args.annotation_gff, db_file=f'{args.annotation_gff}_db')
     seq_dict = SeqIO.to_dict(SeqIO.parse(args.genome_fasta, "fasta"))
-    
+        
     # Find all distinct chromosomes and split them
-    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(db, method=args.split_method, split_ratio=args.split_ratio)
+    TRAIN_CHROM_GROUP, TEST_CHROM_GROUP = utils.split_chromosomes(seq_dict, method=args.split_method, split_ratio=args.split_ratio)
     print("* TRAIN_CHROM_GROUP: ", TRAIN_CHROM_GROUP)
     print("* TEST_CHROM_GROUP: ", TEST_CHROM_GROUP)
 

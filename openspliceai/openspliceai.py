@@ -20,7 +20,7 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--genome-fasta', type=str, required=True, help='Path to the FASTA file')
     parser_create_data.add_argument('--output-dir', type=str, required=True, help='Output directory to save the data')
     parser_create_data.add_argument('--parse-type', type=str, default='canonical', choices=['canonical', 'all_isoforms'], help='Type of transcript processing')
-    parser_create_data.add_argument('--biotype', type=str, default='protein-coding', choices=['protein-coding', 'non-coding'], help='Biotype of transcript processing')
+    parser_create_data.add_argument('--biotype', type=str, default='protein-coding', choices=['protein-coding', 'non-coding', 'all'], help='Biotype of transcript processing')
     parser_create_data.add_argument('--chr-split', type=str, choices=['train-test','test'], default='train-test', help='Whether to obtain testing or both training and testing groups')
     '''AM: newly added flags below vv'''
     parser_create_data.add_argument('--split-method', type=str, choices=['random', 'human'], default='random', help='Chromosome split method for training and testing dataset')

@@ -38,8 +38,9 @@ class Skip(nn.Module):
 
 
 class SpliceAI(nn.Module):
-    def __init__(self, L, W, AR):
+    def __init__(self, L, W, AR, apply_softmax=True):
         super(SpliceAI, self).__init__()
+        self.apply_softmax = apply_softmax  # new parameter to control softmax usage
         self.initial_conv = nn.Conv1d(4, L, 1)
         self.initial_skip = Skip(L)
         self.residual_units = nn.ModuleList()
@@ -58,4 +59,7 @@ class SpliceAI(nn.Module):
             x, skip = m(x, skip)
         final_x = self.crop(skip)
         out = self.final_conv(final_x)
-        return F.softmax(out, dim=1)
+        if self.apply_softmax:
+            return F.softmax(out, dim=1)
+        else:
+            return out
