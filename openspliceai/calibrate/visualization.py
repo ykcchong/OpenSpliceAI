@@ -25,8 +25,56 @@ def plot_score_distribution(probs, probs_scaled, labels, output_dir, index):
     plt.grid(True)
     plt.title(f'Score Distribution for {index_names[index][0]}')
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/calibration/prob_dist_{index_names[index][1]}.png")
+    plt.savefig(f"{output_dir}/prob_dist_{index_names[index][1]}.png")
     plt.close()
+
+def score_frequency_distribution(probs, probs_scaled, labels, outdir, index=1):
+    # Flatten the tensors for simplicity
+    probabilities_flat = probs[:, index]
+    probabilities_scaled_flat = probs_scaled[:, index]
+    print("probabilities_flat.shape: ", probabilities_flat.shape)
+    print("probabilities_scaled_flat.shape: ", probabilities_scaled_flat.shape)
+    print("labels.shape: ", labels.shape)
+    # Filter out cases where the label is zero (i.e., keep only positive cases for Class 1)
+    positive_indices = (labels == index)  # True for positive cases
+    print("positive_indices: ", positive_indices)
+    print("len(positive_indices): ", len(positive_indices))
+    probabilities_positive = probabilities_flat[positive_indices]
+    probabilities_scaled_positive = probabilities_scaled_flat[positive_indices]
+    labels_positive = labels[positive_indices]
+    print("len(probabilities_positive): ", len(probabilities_positive))
+    print("probabilities_positive: ", probabilities_positive)
+    print("len(probabilities_scaled_positive): ", len(probabilities_scaled_positive))
+    print("probabilities_scaled_positive: ", probabilities_scaled_positive)
+    print("len(labels_positive): ", len(labels_positive))
+    print("labels_positive: ", labels_positive)
+    # Since we're now only looking at positive cases, the labels will be all ones,
+    # and we're primarily interested in the distribution of predicted probabilities.
+    # Plotting
+    plt.figure(figsize=(5.5, 4))
+    # Probability distribution for Class 1 from logits (only positive cases)
+    plt.hist(probabilities_positive, bins=30, alpha=0.5, label='Predicted Probabilities')
+    plt.hist(probabilities_scaled_positive, bins=30, alpha=0.5, label='Predicted Calibrated Probabilities')
+    # For positive cases, since all labels are 1, we can simply indicate the average or density with a line or annotation
+    # plt.axvline(x=np.mean(labels_positive), color='r', linestyle='dashed', linewidth=2, label='Actual Labels')
+    plt.xlabel('Score')
+    plt.ylabel('Density')
+    plt.legend()
+    plt.grid(True)
+    if index == 0:
+        plt.title('Score Distribution for non-splice site')
+        plt.tight_layout()
+        plt.savefig(f"{outdir}/prob_dist_neither.png")
+    if index == 1:
+        plt.title('Score Distribution for acceptor site')
+        plt.tight_layout()
+        plt.savefig(f"{outdir}/prob_dist_acceptor.png")
+    elif index == 2:
+        plt.title('Score Distribution for donor site')
+        plt.tight_layout()
+        plt.savefig(f"{outdir}/prob_dist_donor.png")
+    plt.clf()
+
 
 def plot_calibration_curves(calibration_data, calibration_data_scaled, classes, output_dir):
     fig, axs = plt.subplots(1, 3, figsize=(20, 5.5))
@@ -47,7 +95,7 @@ def plot_calibration_curves(calibration_data, calibration_data_scaled, classes, 
         axs[i].set_ylabel('Empirical Probability')
         axs[i].legend()
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/calibration/calibration_curve.png", dpi=300)
+    plt.savefig(f"{output_dir}/calibration_curve.png", dpi=300)
     plt.close()
 
 def plot_brier_scores(brier_uncal, brier_cal, classes, output_dir):
@@ -60,7 +108,7 @@ def plot_brier_scores(brier_uncal, brier_cal, classes, output_dir):
     plt.title('Brier Score Comparison')
     plt.legend()
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/calibration/brier_scores.png", dpi=300)
+    plt.savefig(f"{output_dir}/brier_scores.png", dpi=300)
     plt.close()
 
 def plot_calibration_map(scaled_model, device, output_dir):
@@ -95,5 +143,5 @@ def plot_calibration_map(scaled_model, device, output_dir):
         plt.Line2D([0], [0], color='blue', label='Donor')
     ])
     plt.tight_layout()
-    plt.savefig(f"{output_dir}/calibration/calibration_map.png", dpi=300)
+    plt.savefig(f"{output_dir}/calibration_map.png", dpi=300)
     plt.close()

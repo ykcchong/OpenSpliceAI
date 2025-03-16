@@ -34,7 +34,7 @@ def initialize_model_and_optim(device, flanking_size, pretrained_model):
     print("\033[1mContext nucleotides: %d\033[0m" % (CL))
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     # Initialize the model
-    model = SpliceAI(L, W, AR).to(device)
+    model = SpliceAI(L, W, AR, apply_softmax=False).to(device)
     # Print the shapes of the parameters in the initialized model
     print("\nInitialized model parameter shapes:")
     for name, param in model.named_parameters():

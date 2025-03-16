@@ -36,13 +36,12 @@ def get_validation_loader(h5f, idxs, batch_size):
 
 class ModelWithTemperature(nn.Module):
     """
-    Wraps a model with class-wise temperature scaling for better calibration.
+    Wraps a model with temperature scaling for better calibration.
     """
-    def __init__(self, model, num_classes):
+    def __init__(self, model):
         super().__init__()
         self.model = model
-        # Each class gets its own temperature parameter
-        self.temperature = nn.Parameter(torch.ones(num_classes) * 1.0)
+        self.temperature = nn.Parameter(torch.ones(1) * 1.0)  # Initialized to 1.1
 
     def forward(self, input):
         logits = self.model(input)
@@ -50,34 +49,33 @@ class ModelWithTemperature(nn.Module):
 
     def temperature_scale(self, logits):
         """
-        Class-wise temperature scaling: each logit for class c is divided by
-        self.temperature[c]. If logits is [N, C], we broadcast over the batch dimension.
+        Apply temperature scaling to the logits.
         """
         temperature = torch.clamp(self.temperature, min=0.05, max=5.0)
         return logits / temperature
 
     def save_temperature(self, filepath):
         """
-        Save the temperature vector to a file.
+        Save the temperature parameter to a file.
         """
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         torch.save(self.temperature.detach().cpu(), filepath)
-        print(f"Temperature vector saved to {filepath}")
+        print(f"Temperature saved to {filepath}")
 
     def load_temperature(self, filepath, valid_loader, params):
         """
-        Load the temperature parameter (vector) from a file, then compute and store
-        logits/labels on the validation loader.
+        Load the temperature parameter from a file.
         """
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         temperature = torch.load(filepath, map_location=device)
         self.temperature = nn.Parameter(temperature.to(device))
         self.temperature.data = torch.clamp(self.temperature.data, min=0.05, max=5.0)
-        print(f"Loaded temperature vector: {self.temperature.data.cpu().numpy()}")
+        print(f"Loaded temperature: {self.temperature.item()}")
 
         # Collect logits and labels
         logits_list, labels_list = [], []
         with torch.no_grad():
-            for input, label in valid_loader:
+            for input, label in tqdm(valid_loader, desc='Collecting logits and labels'):
                 input, label = input.to(device), label.to(device)
                 input, label = clip_datapoints(input, label, params["CL"], CL_max, params["N_GPUS"])
                 logits = self.model(input)
@@ -87,25 +85,28 @@ class ModelWithTemperature(nn.Module):
         logits = torch.cat(logits_list).permute(0, 2, 1).contiguous()
         labels = torch.cat(labels_list).permute(0, 2, 1).contiguous().argmax(dim=-1)
 
-        # Flatten
+        # Flatten logits and labels
         N, L, C = logits.shape
         logits = logits.view(-1, C).to(device)
         labels = labels.view(-1).long().to(device)
 
         self.logits, self.labels = logits, labels
 
+
     def set_temperature(self, valid_loader, params):
         """
-        Tune the vector of temperature parameters using the validation set.
+        Tune the temperature parameter using the validation set.
         """
+        print("Setting temperature using the validation loader...")
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.to(device)
         self.model.eval()
 
+        # Example weighting strategy: inverse frequency weighting.
         # Collect logits and labels
         logits_list, labels_list = [], []
         with torch.no_grad():
-            for inputs, labels in valid_loader:
+            for inputs, labels in tqdm(valid_loader, desc='Collecting logits and labels'):
                 inputs, labels = inputs.to(device), labels.to(device)
                 inputs, labels = clip_datapoints(inputs, labels, params["CL"], CL_max, params["N_GPUS"])
                 logits = self.model(inputs)
@@ -115,101 +116,84 @@ class ModelWithTemperature(nn.Module):
         logits = torch.cat(logits_list).permute(0, 2, 1).contiguous()
         labels = torch.cat(labels_list).permute(0, 2, 1).contiguous().argmax(dim=-1)
 
-        # Flatten
+        nll_criterion = nn.CrossEntropyLoss().to(device)
+        ece_criterion = _ECELoss().to(device)
+        # Flatten logits and labels
         N, L, C = logits.shape
         logits = logits.view(-1, C)
         labels = labels.view(-1).long()
 
-        self.logits, self.labels = logits.to(device), labels.to(device)
-        print(f"Logits shape: {self.logits.shape}, Labels shape: {self.labels.shape}")
+        self.logits = logits
+        self.labels = labels
 
-        # Define losses
-        nll_criterion = nn.CrossEntropyLoss().to(device)
-        ece_criterion = _ECELoss().to(device)
-
-        # Print metrics before calibration (using only splice sites)
+        # Compute NLL and ECE before temperature scaling
         self._compute_and_log_metrics(nll_criterion, ece_criterion, 'Before temperature scaling')
 
-        # Optimize the temperature vector
-        optimizer = torch.optim.Adam([self.temperature], lr=0.01)
+        # Optimize temperature using Adam
+        optimizer = optim.Adam([self.temperature], lr=0.01)
+
+        # Learning rate scheduler
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
             optimizer, mode='min', factor=0.1, patience=2, verbose=True)
 
+        # Early stopping parameters
         best_loss = float('inf')
-        best_temp = self.temperature.data.clone()
+        best_temp = self.temperature.item()
+        patience = 2
+        min_delta = 1e-6
         patience_counter = 0
         max_epochs = 2000
-        min_delta = 1e-8
-        patience = 2
 
         for epoch in range(max_epochs):
             optimizer.zero_grad()
-            # Filter out non-splice site (class 0)
-            scaled_logits = self.temperature_scale(self.logits)
-            # mask = (self.labels != 0)
-            # if mask.sum() == 0:
-            #     print("No valid splice site samples found for loss computation.")
-            #     break
-            # filtered_logits = scaled_logits[mask][:, 1:]  # only columns for acceptor and donor
-            # filtered_labels = (self.labels[mask] - 1).long()  # re-map: 1->0, 2->1
-
-            # loss = ece_criterion(filtered_logits, filtered_labels)
-            # nll_loss = nll_criterion(filtered_logits, filtered_labels)
-            loss = nll_criterion(self.logits, self.labels) 
-            ece_loss = ece_criterion(self.logits, self.labels)
-
+            loss = nll_criterion(self.temperature_scale(self.logits), self.labels)
             loss.backward()
             optimizer.step()
+            # Clamp temperature to the desired range
             self.temperature.data = torch.clamp(self.temperature.data, min=0.05, max=5.0)
-
             current_loss = loss.item()
+            current_lr = optimizer.param_groups[0]['lr']
+            current_temperature = self.temperature.item()
+            print(f"Epoch {epoch+1}/{max_epochs}, Loss: {current_loss:.6f}, Temperature: {current_temperature:.4f}, Learning Rate: {current_lr:.6f}")
+
+            # Step the scheduler
             scheduler.step(current_loss)
 
-            # Early stopping logic
+            # Check for early stopping
             if best_loss - current_loss > min_delta:
                 best_loss = current_loss
-                best_temp = self.temperature.data.clone()
+                best_temp = self.temperature.item()
                 patience_counter = 0
             else:
                 patience_counter += 1
 
-            print(f"Epoch {epoch+1}/{max_epochs}, Loss: {current_loss:.6f}, NLL: {ece_loss.item():.6f}, "
-                  f"Temperature: {self.temperature.data.cpu().numpy()}")
-            
             if patience_counter >= patience:
                 print("Early stopping due to no improvement in loss.")
                 break
 
-        # Restore best temperature
-        self.temperature.data = best_temp.to(device)
-        print(f"Optimized temperature vector: {self.temperature.data.cpu().numpy()}")
-        # Print metrics after calibration (using only splice sites)
+        self.temperature.data = torch.tensor(best_temp).to(device)
+        print(f"Optimized temperature: {self.temperature.item()}")
+
+        # Compute NLL and ECE after temperature scaling
         self._compute_and_log_metrics(nll_criterion, ece_criterion, 'After temperature scaling')
 
+
+
+
     def _compute_and_log_metrics(self, nll_criterion, ece_criterion, phase):
-        scaled_logits = self.temperature_scale(self.logits)
-        # mask = (self.labels != 0)
-        # if mask.sum() == 0:
-        #     print("No valid splice site samples found for metric computation.")
-        #     return
-        # filtered_logits = scaled_logits[mask][:, 1:]
-        # filtered_labels = (self.labels[mask] - 1).long()
-        nll = nll_criterion(self.logits, self.labels).item()
-        ece = ece_criterion(self.logits, self.labels).item()
-        print(f'{phase} - NLL: {nll:.8f}, ECE: {ece:.8f}')
+        """
+        Compute and log NLL and ECE metrics.
+        """
+        logits_scaled = self.temperature_scale(self.logits)
+        nll = nll_criterion(logits_scaled, self.labels).item()
+        ece = ece_criterion(logits_scaled, self.labels).item()
+        print(f'{phase} - NLL: {nll:.4f}, ECE: {ece:.4f}')
 
     def compute_ece_nll(self, logits, labels):
+        """
+        Compute and log NLL and ECE metrics.
+        """
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        logits = logits.to(device)
-        labels = labels.to(device)
-        # Filter out non-splice site samples
-        # mask = (labels != 0)
-        # if mask.sum() == 0:
-        #     print("No valid splice site samples found for loss computation.")
-        #     return None, None
-        # scaled_logits = self.temperature_scale(logits[mask])
-        # filtered_logits = scaled_logits[:, 1:]
-        # filtered_labels = (labels[mask] - 1).long()
         nll_criterion = nn.CrossEntropyLoss().to(device)
         ece_criterion = _ECELoss().to(device)
         nll = nll_criterion(logits, labels).item()
@@ -221,7 +205,7 @@ class _ECELoss(nn.Module):
     """
     Expected Calibration Error (ECE) Loss.
     """
-    def __init__(self, n_bins=30):
+    def __init__(self, n_bins=15):
         super().__init__()
         bin_boundaries = torch.linspace(0, 1, n_bins + 1)
         self.bin_lowers = bin_boundaries[:-1]
