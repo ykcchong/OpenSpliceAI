@@ -1,8 +1,13 @@
-# calibrate.py
+"""
+Filename: calibrate.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Calibrate the OpenSpliceAI model.
+"""
+
 import os
 import time
 import torch
-import numpy as np
 from torch.nn import functional as F
 from openspliceai.train_base.utils import *
 from openspliceai.calibrate.calibrate_utils import *
@@ -35,9 +40,6 @@ def get_logits_labels(model, loader, device, params):
 
 
 def evaluate_and_visualize(calibrated_model, data_loader, device, output_base_dir, dataset_name, params, flanking_size):
-    """
-    Same as before, but minor changes if we do any printing of temperature (optional).
-    """
     print(f"\n--- Evaluating on {dataset_name} set ---")
     
     results_dir = os.path.join(output_base_dir, "results", dataset_name)
@@ -62,15 +64,15 @@ def evaluate_and_visualize(calibrated_model, data_loader, device, output_base_di
     with open(metric_original_file, 'w') as f:
         f.write(f"Original_NLL\tOriginal_ECE\n")
         f.write(f"{original_nll:.8f}\t{original_ece:.8f}\n")
-    print(f"Original NLL: {original_nll:.4f}")
-    print(f"Original ECE: {original_ece:.4f}")
+    print(f"Original NLL: {original_nll:.8f}")
+    print(f"Original ECE: {original_ece:.8f}")
 
     calibrated_nll, calibrated_ece = calibrated_model.compute_ece_nll(logits_scaled, labels)
     with open(metric_calibrated_file, 'w') as f:
         f.write(f"Calibrated_NLL\tCalibrated_ECE\n")
         f.write(f"{calibrated_nll:.8f}\t{calibrated_ece:.8f}\n")
-    print(f"Calibrated NLL: {calibrated_nll:.4f}")
-    print(f"Calibrated ECE: {calibrated_ece:.4f}")
+    print(f"Calibrated NLL: {calibrated_nll:.8f}")
+    print(f"Calibrated ECE: {calibrated_ece:.8f}")
 
     # Convert logits to probabilities
     probs = F.softmax(logits, dim=1).detach().cpu().numpy()
@@ -98,17 +100,17 @@ def evaluate_and_visualize(calibrated_model, data_loader, device, output_base_di
         calibration_data_scaled.append((prob_true_scaled, prob_pred_scaled, bin_counts))
         save_calibration_data(calib_data_dir, classes[i], flanking_size, prob_true, prob_pred, bin_counts, 'original')
         save_calibration_data(calib_data_dir, classes[i], flanking_size, prob_true_scaled, prob_pred_scaled, bin_counts, 'calibrated')
-        print("===============================================")
 
     plot_calibration_curves(calibration_data, calibration_data_scaled, classes, plots_dir)
     brier_uncal, brier_cal = calculate_brier_scores(labels, probs, probs_scaled)
     plot_brier_scores(brier_uncal, brier_cal, classes, plots_dir)
     plot_calibration_map(calibrated_model, device, plots_dir)
     print(f"Results for {dataset_name} set saved to: {results_dir}")
+    print("===============================================")
 
 
 def calibrate(args):
-    print("Running OpenSpliceAI Calibration")
+    print("Running OpenSpliceAI with 'calibrate' mode")
     start_time = time.time()
     
     # Create the main output directory structure
@@ -133,7 +135,6 @@ def calibrate(args):
 
     calibrated_model = ModelWithTemperature(model, num_classes=num_classes)
     print("Initialized calibrated model:", calibrated_model)    
-    print("Train indices count:", len(train_idxs))
     print("Validation indices count:", len(val_idxs))
     print("Test indices count:", len(test_idxs))
     

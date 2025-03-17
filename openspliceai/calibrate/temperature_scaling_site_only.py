@@ -1,16 +1,18 @@
 """
-Filename: temperature_scaling.py
+Filename: temperature_scaling_site_only.py
 Author: Kuan-Hao Chao
 Date: 2025-03-20
-Description: Temperature scaling functions and classes for model calibration.
+Description: Test script to calibrate the OpenSpliceAI model only on splice sites.
 """
 
+import os
 import torch
-from torch import nn
+from torch import nn, optim
 import torch.nn.functional as F
 import numpy as np
 from openspliceai.train_base.utils import *
 from torch.utils.data import TensorDataset, DataLoader
+from tqdm import tqdm
 
 
 def load_data_from_shard(h5f, shard_idx):
@@ -126,12 +128,13 @@ class ModelWithTemperature(nn.Module):
         labels = labels.view(-1).long()
 
         self.logits, self.labels = logits.to(device), labels.to(device)
+        print(f"Logits shape: {self.logits.shape}, Labels shape: {self.labels.shape}")
 
         # Define losses
         nll_criterion = nn.CrossEntropyLoss().to(device)
         ece_criterion = _ECELoss().to(device)
 
-        # Print metrics before calibration
+        # Print metrics before calibration (using only splice sites)
         self._compute_and_log_metrics(nll_criterion, ece_criterion, 'Before temperature scaling')
 
         # Optimize the temperature vector
@@ -143,19 +146,32 @@ class ModelWithTemperature(nn.Module):
         best_temp = self.temperature.data.clone()
         patience_counter = 0
         max_epochs = 2000
-        min_delta = 1e-6
+        min_delta = 1e-8
         patience = 2
 
         for epoch in range(max_epochs):
             optimizer.zero_grad()
-            loss = nll_criterion(self.temperature_scale(self.logits), self.labels)
-            ece_loss = ece_criterion(self.temperature_scale(self.logits), self.labels)
+            # Filter out non-splice site (class 0)
+            scaled_logits = self.temperature_scale(self.logits)
+            # mask = (self.labels != 0)
+            # if mask.sum() == 0:
+            #     print("No valid splice site samples found for loss computation.")
+            #     break
+            # filtered_logits = scaled_logits[mask][:, 1:]  # only columns for acceptor and donor
+            # filtered_labels = (self.labels[mask] - 1).long()  # re-map: 1->0, 2->1
+
+            # loss = ece_criterion(filtered_logits, filtered_labels)
+            # nll_loss = nll_criterion(filtered_logits, filtered_labels)
+            loss = nll_criterion(self.logits, self.labels) 
+            ece_loss = ece_criterion(self.logits, self.labels)
+
             loss.backward()
             optimizer.step()
             self.temperature.data = torch.clamp(self.temperature.data, min=0.05, max=5.0)
-            ece_loss = ece_loss.item()
+
             current_loss = loss.item()
             scheduler.step(current_loss)
+
             # Early stopping logic
             if best_loss - current_loss > min_delta:
                 best_loss = current_loss
@@ -164,7 +180,7 @@ class ModelWithTemperature(nn.Module):
             else:
                 patience_counter += 1
 
-            print(f"Epoch {epoch+1}/{max_epochs}, Loss: {current_loss:.6f}, ECE: {ece_loss:.6f}",             
+            print(f"Epoch {epoch+1}/{max_epochs}, Loss: {current_loss:.6f}, NLL: {ece_loss.item():.6f}, "
                   f"Temperature: {self.temperature.data.cpu().numpy()}")
             
             if patience_counter >= patience:
@@ -174,22 +190,37 @@ class ModelWithTemperature(nn.Module):
         # Restore best temperature
         self.temperature.data = best_temp.to(device)
         print(f"Optimized temperature vector: {self.temperature.data.cpu().numpy()}")
-
-        # Print metrics after calibration
+        # Print metrics after calibration (using only splice sites)
         self._compute_and_log_metrics(nll_criterion, ece_criterion, 'After temperature scaling')
 
     def _compute_and_log_metrics(self, nll_criterion, ece_criterion, phase):
-        logits_scaled = self.temperature_scale(self.logits)
-        nll = nll_criterion(logits_scaled, self.labels).item()
-        ece = ece_criterion(logits_scaled, self.labels).item()
-        print(f'{phase} - NLL: {nll:.4f}, ECE: {ece:.4f}')
+        scaled_logits = self.temperature_scale(self.logits)
+        # mask = (self.labels != 0)
+        # if mask.sum() == 0:
+        #     print("No valid splice site samples found for metric computation.")
+        #     return
+        # filtered_logits = scaled_logits[mask][:, 1:]
+        # filtered_labels = (self.labels[mask] - 1).long()
+        nll = nll_criterion(self.logits, self.labels).item()
+        ece = ece_criterion(self.logits, self.labels).item()
+        print(f'{phase} - NLL: {nll:.8f}, ECE: {ece:.8f}')
 
     def compute_ece_nll(self, logits, labels):
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        logits = logits.to(device)
+        labels = labels.to(device)
+        # Filter out non-splice site samples
+        # mask = (labels != 0)
+        # if mask.sum() == 0:
+        #     print("No valid splice site samples found for loss computation.")
+        #     return None, None
+        # scaled_logits = self.temperature_scale(logits[mask])
+        # filtered_logits = scaled_logits[:, 1:]
+        # filtered_labels = (labels[mask] - 1).long()
         nll_criterion = nn.CrossEntropyLoss().to(device)
         ece_criterion = _ECELoss().to(device)
-        nll = nll_criterion(logits.to(device), labels.to(device)).item()
-        ece = ece_criterion(logits.to(device), labels.to(device)).item()
+        nll = nll_criterion(logits, labels).item()
+        ece = ece_criterion(logits, labels).item()
         return nll, ece
 
 
@@ -197,7 +228,7 @@ class _ECELoss(nn.Module):
     """
     Expected Calibration Error (ECE) Loss.
     """
-    def __init__(self, n_bins=15):
+    def __init__(self, n_bins=30):
         super().__init__()
         bin_boundaries = torch.linspace(0, 1, n_bins + 1)
         self.bin_lowers = bin_boundaries[:-1]

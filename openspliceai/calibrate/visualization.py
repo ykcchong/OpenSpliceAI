@@ -1,9 +1,14 @@
-# visualization.py
+"""
+Filename: visualization.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Functions for visualizing calibration results.
+"""
+
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 from openspliceai.calibrate.calibrate_utils import *
-
+import torch
 
 def plot_score_distribution(probs, probs_scaled, labels, output_dir, index):
     index_names = {
@@ -27,6 +32,7 @@ def plot_score_distribution(probs, probs_scaled, labels, output_dir, index):
     plt.tight_layout()
     plt.savefig(f"{output_dir}/prob_dist_{index_names[index][1]}.png")
     plt.close()
+
 
 def score_frequency_distribution(probs, probs_scaled, labels, outdir, index=1):
     # Flatten the tensors for simplicity
@@ -98,6 +104,7 @@ def plot_calibration_curves(calibration_data, calibration_data_scaled, classes, 
     plt.savefig(f"{output_dir}/calibration_curve.png", dpi=300)
     plt.close()
 
+
 def plot_brier_scores(brier_uncal, brier_cal, classes, output_dir):
     plt.figure(figsize=(8, 6))
     x = np.arange(len(classes))
@@ -110,6 +117,7 @@ def plot_brier_scores(brier_uncal, brier_cal, classes, output_dir):
     plt.tight_layout()
     plt.savefig(f"{output_dir}/brier_scores.png", dpi=300)
     plt.close()
+
 
 def plot_calibration_map(scaled_model, device, output_dir):
     p1d = np.linspace(0, 1, 20)

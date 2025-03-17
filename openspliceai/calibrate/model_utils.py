@@ -1,8 +1,14 @@
-# model_utils.py
+"""
+Filename: model_utils.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Calibrate the OpenSpliceAI model.
+"""
+
 import torch
 import numpy as np
 from openspliceai.constants import *
-from openspliceai.train_base.spliceai import SpliceAI
+from openspliceai.train_base.openspliceai import SpliceAI
 
 def initialize_model_and_optim(device, flanking_size, pretrained_model):
     L = 32
