@@ -1,8 +1,13 @@
+"""
+Filename: create_datafile.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Create datafile.h5 for training and testing splice site prediction models.
+"""
+
 import os
 from Bio.Seq import Seq  # Import the Seq class
 from Bio import SeqIO, SeqRecord
-import numpy as np
-import h5py
 import time
 import openspliceai.create_data.utils as utils
 import openspliceai.create_data.paralogs as paralogs
@@ -15,9 +20,9 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test
     Extract sequences for each protein-coding gene, reverse complement sequences for genes on the reverse strand,
     and label donor and acceptor sites correctly based on strand orientation.
     """
-    fw_stats = open(f"{output_dir}{train_or_test}_stats.txt", "w")
+    fw_stats = open(os.path.join(output_dir, f"{train_or_test}_stats.txt"), "w")
     if write_fasta:
-        fasta_handle = open(f"{output_dir}{train_or_test}.fa", "w")  # Open a file to write FASTA format sequences
+        fasta_handle = open(os.path.join(output_dir, f"{train_or_test}.fa"), "w")  # Open a file to write FASTA format sequences
     NAME = []      # Gene Name
     CHROM = []     # Chromosome
     STRAND = []    # Strand in which the gene lies (+ or -)
@@ -25,19 +30,18 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test
     TX_END = []    # Position where transcription ends
     SEQ = []       # Nucleotide sequence
     LABEL = []     # Label for each nucleotide in the sequence
-    GENE_COUNTER = 0
     for gene in db.features_of_type('gene'):
         if "exception" in gene.attributes.keys() and gene.attributes["exception"][0] == "trans-splicing":
             continue
         if gene.seqid not in chrom_dict:
             continue
-        if biotype =="protein-coding":
+        if biotype == "protein-coding":
             if gene.attributes["gene_biotype"][0] != "protein_coding":
                 continue
-        elif biotype =="non-coding":
+        elif biotype == "non-coding":
             if gene.attributes["gene_biotype"][0] != "lncRNA" and gene.attributes["gene_biotype"][0] != "ncRNA":
                 continue
-        elif biotype =="all":
+        elif biotype == "all":
             if gene.attributes["gene_biotype"][0] != "protein_coding" and gene.attributes["gene_biotype"][0] != "lncRNA" and gene.attributes["gene_biotype"][0] != "ncRNA":
                 continue
         else:
@@ -78,7 +82,6 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test
         for transcript in transcripts_ls:
             exons = list(db.children(transcript, featuretype='exon', order_by='start'))
             if len(exons) > 1:
-                GENE_COUNTER += 1
                 for i in range(len(exons) - 1):
                     # Donor site is one base after the end of the current exon
                     first_site = exons[i].end - gene.start  # Adjusted for python indexing
@@ -128,6 +131,7 @@ def get_sequences_and_labels(db, output_dir, seq_dict, chrom_dict, train_or_test
 
 
 def create_datafile(args):
+    print("Running OpenSpliceAI with 'create-data' mode")
     print("--- Step 1: Creating datafile.h5 ... ---")
     start_time = time.process_time()
     

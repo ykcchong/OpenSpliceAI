@@ -1,7 +1,13 @@
+"""
+Filename: paralogs.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Remove paralogous sequences between train and test datasets using mappy.
+"""
+
 import mappy as mp
 import numpy as np
 import logging
-from Bio import SeqIO
 import h5py
 import tempfile
 import os

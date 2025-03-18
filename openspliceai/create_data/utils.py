@@ -1,10 +1,12 @@
-###############################################################################
-'''The file includes functions to process sequences to/from .h5 datasets.'''
-###############################################################################
+"""
+Filename: utils.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Functions to process sequences to/from .h5 datasets.
+"""
 
 import os
 import numpy as np
-import torch
 from math import ceil
 import gffutils
 import random
@@ -14,10 +16,6 @@ from openspliceai.constants import *
 def check_and_count_motifs(seq, labels, donor_motif_counts, acceptor_motif_counts):
     """
     Check sequences for donor and acceptor motifs and count their occurrences.
-
-    Parameters:
-    - seq: The DNA sequence (str).
-    - labels: Array of labels indicating locations of interest in the sequence.
     """     
     for i, label in enumerate(labels):
         if label == 2:  # Donor site
@@ -49,22 +47,19 @@ def print_motif_counts(donor_motif_counts, acceptor_motif_counts):
 # create_datafile.py functions
 ###################################################
 def get_chromosome_lengths(seq_dict):
-    # """Extract all unique chromosomes and their lengths from the GFF database."""
-    # chromosomes = {}
-    # for feature in db.all_features():
-    #     if feature.seqid not in chromosomes:
-    #         chromosomes[feature.seqid] = feature.end
-    #     else:
-    #         chromosomes[feature.seqid] = max(chromosomes[feature.seqid], feature.end)
-    # Update the chromosome length processing logic.
+    """
+    Extract all unique chromosomes and their lengths
+    """
     chrom_lengths = {chrom: len(record.seq) for chrom, record in seq_dict.items()}
     return chrom_lengths
 
 
-
 def split_chromosomes(seq_dict, method='random', split_ratio=0.8):
+    """
+    Split chromosomes into training and testing groups.
+    """
     chromosome_lengths = get_chromosome_lengths(seq_dict)
-    """Split chromosomes into training and testing groups."""
+    print("Chromosome lengths: ", chromosome_lengths)
     if method == 'random':
         total_length = sum(chromosome_lengths.values())
         target_train_length = total_length * split_ratio
@@ -103,15 +98,7 @@ def split_chromosomes(seq_dict, method='random', split_ratio=0.8):
 def create_or_load_db(gff_file, db_file='gff.db'):
     """
     Create a gffutils database from a GFF file, or load it if it already exists.
-
-    Parameters:
-    - gff_file: Path to GFF file
-    - db_file: Path to save or load the database file (default: 'gff.db')
-
-    Returns:
-    - db: gffutils FeatureDB object
     """
-
     if not os.path.exists(db_file):
         print("Creating new database...")
         db = gffutils.create_db(gff_file, dbfn=db_file, force=True, keep_order=True, merge_strategy='merge', sort_attribute_values=True)
@@ -142,31 +129,15 @@ OUT_MAP = np.asarray([[1, 0, 0],
 def ceil_div(x, y):
     """
     Calculate the ceiling of a division between two numbers.
-
-    Parameters:
-    - x (int): Numerator
-    - y (int): Denominator
-
-    Returns:
-    - int: The ceiling of the division result.
     """
     return int(ceil(float(x)/y))
 
 
 def one_hot_encode(Xd, Yd):
     """
-    Perform one-hot encoding on both the input sequence data (Xd) and the output label data (Yd) using
-    predefined mappings (IN_MAP for inputs and OUT_MAP for outputs).
-
-    Parameters:
-    - Xd (numpy.ndarray): An array of integers representing the input sequence data where each nucleotide
-        is encoded as an integer (1 for 'A', 2 for 'C', 3 for 'G', 4 for 'T', and 0 for padding).
-    - Yd (list of numpy.ndarray): A list containing a single array of integers representing the output label data,
-        where each label is encoded as an integer (0 for 'no splice', 1 for 'acceptor', 2 for 'donor', and -1 for padding).
-
-    Returns:
-    - numpy.ndarray: the one-hot encoded input sequence data.
-    - numpy.ndarray: the one-hot encoded output label data.
+    Perform one-hot encoding on both the input sequence data (Xd) 
+    and the output label data (Yd) using predefined mappings 
+    (IN_MAP for inputs and OUT_MAP for outputs).
     """
     return IN_MAP[Xd.astype('int8')], [OUT_MAP[Yd[t].astype('int8')] for t in range(1)]
 
@@ -176,12 +147,6 @@ def replace_non_acgt_to_n(input_string):
     Use a generator expression to go through each character in the input string.
     If the character is in the set of allowed characters, keep it as is.
     Otherwise, replace it with 'N'.
-
-    Parameters:
-    - input_string (str): The nucleotide sequence.
-
-    Returns:
-    - str: The modified sequence with non-ACGT nucleotides replaced by 'N'.
     """
     # Define the set of allowed characters
     allowed_chars = {'A', 'C', 'G', 'T'}    
@@ -198,14 +163,6 @@ def reformat_data(X0, Y0):
     length SL corresponding to the splicing information of the nucleotides
     of interest. The CL_max context nucleotides are such that they are
     CL_max/2 on either side of the SL nucleotides of interest.
-
-    Parameters:
-    - X0 (numpy.ndarray): Original sequence data as an array of integer encodings.
-    - Y0 (list of numpy.ndarray): Original label data as a list containing a single array of integer encodings.
-
-    Returns:
-    - numpy.ndarray: Reformatted sequence data.
-    - list of numpy.ndarray: Reformatted label data, wrapped in a list.
     """
     # Calculate the number of data points needed
     num_points = ceil_div(len(Y0[0]), SL)
@@ -232,14 +189,6 @@ def create_datapoints(seq, label):
     where 0, 1, 2 correspond to no splicing, acceptor, donor 
     respectively. It then calls reformat_data and one_hot_encode
     and returns X, Y which can be used by Pytorch Model.
-
-    Parameters:
-    - seq (str): The nucleotide sequence.
-    - strand (str): The strand information ('+' or '-').
-    - label (str): A string representation of labels for each nucleotide.
-
-    Returns:
-    - tuple: A tuple containing the one-hot encoded sequence and labels.
     """
     # No need to reverse complement the sequence, as sequence is already reverse complemented from previous step
     seq = 'N' * (CL_max // 2) + seq + 'N' * (CL_max // 2)

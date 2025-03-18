@@ -1,10 +1,16 @@
+"""
+Filename: create_dataset.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Create dataset.h5 for training and testing splice site prediction models.
+"""
+
 import h5py
 import numpy as np
 from tqdm import tqdm
 import time
 from openspliceai.constants import *
 from openspliceai.create_data.utils import ceil_div, replace_non_acgt_to_n, create_datapoints
-import argparse          
 
 CHUNK_SIZE = 100 # size of chunks to process data in
 

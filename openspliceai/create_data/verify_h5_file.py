@@ -1,5 +1,10 @@
-# import necessary libraries
-import argparse
+"""
+Filename: verify_h5_file.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Functions to process sequences to/from .h5 datasets.
+"""
+
 import h5py
 import torch
 import matplotlib.pyplot as plt
@@ -7,9 +12,9 @@ import time
 import h5py
 
 def verify_h5(args):
-    '''
+    """
     Verifies the integrity of the created testing and/or training h5 datasets.
-    '''
+    """
     # record start time for benchmark
     print("--- Step 3: Verifying integrity of h5 file ... ---")
     start_time = time.time()
