@@ -1,15 +1,19 @@
+"""
+Filename: train.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Train the OpenSpliceAI model.
+"""
+
 import sys
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-import platform
-from openspliceai.train_base.spliceai import *
+from openspliceai.train_base.openspliceai import *
 from openspliceai.train_base.utils import *
 from openspliceai.constants import *
-import time
 
 
 def initialize_model_and_optim(device, flanking_size, epochs, scheduler):

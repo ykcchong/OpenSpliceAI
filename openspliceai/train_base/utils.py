@@ -1,3 +1,10 @@
+"""
+Filename: utils.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Utility functions for training and testing the OpenSpliceAI model.
+"""
+
 import h5py
 import platform
 import sys
@@ -5,11 +12,8 @@ import os
 import time
 import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-from math import ceil
 from sklearn.metrics import average_precision_score, precision_recall_fscore_support, accuracy_score
 from openspliceai.constants import *
 
@@ -19,9 +23,7 @@ def setup_environment(args):
     print("device: ", device, file=sys.stderr)
     return device
 
-###########################
-# Model testing
-###########################
+
 def initialize_test_paths(args):
     log_output_test_base = initialize_test_paths_inner(
         args.output_dir, args.project_name, args.flanking_size, args.exp_num, 
@@ -82,13 +84,9 @@ class MetricsAccumulator:
         true_classes = true_classes.flatten()
         predicted_classes = predicted_classes.flatten()
         print(f"true_classes: {true_classes.shape}, predicted_classes: {predicted_classes.shape}")
-        
-
         class_accuracies = classwise_accuracy(true_classes, predicted_classes, self.num_classes)
         overall_accuracy = np.mean(class_accuracies)
-        
         precision, recall, f1, _ = precision_recall_fscore_support(true_classes, predicted_classes, average=None)
-
         return overall_accuracy, precision, recall, f1, class_accuracies
 
 
@@ -106,7 +104,6 @@ def process_batch(model, X, Y, params):
 
 
 def test_SpliceAI_Keras_model(model, test_h5f, test_idxs, args, params, test_metric_files):
-    print("test_idxs: ", test_idxs)
     print(f"\n{'='*60}")
     start_time = time.time()    
     print("--------------------------------------------------------------")
@@ -173,10 +170,6 @@ def test_SpliceAI_Keras_model(model, test_h5f, test_idxs, args, params, test_met
     y_pred_acceptor_all = np.concatenate(y_pred_acceptor_all)
     y_true_donor_all = np.concatenate(y_true_donor_all)
     y_pred_donor_all = np.concatenate(y_pred_donor_all)
-
-    # Specify file paths for output
-    acceptor_topl_file = test_metric_files.get('acceptor_topl', 'acceptor_topl.txt')
-    donor_topl_file = test_metric_files.get('donor_topl', 'donor_topl.txt')
 
     acceptor_topk_accuracy, acceptor_auprc = print_topl_statistics(y_true_donor_all, y_pred_donor_all, test_metric_files["acceptor_topk_all"], ss_type='acceptor', print_top_k=True)
     donor_topk_accuracy, donor_auprc = print_topl_statistics(y_true_donor_all, y_pred_donor_all, test_metric_files["donor_topk_all"], ss_type='donor', print_top_k=True)
@@ -252,6 +245,7 @@ def generate_indices(batch_num, random_seed, test_h5f):
     train_idxs = idxs[:int(0.9 * batch_num)]
     val_idxs = idxs[int(0.9 * batch_num):]
     test_idxs = np.arange(len(test_h5f.keys()) // 2)
+    # # Other approach of splitting test set
     # # Generate and shuffle indices for training set
     # train_idxs = np.arange(batch_num)
     # np.random.shuffle(train_idxs)    
@@ -496,13 +490,7 @@ def threshold_predictions(y_probs, threshold=0.5):
 
 def clip_datapoints(X, Y, CL, CL_max, N_GPUS):
     """
-    This function is necessary to make sure of the following:
-    (i) Each time model_m.fit is called, the number of datapoints is a
-    multiple of N_GPUS. Failure to ensure this often results in crashes.
-    (ii) If the required context length is less than CL_max, then
-    appropriate clipping is done below.
-    Additionally, Y is also converted to a list (the .h5 files store 
-    them as an array).
+    Clip the input data points to the desired length.
     """
     rem = X.shape[0]%N_GPUS
     clip = (CL_max-CL)//2
@@ -517,8 +505,9 @@ def clip_datapoints(X, Y, CL, CL_max, N_GPUS):
 
 
 def print_topl_statistics(y_true, y_pred, file, ss_type='acceptor', print_top_k=False):
-    # Prints the following information: top-kL statistics for k=0.5,1,2,4,
-    # auprc, thresholds for k=0.5,1,2,4, number of true splice sites.
+    """
+    Print top-k statistics for the given splice site type.
+    """
     idx_true = np.nonzero(y_true == 1)[0]
     argsorted_y_pred = np.argsort(y_pred)
     sorted_y_pred = np.sort(y_pred)
@@ -561,13 +550,6 @@ def weighted_binary_cross_entropy(output, target, weights=None):
 def categorical_crossentropy_2d(y_true, y_pred):
     """
     Compute 2D categorical cross-entropy loss.
-
-    Parameters:
-    - y_true: tensor of true labels.
-    - y_pred: tensor of predicted labels.
-
-    Returns:
-    - loss: computed categorical cross-entropy loss.
     """
     return - torch.mean(y_true[:, 0, :]*torch.log(y_pred[:, 0, :]+1e-10)
                         + y_true[:, 1, :]*torch.log(y_pred[:, 1, :]+1e-10)
@@ -577,15 +559,6 @@ def categorical_crossentropy_2d(y_true, y_pred):
 def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
     """
     Compute 2D focal loss.
-    
-    Parameters:
-    - y_true: tensor of true labels.
-    - y_pred: tensor of predicted labels.
-    - gamma: focusing parameter.
-    - alpha: balancing factor.
-
-    Returns:
-    - loss: computed focal loss.
     """
     # Ensuring numerical stability
     gamma = 2
@@ -598,9 +571,9 @@ def focal_loss(y_true, y_pred, alpha=0.25, gamma=2.0):
 def train_model(model, optimizer, scheduler, train_h5f, test_h5f, train_idxs, val_idxs, test_idxs,
                 model_output_base, args, device, params, 
                 train_metric_files, valid_metric_files, test_metric_files):
-    print("train_idxs: ", train_idxs)
-    print("val_idxs: ", val_idxs)
-    print("test_idxs: ", test_idxs)
+    print(f"train_idxs (count: {len(train_idxs)}): ", train_idxs)
+    print(f"val_idxs (count: {len(val_idxs)}): ", val_idxs)
+    print(f"test_idxs (count: {len(test_idxs)}): ", test_idxs)
     best_val_loss = float('inf')
     epochs_no_improve = 0
     global_batch_idx = 0  # Initialize before the training loop
