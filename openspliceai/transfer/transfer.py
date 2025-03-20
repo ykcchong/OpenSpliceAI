@@ -1,18 +1,16 @@
-import argparse
-import h5py
-import os, sys
+"""
+Filename: transfer.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Transfer-learning for OpenSpliceAI model.
+"""
+
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import TensorDataset, DataLoader
-from tqdm import tqdm
-import platform
-from openspliceai.train_base.spliceai import *
+from openspliceai.train_base.openspliceai import *
 from openspliceai.train_base.utils import *
 from openspliceai.constants import *
-import h5py
-import time
 from sklearn.metrics import precision_recall_fscore_support, accuracy_score
 
 
@@ -48,10 +46,10 @@ def initialize_model_and_optim_transfer(device, flanking_size, epochs, scheduler
     print("\033[1mSequence length (output): %d\033[0m" % (SL))
     # Initialize the model
     model = SpliceAI(L, W, AR).to(device)
-    # Print the shapes of the parameters in the initialized model
-    print("\nInitialized model parameter shapes:")
-    for name, param in model.named_parameters():
-        print(f"{name}: {param.shape}", end=", ")
+    # # Print the shapes of the parameters in the initialized model
+    # print("\nInitialized model parameter shapes:")
+    # for name, param in model.named_parameters():
+    #     print(f"{name}: {param.shape}", end=", ")
 
     # Load the pretrained model
     state_dict = torch.load(pretrained_model, map_location=device)
