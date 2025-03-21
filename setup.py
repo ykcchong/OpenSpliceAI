@@ -4,8 +4,8 @@ from pathlib import Path
 this_directory = Path(__file__).resolve().parent
 long_description = (this_directory / "./README.md").read_text()
 setuptools.setup(
-	name="OpenSpliceai",
-	version="0.0.3",
+	name="openspliceai",
+	version="0.0.4",
 	author="Kuan-Hao Chao",
 	author_email="kh.chao@cs.jhu.edu",
 	description="Deep learning framework that decodes splicing across species",

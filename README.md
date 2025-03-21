@@ -2,7 +2,7 @@
 
 
 <a class="reference external image-reference" href="https://img.shields.io/badge/License-GPLv3-yellow.svg"><img alt="https://img.shields.io/badge/License-GPLv3-yellow.svg" src="https://img.shields.io/badge/License-GPLv3-yellow.svg"></a>
-<a class="reference external image-reference" href="https://img.shields.io/badge/version-v.0.0.3-blue"><img alt="https://img.shields.io/badge/version-v.0.0.3-blue" src="https://img.shields.io/badge/version-v.0.0.3-blue"></a>
+<a class="reference external image-reference" href="https://img.shields.io/badge/version-v.0.0.4-blue"><img alt="https://img.shields.io/badge/version-v.0.0.4-blue" src="https://img.shields.io/badge/version-v.0.0.4-blue"></a>
 <a class="reference external image-reference" href="https://pepy.tech/project/openspliceai"><img alt="https://static.pepy.tech/personalized-badge/openspliceai?period=total&amp;units=abbreviation&amp;left_color=grey&amp;right_color=blue&amp;left_text=PyPi%20downloads" src="https://static.pepy.tech/personalized-badge/openspliceai?period=total&amp;units=abbreviation&amp;left_color=grey&amp;right_color=blue&amp;left_text=PyPi%20downloads"></a>
 <a class="reference external image-reference" href="https://github.com/Kuanhao-Chao/OpenSpliceAI/releases"><img alt="https://img.shields.io/github/downloads/Kuanhao-Chao/OpenSpliceAI/total.svg?style=social&amp;logo=github&amp;label=Download" src="https://img.shields.io/github/downloads/Kuanhao-Chao/OpenSpliceAI/total.svg?style=social&amp;logo=github&amp;label=Download"></a>
 <a class="reference external image-reference" href="https://github.com/Kuanhao-Chao/OpenSpliceAI/releases"><img alt="https://img.shields.io/badge/platform-macOS_/Linux-green.svg" src="https://img.shields.io/badge/platform-macOS_/Linux-green.svg"></a>
