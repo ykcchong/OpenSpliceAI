@@ -1,3 +1,10 @@
+"""
+Filename: train.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Merge dataset.h5 files.
+"""
+
 import h5py
 import numpy as np
 import sys, os

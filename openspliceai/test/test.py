@@ -1,4 +1,5 @@
-from openspliceai.train_base.spliceai import *
+import torch.optim as optim
+from openspliceai.train_base.openspliceai import *
 from openspliceai.train_base.utils import *
 from keras.models import load_model
 

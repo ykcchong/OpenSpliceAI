@@ -9,7 +9,7 @@ import platform
 import h5py
 import time
 from pyfaidx import Fasta
-from openspliceai.train_base.spliceai import SpliceAI
+from openspliceai.train_base.openspliceai import SpliceAI
 import openspliceai.predict.utils as utils
     
 ################
@@ -519,7 +519,8 @@ def load_pytorch_models(model_path, device, SL, CL):
     
     # Load all model state dicts given the supplied model path
     if os.path.isdir(model_path):
-        model_files = glob.glob(os.path.join(model_path, '*.pth')) # gets all PyTorch models from supplied directory
+        # Find all '*.pth' and '*.pt' files in the directory
+        model_files = glob.glob(os.path.join(model_path, '*.pth')) + glob.glob(os.path.join(model_path, '*.pt')) # gets all PyTorch models from supplied directory
         if not model_files:
             print(f"\t[ERR] No PyTorch model files found in directory: {model_path}")
             exit()

@@ -1,8 +1,12 @@
+"""
+Filename: openspliceai.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Main script to run OpenSpliceAI toolkit.
+"""
+
 import argparse
-import os, sys, time
-import random
-import h5py
-import numpy as np
+import sys
 from openspliceai import header
 from openspliceai.create_data import create_datafile, create_dataset, verify_h5_file
 from openspliceai.train import train
@@ -22,7 +26,6 @@ def parse_args_create_data(subparsers):
     parser_create_data.add_argument('--parse-type', type=str, default='canonical', choices=['canonical', 'all_isoforms'], help='Type of transcript processing')
     parser_create_data.add_argument('--biotype', type=str, default='protein-coding', choices=['protein-coding', 'non-coding', 'all'], help='Biotype of transcript processing')
     parser_create_data.add_argument('--chr-split', type=str, choices=['train-test','test'], default='train-test', help='Whether to obtain testing or both training and testing groups')
-    '''AM: newly added flags below vv'''
     parser_create_data.add_argument('--split-method', type=str, choices=['random', 'human'], default='random', help='Chromosome split method for training and testing dataset')
     parser_create_data.add_argument('--split-ratio', type=float, default=0.8, help='Ratio of training and testing dataset')
     parser_create_data.add_argument('--canonical-only', action='store_true', default=False, help='Flag to obtain only canonical splice site pairs')
@@ -142,10 +145,10 @@ def parse_args_variant(subparsers):
 def parse_args(arglist):
     parser = argparse.ArgumentParser(description='OpenSpliceAI toolkit to help you retrain your own splice site predictor')
     # Create a parent subparser to house the common subcommands.
-    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, test, calibrate, predict, transfer, variant')
+    subparsers = parser.add_subparsers(dest='command', required=True, help='Subcommands: create-data, train, calibrate, predict, transfer, variant')
     parse_args_create_data(subparsers)
     parse_args_train(subparsers)
-    parse_args_test(subparsers)
+    # parse_args_test(subparsers)
     parse_args_calibrate(subparsers)
     parse_args_transfer(subparsers)
     parse_args_predict(subparsers)
@@ -160,9 +163,9 @@ def parse_args(arglist):
 def main(arglist=None):
     # ANSI Shadow
     banner = '''
-====================================================================
-Deep learning framework to train your own SpliceAI model
-====================================================================
+============================================================
+Deep learning framework that decodes splicing across species
+============================================================
 
 
  ██████╗ ██████╗ ███████╗███╗   ██╗███████╗██████╗ ██╗     ██╗ ██████╗███████╗ █████╗ ██╗
@@ -183,8 +186,8 @@ Deep learning framework to train your own SpliceAI model
             verify_h5_file.verify_h5(args)
     elif args.command == 'train':
         train.train(args)
-    elif args.command == 'test':
-        test.test(args)
+    # elif args.command == 'test':
+    #     test.test(args)
     elif args.command == 'calibrate':
         calibrate.calibrate(args)
     elif args.command == 'transfer':
@@ -193,5 +196,3 @@ Deep learning framework to train your own SpliceAI model
         predict.predict_cli(args)
     elif args.command == 'variant':
         variant.variant(args)
-
-    # To-do adding logic to each subcommand.

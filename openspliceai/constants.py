@@ -1,3 +1,10 @@
+"""
+Filename: constants.py
+Author: Kuan-Hao Chao
+Date: 2025-03-20
+Description: Constants for OpenSpliceAI.
+"""
+
 CL_max=10000
 # Maximum nucleotide context length (CL_max/2 on either side of the 
 # position of interest)
