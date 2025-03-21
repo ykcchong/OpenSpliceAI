@@ -8,7 +8,7 @@ setuptools.setup(
 	version="0.0.3",
 	author="Kuan-Hao Chao",
 	author_email="kh.chao@cs.jhu.edu",
-	description="A splice site preditction toolkit",
+	description="Deep learning framework that decodes splicing across species",
 	url="https://github.com/Kuanhao-Chao/OpenSpliceAI",
 	# install_requires= 
     install_requires=[
