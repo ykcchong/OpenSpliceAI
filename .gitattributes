@@ -5,3 +5,4 @@ examples/data/human/MANE.GRCh38.v1.3.refseq_genomic.gff filter=lfs diff=lfs merg
 *.fna filter=lfs diff=lfs merge=lfs -text
 *.h5 filter=lfs diff=lfs merge=lfs -text
 *.fa filter=lfs diff=lfs merge=lfs -text
+examples/data/honeybee/HAv3.1_genomic_10_sample.fna filter=lfs diff=lfs merge=lfs -text
